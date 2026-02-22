@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Edith
+Comment=GTK4 native SFTP client for live remote file editing
+Exec=@BIN@
+Icon=com.github.edith
+Terminal=false
+Categories=Network;FileTransfer;Development;TextEditor;
+Keywords=sftp;ssh;remote;editor;server;
+StartupNotify=true

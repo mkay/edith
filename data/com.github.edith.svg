@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3584e4"/>
+      <stop offset="100%" stop-color="#1a5fb4"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect x="4" y="4" width="120" height="120" rx="24" ry="24" fill="url(#bg)"/>
+  <!-- Document/editor shape -->
+  <rect x="30" y="24" width="68" height="80" rx="6" ry="6" fill="#ffffff" opacity="0.95"/>
+  <!-- Text lines -->
+  <rect x="40" y="38" width="36" height="4" rx="2" fill="#1a5fb4" opacity="0.7"/>
+  <rect x="40" y="48" width="48" height="4" rx="2" fill="#1a5fb4" opacity="0.5"/>
+  <rect x="40" y="58" width="28" height="4" rx="2" fill="#1a5fb4" opacity="0.5"/>
+  <rect x="40" y="68" width="42" height="4" rx="2" fill="#1a5fb4" opacity="0.5"/>
+  <rect x="40" y="78" width="32" height="4" rx="2" fill="#1a5fb4" opacity="0.5"/>
+  <!-- Network/connection indicator -->
+  <circle cx="98" cy="94" r="16" fill="#26a269"/>
+  <path d="M90 94 L96 94 L96 86 M100 94 L100 90 M104 94 L104 88" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+</svg>

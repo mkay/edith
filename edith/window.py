@@ -1,0 +1,453 @@
+import gi
+
+gi.require_version("Gtk", "4.0")
+gi.require_version("Adw", "1")
+
+from gi.repository import Adw, Gio, GLib, Gtk
+
+from edith.widgets.welcome_view import WelcomeView
+from edith.widgets.server_list import ServerList
+from edith.widgets.file_browser import FileBrowser
+from edith.widgets.editor_panel import EditorPanel
+from edith.widgets.status_bar import StatusBar
+from edith.widgets.connect_dialog import ConnectDialog
+from edith.services import credential_store
+
+
+class EdithWindow(Adw.ApplicationWindow):
+    def __init__(self, **kwargs):
+        super().__init__(
+            default_width=1100,
+            default_height=700,
+            title="Edith",
+            **kwargs,
+        )
+
+        self._sftp_client = None
+        self._connected_server = None
+
+        self._build_ui()
+        self._setup_actions()
+
+    def _build_ui(self):
+        # Main layout: vertical box with split view + statusbar
+        main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
+        # Toast overlay wraps everything for notifications
+        self._toast_overlay = Adw.ToastOverlay(vexpand=True)
+
+        # --- Split view (sidebar + content) ---
+        self._split_view = Adw.OverlaySplitView(
+            show_sidebar=True,
+            min_sidebar_width=220,
+            max_sidebar_width=350,
+            vexpand=True,
+        )
+
+        # === Sidebar ===
+        sidebar_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        sidebar_header = Adw.HeaderBar(show_title=False)
+
+        self._new_server_btn = Gtk.Button(
+            icon_name="list-add-symbolic",
+            tooltip_text="Add Server (Ctrl+N)",
+        )
+        self._new_server_btn.connect("clicked", lambda _: self._on_new_server(None, None))
+        sidebar_header.pack_start(self._new_server_btn)
+
+        self._new_folder_btn = Gtk.Button(
+            icon_name="folder-new-symbolic",
+            tooltip_text="New Folder",
+        )
+        self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
+        sidebar_header.pack_start(self._new_folder_btn)
+
+        self._connect_btn = Gtk.Button(
+            icon_name="network-server-symbolic",
+            tooltip_text="Connect",
+        )
+        self._connect_btn.connect("clicked", self._on_connect_btn_clicked)
+        sidebar_header.pack_end(self._connect_btn)
+
+        sidebar_box.append(sidebar_header)
+
+        # Sidebar stack: server list vs file browser
+        self._sidebar_stack = Gtk.Stack(
+            transition_type=Gtk.StackTransitionType.CROSSFADE,
+            vexpand=True,
+        )
+
+        # Server list
+        self._server_list = ServerList()
+        self._server_list.connect("server-activated", self._on_server_activated)
+        self._sidebar_stack.add_named(self._server_list, "server_list")
+
+        # File browser
+        self._file_browser = FileBrowser()
+        self._file_browser.set_window(self)
+        self._file_browser.connect("file-activated", self._on_file_activated)
+        self._sidebar_stack.add_named(self._file_browser, "file_browser")
+
+        self._sidebar_stack.set_visible_child_name("server_list")
+
+        sidebar_box.append(self._sidebar_stack)
+        self._split_view.set_sidebar(sidebar_box)
+
+        # === Content area ===
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content_header = Adw.HeaderBar()
+
+        # Sidebar toggle button
+        self._sidebar_toggle = Gtk.ToggleButton(
+            icon_name="sidebar-show-symbolic",
+            tooltip_text="Toggle Sidebar (F9)",
+            active=True,
+        )
+        self._sidebar_toggle.connect("toggled", self._on_sidebar_toggled)
+        content_header.pack_start(self._sidebar_toggle)
+
+        # Menu button
+        menu = Gio.Menu()
+        menu.append("Syntax Theme\u2026", "app.syntax-theme")
+        menu.append("Editor Font\u2026", "app.editor-font")
+        menu.append("Keyboard Shortcuts", "app.shortcuts")
+        menu.append("About Edith", "app.about")
+        menu_btn = Gtk.MenuButton(
+            icon_name="open-menu-symbolic",
+            menu_model=menu,
+            tooltip_text="Main Menu",
+        )
+        content_header.pack_end(menu_btn)
+
+        content_box.append(content_header)
+
+        # Content stack: welcome view vs editor panel
+        self._content_stack = Gtk.Stack(
+            transition_type=Gtk.StackTransitionType.CROSSFADE,
+            vexpand=True,
+        )
+
+        self._welcome_view = WelcomeView()
+        self._content_stack.add_named(self._welcome_view, "welcome")
+
+        self._editor_panel = EditorPanel()
+        self._editor_panel.set_window(self)
+        self._content_stack.add_named(self._editor_panel, "editor")
+
+        self._content_stack.set_visible_child_name("welcome")
+
+        content_box.append(self._content_stack)
+        self._split_view.set_content(content_box)
+
+        self._toast_overlay.set_child(self._split_view)
+        main_box.append(self._toast_overlay)
+
+        # Status bar
+        self._status_bar = StatusBar()
+        main_box.append(self._status_bar)
+
+        self.set_content(main_box)
+
+    def _setup_actions(self):
+        app = self.get_application()
+
+        # Toggle sidebar
+        toggle_sidebar = Gio.SimpleAction.new("toggle-sidebar", None)
+        toggle_sidebar.connect("activate", self._on_toggle_sidebar)
+        self.add_action(toggle_sidebar)
+        app.set_accels_for_action("win.toggle-sidebar", ["F9"])
+
+        # New server
+        new_server = Gio.SimpleAction.new("new-server", None)
+        new_server.connect("activate", self._on_new_server)
+        self.add_action(new_server)
+        app.set_accels_for_action("win.new-server", ["<Control>n"])
+
+        # Disconnect
+        disconnect = Gio.SimpleAction.new("disconnect", None)
+        disconnect.connect("activate", self._on_disconnect)
+        disconnect.set_enabled(False)
+        self.add_action(disconnect)
+        app.set_accels_for_action("win.disconnect", ["<Control>d"])
+
+        # Save
+        save = Gio.SimpleAction.new("save", None)
+        save.connect("activate", self._on_save)
+        save.set_enabled(False)
+        self.add_action(save)
+        app.set_accels_for_action("win.save", ["<Control>s"])
+
+        # Close tab
+        close_tab = Gio.SimpleAction.new("close-tab", None)
+        close_tab.connect("activate", self._on_close_tab)
+        close_tab.set_enabled(False)
+        self.add_action(close_tab)
+        app.set_accels_for_action("win.close-tab", ["<Control>w"])
+
+    # --- Signal handlers ---
+
+    def _on_sidebar_toggled(self, btn):
+        self._split_view.set_show_sidebar(btn.get_active())
+
+    def _on_toggle_sidebar(self, action, param):
+        showing = self._split_view.get_show_sidebar()
+        self._split_view.set_show_sidebar(not showing)
+        self._sidebar_toggle.set_active(not showing)
+
+    def _on_new_server(self, action, param):
+        self._server_list.show_add_dialog()
+
+    def _on_disconnect(self, action, param):
+        self.disconnect_server()
+
+    def _on_save(self, action, param):
+        self._editor_panel.save_current()
+
+    def _on_close_tab(self, action, param):
+        self._editor_panel.close_current()
+
+    def _on_connect_btn_clicked(self, btn):
+        if self._sftp_client:
+            self.disconnect_server()
+        else:
+            server = self._server_list.get_selected_server()
+            if server:
+                self._initiate_connection(server)
+
+    def _on_server_activated(self, server_list, server_info):
+        self._initiate_connection(server_info)
+
+    def _on_file_activated(self, file_browser, remote_path):
+        self.open_remote_file(remote_path)
+
+    # --- Connection flow ---
+
+    def _initiate_connection(self, server_info):
+        """Start the connection flow — prompt for credentials if needed."""
+        # Try stored credential first
+        stored = credential_store.get_password(server_info.id)
+
+        if server_info.auth_method == "key" and server_info.key_file:
+            # Key-only auth, no password needed
+            self.connect_to_server(server_info)
+            return
+
+        if stored:
+            if server_info.auth_method == "password":
+                self.connect_to_server(server_info, password=stored)
+            else:
+                self.connect_to_server(server_info, passphrase=stored)
+            return
+
+        # Show connect dialog for password/passphrase
+        dialog = ConnectDialog(server_info)
+        dialog.connect("connect", lambda d, pw, pp: self.connect_to_server(server_info, password=pw, passphrase=pp))
+        dialog.present(self)
+
+    def connect_to_server(self, server_info, password=None, passphrase=None):
+        """Initiate connection to a server."""
+        from edith.services.sftp_client import SftpClient
+        from edith.services.async_worker import run_async
+
+        self._set_status("connecting", f"Connecting to {server_info.host}...")
+
+        def do_connect():
+            client = SftpClient()
+            client.connect(
+                host=server_info.host,
+                port=server_info.port,
+                username=server_info.username,
+                password=password,
+                key_file=server_info.key_file or None,
+                passphrase=passphrase,
+            )
+            return client
+
+        def on_success(client):
+            self._sftp_client = client
+            self._connected_server = server_info
+            self._on_connected(server_info)
+
+        def on_error(error):
+            self._set_status("error", f"Connection failed: {error}")
+            dialog = Adw.AlertDialog(
+                heading="Connection Failed",
+                body=str(error),
+            )
+            dialog.add_response("ok", "OK")
+            dialog.present(self)
+
+        run_async(do_connect, on_success, on_error)
+
+    def disconnect_server(self):
+        """Disconnect from current server, confirming if there are unsaved changes."""
+        if self._editor_panel.has_unsaved():
+            names = self._editor_panel.unsaved_filenames()
+            body = "Unsaved changes in: " + ", ".join(names)
+            dialog = Adw.AlertDialog(
+                heading="Disconnect with unsaved changes?",
+                body=body,
+            )
+            dialog.add_response("cancel", "Cancel")
+            dialog.add_response("discard", "Discard & Disconnect")
+            dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
+            dialog.connect("response", self._on_disconnect_response)
+            dialog.present(self)
+            return
+
+        self._do_disconnect()
+
+    def _on_disconnect_response(self, dialog, response):
+        if response == "discard":
+            self._do_disconnect()
+
+    def _do_disconnect(self):
+        """Actually disconnect and clean up."""
+        if self._sftp_client:
+            from edith.services.async_worker import run_async
+
+            client = self._sftp_client
+            self._sftp_client = None
+            self._connected_server = None
+
+            run_async(lambda: client.close(), lambda _: None, lambda _: None)
+
+        self._on_disconnected()
+
+    def _on_connected(self, server_info):
+        """Called after successful connection."""
+        self._set_status("connected", f"Connected to {server_info.username}@{server_info.host}")
+        self.lookup_action("disconnect").set_enabled(True)
+        self._connect_btn.set_icon_name("network-offline-symbolic")
+        self._connect_btn.set_tooltip_text("Disconnect (Ctrl+D)")
+
+        # Switch sidebar to file browser, load initial directory
+        initial = server_info.initial_directory or "/"
+        self._file_browser.load_directory(initial)
+        self._sidebar_stack.set_visible_child_name("file_browser")
+
+        # Enable editor actions
+        self.lookup_action("save").set_enabled(True)
+        self.lookup_action("close-tab").set_enabled(True)
+
+        # Hide server/folder buttons while connected
+        self._new_server_btn.set_visible(False)
+        self._new_folder_btn.set_visible(False)
+
+        toast = Adw.Toast(title=f"Connected to {server_info.display_name}")
+        self._toast_overlay.add_toast(toast)
+
+    def _on_disconnected(self):
+        """Called after disconnection."""
+        self._set_status("disconnected", "Disconnected")
+        self.lookup_action("disconnect").set_enabled(False)
+        self._connect_btn.set_icon_name("network-server-symbolic")
+        self._connect_btn.set_tooltip_text("Connect")
+
+        # Switch sidebar back to server list
+        self._sidebar_stack.set_visible_child_name("server_list")
+
+        # Close all editor tabs
+        self._editor_panel.close_all()
+
+        # Show welcome
+        self._content_stack.set_visible_child_name("welcome")
+
+        # Disable editor actions
+        self.lookup_action("save").set_enabled(False)
+        self.lookup_action("close-tab").set_enabled(False)
+
+        # Show server/folder buttons
+        self._new_server_btn.set_visible(True)
+        self._new_folder_btn.set_visible(True)
+
+    def open_remote_file(self, remote_path):
+        """Download and open a remote file for editing."""
+        if not self._sftp_client:
+            return
+
+        # Check if already open
+        existing = self._editor_panel.find_tab(remote_path)
+        if existing is not None:
+            self._editor_panel.focus_tab(existing)
+            return
+
+        from edith.services.async_worker import run_async
+        from edith.services.temp_manager import TempManager
+
+        self._set_status("downloading", f"Downloading {remote_path}...")
+
+        client = self._sftp_client
+
+        def do_download():
+            local_path = TempManager.get_temp_path(remote_path)
+            client.download(remote_path, str(local_path), progress_cb=None)
+            return local_path
+
+        def on_success(local_path):
+            self._set_status("connected", f"Connected to {self._connected_server.username}@{self._connected_server.host}")
+            self._editor_panel.open_file(remote_path, str(local_path))
+            self._content_stack.set_visible_child_name("editor")
+
+        def on_error(error):
+            self._set_status("error", f"Download failed: {error}")
+            toast = Adw.Toast(title=f"Failed to download: {error}")
+            self._toast_overlay.add_toast(toast)
+
+        run_async(do_download, on_success, on_error)
+
+    def save_remote_file(self, remote_path, local_path):
+        """Upload a saved local file back to the server."""
+        if not self._sftp_client:
+            return
+
+        from edith.services.async_worker import run_async
+        import os
+
+        self._set_status("uploading", f"Uploading {os.path.basename(remote_path)}...")
+
+        client = self._sftp_client
+
+        def do_upload():
+            client.upload(local_path, remote_path, progress_cb=None, overwrite=True)
+
+        def on_success(_):
+            self._set_status("connected", f"Connected to {self._connected_server.username}@{self._connected_server.host}")
+            name = os.path.basename(remote_path)
+            toast = Adw.Toast(title=f"Saved {name}")
+            self._toast_overlay.add_toast(toast)
+
+        def on_error(error):
+            self._set_status("error", f"Upload failed: {error}")
+            dialog = Adw.AlertDialog(
+                heading="Upload Failed",
+                body=str(error),
+            )
+            dialog.add_response("ok", "OK")
+            dialog.present(self)
+
+        run_async(do_upload, on_success, on_error)
+
+    def _set_status(self, state, message):
+        """Update the status bar."""
+        if self._status_bar:
+            self._status_bar.set_status(state, message)
+
+    def reveal_in_sidebar(self, remote_path: str):
+        """Show the file in the sidebar file browser."""
+        self._split_view.set_show_sidebar(True)
+        self._sidebar_toggle.set_active(True)
+        self._sidebar_stack.set_visible_child_name("file_browser")
+        self._file_browser.reveal_file(remote_path)
+
+    def apply_syntax_scheme(self, scheme_id: str):
+        """Apply a syntax colour scheme to all open editor tabs."""
+        self._editor_panel.apply_syntax_scheme(scheme_id)
+
+    def apply_editor_font(self, font_family: str, font_size: int):
+        """Apply a font to all open editor tabs."""
+        self._editor_panel.apply_font(font_family, font_size)
+
+    @property
+    def sftp_client(self):
+        return self._sftp_client

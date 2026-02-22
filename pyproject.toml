@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "edith"
+version = "0.1.0"
+description = "GTK4 native SFTP client for live remote file editing"
+requires-python = ">=3.10"
+dependencies = [
+    "PyGObject>=3.42",
+    "paramiko>=3.0",
+    "keyring>=24.0",
+]
+
+[project.scripts]
+edith = "edith.__main__:main"
+
+[tool.setuptools.packages.find]
+include = ["edith*"]
