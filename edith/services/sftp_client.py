@@ -69,6 +69,13 @@ class SftpClient:
             and self._sftp is not None
         )
 
+    def normalize(self, path: str) -> str:
+        """Resolve a remote path to its absolute form (calls server realpath)."""
+        with self._lock:
+            if not self._sftp:
+                raise RuntimeError("Not connected")
+            return self._sftp.normalize(path)
+
     def listdir_attr(self, path: str) -> list:
         """List directory contents with attributes."""
         with self._lock:

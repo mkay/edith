@@ -13,9 +13,9 @@ class WelcomeView(Adw.Bin):
         super().__init__()
 
         status = Adw.StatusPage(
-            icon_name="network-server-symbolic",
+            icon_name="de.singular.edith-symbolic",
             title="Welcome to Edith",
-            description="Connect to a server and open a file to start editing",
+            description="Edith is alpha software.\nIt's guaranteed to surprise you — sometimes even in a good way.\n\nConnect to a server and open a file to start editing",
             vexpand=True,
             hexpand=True,
         )

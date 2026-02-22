@@ -28,7 +28,7 @@ class ServerRow(Gtk.Box):
         )
         self.server_info = server_info
 
-        icon = Gtk.Image(icon_name="network-server-symbolic")
+        icon = Gtk.Image(icon_name="network-server-symbolic", valign=Gtk.Align.START, margin_start=1, margin_top=5)
         self.append(icon)
 
         labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True, spacing=2)

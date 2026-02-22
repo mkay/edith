@@ -26,10 +26,13 @@ class ConfigService:
     @staticmethod
     def _save(servers: List[ServerInfo], folders: List[FolderInfo]):
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        existing = ConfigService._load_raw()
         data = {
             "servers": [s.to_dict() for s in servers],
             "folders": [f.to_dict() for f in folders],
         }
+        if "preferences" in existing:
+            data["preferences"] = existing["preferences"]
         SERVERS_FILE.write_text(json.dumps(data, indent=2))
 
     # --- Server operations ---

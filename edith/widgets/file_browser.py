@@ -17,6 +17,7 @@ class FileBrowser(Gtk.Box):
 
     __gsignals__ = {
         "file-activated": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "path-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self):
@@ -26,6 +27,8 @@ class FileBrowser(Gtk.Box):
         self._current_path = "/"
         self._expanded = set()  # set of expanded directory paths
         self._pending_reveal = None  # filename to select after loading
+        self._history = []
+        self._history_pos = -1
 
         # Breadcrumb / path bar
         self._path_bar = Gtk.Box(
@@ -191,6 +194,11 @@ class FileBrowser(Gtk.Box):
         gesture.connect("pressed", self._on_right_click)
         self._list_box.add_controller(gesture)
 
+        # Keyboard shortcuts
+        key_ctrl = Gtk.EventControllerKey()
+        key_ctrl.connect("key-pressed", self._on_key_pressed)
+        self._list_box.add_controller(key_ctrl)
+
         self._context_row = None
 
     def _on_right_click(self, gesture, n_press, x, y):
@@ -215,6 +223,31 @@ class FileBrowser(Gtk.Box):
         rect.height = 1
         self._context_menu.set_pointing_to(rect)
         self._context_menu.popup()
+
+    def _on_key_pressed(self, ctrl, keyval, keycode, state):
+        selected = self._list_box.get_selected_row()
+
+        if keyval == Gdk.KEY_F2:
+            if selected and isinstance(selected.get_child(), FileRow):
+                self._context_row = selected
+                self._on_rename(None, None)
+                return True
+
+        elif keyval == Gdk.KEY_Delete:
+            if selected and isinstance(selected.get_child(), FileRow):
+                self._context_row = selected
+                self._on_delete(None, None)
+                return True
+
+        elif keyval == Gdk.KEY_F5:
+            self.load_directory(self._current_path)
+            return True
+
+        elif keyval == Gdk.KEY_BackSpace:
+            self._on_go_up(None)
+            return True
+
+        return False
 
     def _get_context_file_info(self) -> RemoteFileInfo | None:
         if self._context_row:
@@ -493,13 +526,42 @@ class FileBrowser(Gtk.Box):
         """Set reference to main window for SFTP access."""
         self._window = window
 
-    def load_directory(self, path: str):
+    @property
+    def can_go_back(self) -> bool:
+        return self._history_pos > 0
+
+    @property
+    def can_go_forward(self) -> bool:
+        return self._history_pos < len(self._history) - 1
+
+    def go_back(self):
+        if self.can_go_back:
+            self._history_pos -= 1
+            self.load_directory(self._history[self._history_pos], add_to_history=False)
+
+    def go_forward(self):
+        if self.can_go_forward:
+            self._history_pos += 1
+            self.load_directory(self._history[self._history_pos], add_to_history=False)
+
+    def reset_history(self):
+        self._history = []
+        self._history_pos = -1
+
+    def load_directory(self, path: str, add_to_history: bool = True):
         """Load directory contents asynchronously."""
         if not self._window or not self._window.sftp_client:
             return
 
+        if add_to_history:
+            if not self._history or path != self._history[self._history_pos]:
+                self._history = self._history[:self._history_pos + 1]
+                self._history.append(path)
+                self._history_pos += 1
+
         self._current_path = path
         self._path_label.set_label(path)
+        self.emit("path-changed", path)
 
         # Show loading state
         self._spinner.set_visible(True)

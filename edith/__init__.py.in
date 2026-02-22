@@ -1,0 +1,3 @@
+APP_ID = "de.singular.edith"
+VERSION = "@VERSION@"
+APP_NAME = "Edith"

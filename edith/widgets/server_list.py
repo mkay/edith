@@ -19,6 +19,7 @@ class ServerList(Gtk.Box):
 
     __gsignals__ = {
         "server-activated": (GObject.SignalFlags.RUN_FIRST, None, (object,)),
+        "selection-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
     }
 
     def __init__(self):
@@ -28,6 +29,19 @@ class ServerList(Gtk.Box):
         self._folders = []
         self._rows = {}
         self._folder_rows = {}
+        self._search_query = ""
+
+        # Search bar
+        self._search_entry = Gtk.SearchEntry(placeholder_text="Search servers\u2026")
+        self._search_entry.connect("search-changed", self._on_search_changed)
+        self._search_entry.connect("stop-search", self._on_search_stop)
+
+        self._search_bar = Gtk.SearchBar(
+            child=self._search_entry,
+            show_close_button=True,
+        )
+        self._search_bar.connect("notify::search-mode-enabled", self._on_search_mode_changed)
+        self.append(self._search_bar)
 
         # Scrolled list
         sw = Gtk.ScrolledWindow(
@@ -40,6 +54,7 @@ class ServerList(Gtk.Box):
             css_classes=["navigation-sidebar"],
         )
         self._list_box.connect("row-activated", self._on_row_activated)
+        self._list_box.connect("row-selected", self._on_row_selected)
 
         sw.set_child(self._list_box)
         self.append(sw)
@@ -53,6 +68,29 @@ class ServerList(Gtk.Box):
         self.load_servers()
 
     # ------------------------------------------------------------------
+    # Search
+    # ------------------------------------------------------------------
+
+    def toggle_search(self):
+        active = self._search_bar.get_search_mode()
+        self._search_bar.set_search_mode(not active)
+        if not active:
+            self._search_entry.grab_focus()
+
+    def _on_search_changed(self, entry):
+        self._search_query = entry.get_text().strip().lower()
+        self._rebuild_list()
+
+    def _on_search_stop(self, entry):
+        self._search_bar.set_search_mode(False)
+
+    def _on_search_mode_changed(self, bar, pspec):
+        if not self._search_bar.get_search_mode():
+            self._search_entry.set_text("")
+            self._search_query = ""
+            self._rebuild_list()
+
+    # ------------------------------------------------------------------
     # Context menus
     # ------------------------------------------------------------------
 
@@ -62,7 +100,8 @@ class ServerList(Gtk.Box):
         server_menu = Gio.Menu()
         server_menu.append("Connect", "server.connect")
         server_menu.append("Edit", "server.edit")
-        server_menu.append("Remove from Folder", "server.ungroup")
+        server_menu.append("Change Password\u2026", "server.change-password")
+        server_menu.append("Remove from Group", "server.ungroup")
         server_menu.append("Delete", "server.delete")
 
         self._server_menu = Gtk.PopoverMenu(menu_model=server_menu, has_arrow=False)
@@ -86,12 +125,16 @@ class ServerList(Gtk.Box):
         self._ungroup_action.connect("activate", self._on_context_ungroup)
         server_group.add_action(self._ungroup_action)
 
+        self._change_password_action = Gio.SimpleAction.new("change-password", None)
+        self._change_password_action.connect("activate", self._on_context_change_password)
+        server_group.add_action(self._change_password_action)
+
         self._list_box.insert_action_group("server", server_group)
 
         # --- Folder context menu ---
         folder_menu = Gio.Menu()
-        folder_menu.append("Rename Folder\u2026", "folder.rename")
-        folder_menu.append("Delete Folder", "folder.delete-folder")
+        folder_menu.append("Rename Group\u2026", "folder.rename")
+        folder_menu.append("Delete Group", "folder.delete-folder")
 
         self._folder_menu = Gtk.PopoverMenu(menu_model=folder_menu, has_arrow=False)
         self._folder_menu.set_parent(self._list_box)
@@ -110,7 +153,7 @@ class ServerList(Gtk.Box):
 
         # --- Empty area context menu ---
         empty_menu = Gio.Menu()
-        empty_menu.append("New Folder\u2026", "area.new-folder")
+        empty_menu.append("New Server Group\u2026", "area.new-folder")
 
         self._empty_menu = Gtk.PopoverMenu(menu_model=empty_menu, has_arrow=False)
         self._empty_menu.set_parent(self._list_box)
@@ -151,8 +194,9 @@ class ServerList(Gtk.Box):
             self._folder_menu.set_pointing_to(rect)
             self._folder_menu.popup()
         elif isinstance(child, ServerRow):
-            # Enable/disable "Remove from Folder" based on folder membership
+            # Enable/disable actions based on server state
             self._ungroup_action.set_enabled(child.server_info.folder_id != "")
+            self._change_password_action.set_enabled(child.server_info.auth_method != "key")
             self._server_menu.set_pointing_to(rect)
             self._server_menu.popup()
 
@@ -185,6 +229,52 @@ class ServerList(Gtk.Box):
                 self._servers = ConfigService.load_servers()
                 self._rebuild_list()
 
+    def _on_context_change_password(self, action, param):
+        if self._context_row:
+            child = self._context_row.get_child()
+            if isinstance(child, ServerRow):
+                self._show_change_password_dialog(child.server_info)
+
+    def _show_change_password_dialog(self, server_info):
+        dialog = Adw.Dialog(
+            title="Change Password",
+            content_width=360,
+            content_height=180,
+        )
+
+        toolbar_view = Adw.ToolbarView()
+        header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dialog.close())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        header.pack_end(save_btn)
+        toolbar_view.add_top_bar(header)
+
+        clamp = Adw.Clamp(maximum_size=360, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
+
+        group = Adw.PreferencesGroup()
+        label = "Key Passphrase" if server_info.auth_method == "key+passphrase" else "Password"
+        pw_row = Adw.PasswordEntryRow(title=label)
+        group.add(pw_row)
+
+        clamp.set_child(group)
+        toolbar_view.set_content(clamp)
+        dialog.set_child(toolbar_view)
+
+        def on_save(_):
+            password = pw_row.get_text()
+            if password:
+                credential_store.store_password(server_info.id, password)
+            dialog.close()
+
+        save_btn.connect("clicked", on_save)
+        pw_row.connect("entry-activated", on_save)
+
+        dialog.present(self.get_root())
+
     # ------------------------------------------------------------------
     # Context menu actions — folder
     # ------------------------------------------------------------------
@@ -197,7 +287,7 @@ class ServerList(Gtk.Box):
             return
         folder = child.folder_info
         win = self.get_root()
-        dialog = NameDialog("Rename Folder", "Folder name", folder.name)
+        dialog = NameDialog("Rename Group", "Group name", folder.name)
         dialog.connect("submitted", self._on_folder_rename_submitted, folder)
         dialog.present(win)
 
@@ -215,7 +305,7 @@ class ServerList(Gtk.Box):
         folder = child.folder_info
         win = self.get_root()
         dlg = Adw.AlertDialog(
-            heading="Delete Folder?",
+            heading="Delete Group?",
             body=f"Delete \u201c{folder.name}\u201d? Servers inside will become ungrouped.",
         )
         dlg.add_response("cancel", "Cancel")
@@ -241,7 +331,7 @@ class ServerList(Gtk.Box):
 
     def show_new_folder_dialog(self):
         win = self.get_root()
-        dialog = NameDialog("New Folder", "Folder name", "")
+        dialog = NameDialog("New Server Group", "Group name", "")
         dialog.connect("submitted", self._on_new_folder_submitted)
         dialog.present(win)
 
@@ -268,6 +358,10 @@ class ServerList(Gtk.Box):
         self._folders = ConfigService.load_folders()
         self._rebuild_list()
 
+    def _server_matches(self, server) -> bool:
+        haystack = f"{server.display_name} {server.host} {server.username}".lower()
+        return self._search_query in haystack
+
     def _rebuild_list(self):
         # Remove all rows
         while True:
@@ -277,6 +371,18 @@ class ServerList(Gtk.Box):
             self._list_box.remove(row)
         self._rows.clear()
         self._folder_rows.clear()
+
+        # Search mode: flat filtered list (ignores folder grouping/collapse state)
+        if self._search_query:
+            matched = sorted(
+                [s for s in self._servers if self._server_matches(s)],
+                key=lambda s: s.display_name.lower(),
+            )
+            for server in matched:
+                server_row = ServerRow(server)
+                self._list_box.append(server_row)
+                self._rows[server.id] = server_row
+            return
 
         # Build a set of valid folder IDs
         folder_ids = {f.id for f in self._folders}
@@ -290,8 +396,14 @@ class ServerList(Gtk.Box):
             else:
                 ungrouped.append(server)
 
+        # Sort folders and ungrouped servers alphabetically
+        sorted_folders = sorted(self._folders, key=lambda f: f.name.lower())
+        for fid in folder_servers:
+            folder_servers[fid].sort(key=lambda s: s.name.lower())
+        ungrouped.sort(key=lambda s: s.name.lower())
+
         # 1) Folders first
-        for folder in self._folders:
+        for folder in sorted_folders:
             members = folder_servers.get(folder.id, [])
 
             folder_row = FolderRow(folder)
@@ -310,7 +422,7 @@ class ServerList(Gtk.Box):
             if folder.expanded:
                 for server in members:
                     server_row = ServerRow(server)
-                    server_row.set_margin_start(24)
+                    server_row.set_margin_start(16)
                     self._list_box.append(server_row)
                     self._rows[server.id] = server_row
                     # Attach drag source
@@ -330,6 +442,10 @@ class ServerList(Gtk.Box):
     # ------------------------------------------------------------------
     # Row activation
     # ------------------------------------------------------------------
+
+    def _on_row_selected(self, list_box, row):
+        is_server = row is not None and isinstance(row.get_child(), ServerRow)
+        self.emit("selection-changed", is_server)
 
     def _on_row_activated(self, list_box, row):
         child = row.get_child()

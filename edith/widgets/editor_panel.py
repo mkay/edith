@@ -13,6 +13,10 @@ from edith.widgets.editor_page import EditorPage
 class EditorPanel(Gtk.Box):
     """Tabbed editor panel using Adw.TabView."""
 
+    __gsignals__ = {
+        "page-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
+    }
+
     def __init__(self):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
@@ -22,6 +26,7 @@ class EditorPanel(Gtk.Box):
         # Tab bar
         self._tab_view = Adw.TabView()
         self._tab_view.connect("close-page", self._on_close_page)
+        self._tab_view.connect("notify::selected-page", lambda *_: self.emit("page-changed"))
 
         # Tab context menu
         self._setup_tab_menu()
@@ -218,6 +223,15 @@ class EditorPanel(Gtk.Box):
             if isinstance(editor, EditorPage) and editor.open_file.is_modified:
                 names.append(editor.open_file.filename)
         return names
+
+    def get_current_editor(self):
+        """Return the active EditorPage, or None."""
+        page = self._tab_view.get_selected_page()
+        if page:
+            editor = page.get_child()
+            if isinstance(editor, EditorPage):
+                return editor
+        return None
 
     @property
     def has_tabs(self) -> bool:

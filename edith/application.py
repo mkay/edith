@@ -63,13 +63,38 @@ class EdithApplication(Adw.Application):
         font_action.connect("activate", self._on_editor_font)
         self.add_action(font_action)
 
+        window_size_action = Gio.SimpleAction.new("window-size", None)
+        window_size_action.connect("activate", self._on_window_size)
+        self.add_action(window_size_action)
+
+        syntax_assoc_action = Gio.SimpleAction.new("syntax-associations", None)
+        syntax_assoc_action.connect("activate", self._on_syntax_associations)
+        self.add_action(syntax_assoc_action)
+
     def _on_about(self, action, param):
         about = Adw.AboutDialog(
             application_name=APP_NAME,
-            application_icon="network-server-symbolic",
+            application_icon="de.singular.edith-symbolic",
             version=VERSION,
             developer_name="Edith Contributors",
-            comments="GTK4 native SFTP client for live remote file editing",
+            website="https://github.com/mkay/edith",
+            comments=(
+                "GTK4 native SFTP client for live remote file editing.\n\n"
+                "Edith is alpha software.\n\n"
+                "Features\n"
+                "• Server management — saved connections with password/key auth, "
+                "organized into collapsible folder groups; change passwords after initial setup\n"
+                "• Server search — Ctrl+F to filter servers by name\n"
+                "• File browser — navigate remote directories with drag-and-drop move, "
+                "upload, copy, rename, delete\n"
+                "• Path bar — clickable breadcrumb navigation with back/forward history\n"
+                "• Tabbed editor — GtkSourceView 5 with syntax highlighting, "
+                "customizable themes and fonts\n"
+                "• Secure credentials — passwords stored via GNOME Keyring / libsecret\n"
+                "• Live editing — files downloaded to temp, edited locally, uploaded on save\n"
+                "• Home directory support — use ~ as initial directory\n"
+                "• Resizable sidebar"
+            ),
             license_type=Gtk.License.GPL_3_0,
         )
         about.present(self.props.active_window)
@@ -106,6 +131,66 @@ class EdithApplication(Adw.Application):
             return
         win.apply_editor_font(font_family, font_size)
 
+    def _on_window_size(self, action, param):
+        win = self.props.active_window
+        if not win:
+            return
+
+        from edith.services.config import ConfigService
+
+        current_w = ConfigService.get_preference("window_width", 1100)
+        current_h = ConfigService.get_preference("window_height", 700)
+
+        dialog = Adw.Dialog(title="Window Size", content_width=320, content_height=220)
+
+        toolbar_view = Adw.ToolbarView()
+        header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dialog.close())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        header.pack_end(save_btn)
+        toolbar_view.add_top_bar(header)
+
+        clamp = Adw.Clamp(maximum_size=320, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
+        group = Adw.PreferencesGroup()
+
+        width_row = Adw.SpinRow(
+            title="Width",
+            adjustment=Gtk.Adjustment(value=current_w, lower=800, upper=3840, step_increment=10),
+        )
+        group.add(width_row)
+
+        height_row = Adw.SpinRow(
+            title="Height",
+            adjustment=Gtk.Adjustment(value=current_h, lower=600, upper=2160, step_increment=10),
+        )
+        group.add(height_row)
+
+        clamp.set_child(group)
+        toolbar_view.set_content(clamp)
+        dialog.set_child(toolbar_view)
+
+        def on_save(_):
+            w = int(width_row.get_value())
+            h = int(height_row.get_value())
+            ConfigService.set_preference("window_width", w)
+            ConfigService.set_preference("window_height", h)
+            dialog.close()
+
+        save_btn.connect("clicked", on_save)
+        dialog.present(win)
+
+    def _on_syntax_associations(self, action, param):
+        win = self.props.active_window
+        if not win:
+            return
+        from edith.widgets.syntax_associations_dialog import SyntaxAssociationsDialog
+        dialog = SyntaxAssociationsDialog()
+        dialog.present(win)
+
     def _on_shortcuts(self, action, param):
         win = self.props.active_window
         if not win:
@@ -120,6 +205,7 @@ class EdithApplication(Adw.Application):
                 ("<Control>q", "Quit"),
                 ("F9", "Toggle sidebar"),
                 ("<Control>n", "New server"),
+                ("<Control>f", "Search servers"),
             ]),
             ("Editing", [
                 ("<Control>s", "Save file"),
@@ -127,6 +213,12 @@ class EdithApplication(Adw.Application):
             ]),
             ("Connection", [
                 ("<Control>d", "Disconnect"),
+            ]),
+            ("File Browser", [
+                ("F2", "Rename"),
+                ("Delete", "Delete"),
+                ("F5", "Refresh"),
+                ("BackSpace", "Parent directory"),
             ]),
         ]
 

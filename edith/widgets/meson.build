@@ -8,10 +8,12 @@ widgets_sources = [
   'file_row.py',
   'folder_row.py',
   'font_chooser_dialog.py',
+  'path_bar.py',
   'server_edit_dialog.py',
   'server_list.py',
   'server_row.py',
   'status_bar.py',
+  'syntax_associations_dialog.py',
   'theme_chooser_dialog.py',
   'welcome_view.py',
 ]

@@ -1,5 +1,12 @@
+configure_file(
+  input: '__init__.py.in',
+  output: '__init__.py',
+  configuration: conf,
+  install: true,
+  install_dir: moduledir,
+)
+
 edith_sources = [
-  '__init__.py',
   '__main__.py',
   'application.py',
   'window.py',

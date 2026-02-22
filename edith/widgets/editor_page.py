@@ -65,6 +65,17 @@ class EditorPage(Gtk.Box):
     def _setup_language(self):
         """Detect and set syntax highlighting language."""
         lm = GtkSource.LanguageManager.get_default()
+
+        # Check user-defined associations first
+        ext = self.open_file.filename.rsplit(".", 1)[-1] if "." in self.open_file.filename else ""
+        if ext:
+            assoc = ConfigService.get_preference("syntax_associations", {})
+            custom_lang = lm.get_language(assoc[ext]) if ext in assoc else None
+            if custom_lang:
+                self._buffer.set_language(custom_lang)
+                self._buffer.set_highlight_syntax(True)
+                return
+
         lang = lm.guess_language(self.open_file.filename, None)
         if lang:
             self._buffer.set_language(lang)
@@ -79,6 +90,7 @@ class EditorPage(Gtk.Box):
             scheme = sm.get_scheme(saved)
             if scheme:
                 self._buffer.set_style_scheme(scheme)
+                self._apply_scheme_background(scheme)
                 return
 
         # Fall back to Adwaita light/dark
@@ -90,9 +102,31 @@ class EditorPage(Gtk.Box):
 
         if scheme:
             self._buffer.set_style_scheme(scheme)
+            self._apply_scheme_background(scheme)
 
         # Listen for system theme changes (only used when no explicit preference)
         style_manager.connect("notify::dark", self._on_theme_changed)
+
+    def _apply_scheme_background(self, scheme):
+        """Force the scheme's background/foreground onto the view via CSS.
+
+        Needed because Adwaita's textview CSS can win the cascade over
+        GtkSourceView's own scheme CSS in light mode.
+        """
+        style = scheme.get_style("text")
+        css = ""
+        if style and style.props.background_set and style.props.background:
+            css += f"textview text {{ background-color: {style.props.background}; }}"
+        if style and style.props.foreground_set and style.props.foreground:
+            css += f" textview text {{ color: {style.props.foreground}; }}"
+
+        if not hasattr(self, "_scheme_bg_css"):
+            self._scheme_bg_css = Gtk.CssProvider()
+            self._view.get_style_context().add_provider(
+                self._scheme_bg_css,
+                Gtk.STYLE_PROVIDER_PRIORITY_USER,
+            )
+        self._scheme_bg_css.load_from_string(css)
 
     def _on_theme_changed(self, style_manager, pspec):
         # Only auto-switch if no explicit preference is set
@@ -106,6 +140,7 @@ class EditorPage(Gtk.Box):
             scheme = sm.get_scheme("Adwaita")
         if scheme:
             self._buffer.set_style_scheme(scheme)
+            self._apply_scheme_background(scheme)
 
     def apply_scheme(self, scheme_id: str):
         """Apply a style scheme by ID (called when user changes theme)."""
@@ -113,6 +148,7 @@ class EditorPage(Gtk.Box):
         scheme = sm.get_scheme(scheme_id)
         if scheme:
             self._buffer.set_style_scheme(scheme)
+            self._apply_scheme_background(scheme)
 
     def _setup_font(self):
         """Set editor font from saved preference."""
@@ -168,6 +204,23 @@ class EditorPage(Gtk.Box):
             f.write(text)
 
         self._buffer.set_modified(False)
+
+    def get_language_name(self) -> str:
+        lang = self._buffer.get_language()
+        return lang.get_name() if lang else "Plain Text"
+
+    def get_language_id(self):
+        lang = self._buffer.get_language()
+        return lang.get_id() if lang else None
+
+    def set_language(self, lang_id):
+        lm = GtkSource.LanguageManager.get_default()
+        if lang_id:
+            lang = lm.get_language(lang_id)
+            self._buffer.set_language(lang)
+        else:
+            self._buffer.set_language(None)
+        self._buffer.set_highlight_syntax(bool(lang_id))
 
     def get_view(self) -> GtkSource.View:
         return self._view

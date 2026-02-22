@@ -39,7 +39,7 @@ class ServerInfo:
 class FolderInfo:
     """Represents a folder group in the server list."""
 
-    name: str = "New Folder"
+    name: str = "New Group"
     id: str = field(default_factory=lambda: "")
     expanded: bool = True
 
