@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/de/singular/edith/icons/hicolor/scalable/actions">
+    <file alias="edith-sidebar-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-symbolic.svg</file>
+    <file alias="edith-server-add-symbolic.svg">data/icons/hicolor/scalable/actions/edith-server-add-symbolic.svg</file>
+    <file alias="edith-group-new-symbolic.svg">data/icons/hicolor/scalable/actions/edith-group-new-symbolic.svg</file>
+    <file alias="edith-open-menu-symbolic.svg">data/icons/hicolor/scalable/actions/edith-open-menu-symbolic.svg</file>
+    <file alias="edith-connect-symbolic.svg">data/icons/hicolor/scalable/actions/edith-connect-symbolic.svg</file>
+    <file alias="edith-disconnect-symbolic.svg">data/icons/hicolor/scalable/actions/edith-disconnect-symbolic.svg</file>
+    <file alias="edith-server-symbolic.svg">data/icons/hicolor/scalable/actions/edith-server-symbolic.svg</file>
+    <file alias="edith-folder-symbolic.svg">data/icons/hicolor/scalable/actions/edith-folder-symbolic.svg</file>
+    <file alias="edith-drive-symbolic.svg">data/icons/hicolor/scalable/actions/edith-drive-symbolic.svg</file>
+    <file alias="edith-connected-symbolic.svg">data/icons/hicolor/scalable/actions/edith-connected-symbolic.svg</file>
+    <file alias="edith-disconnected-symbolic.svg">data/icons/hicolor/scalable/actions/edith-disconnected-symbolic.svg</file>
+    <file alias="edith-back-symbolic.svg">data/icons/hicolor/scalable/actions/edith-back-symbolic.svg</file>
+    <file alias="edith-forward-symbolic.svg">data/icons/hicolor/scalable/actions/edith-forward-symbolic.svg</file>
+    <file alias="edith-parent-dir-symbolic.svg">data/icons/hicolor/scalable/actions/edith-parent-dir-symbolic.svg</file>
+    <file alias="edith-upload-symbolic.svg">data/icons/hicolor/scalable/actions/edith-upload-symbolic.svg</file>
+    <file alias="edith-refresh-symbolic.svg">data/icons/hicolor/scalable/actions/edith-refresh-symbolic.svg</file>
+    <file alias="edith-file-symbolic.svg">data/icons/hicolor/scalable/actions/edith-file-symbolic.svg</file>
+    <file alias="edith-transfers-symbolic.svg">data/icons/hicolor/scalable/actions/edith-transfers-symbolic.svg</file>
+  </gresource>
+</gresources>

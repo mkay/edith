@@ -1,4 +1,4 @@
-builddir/
+build/
 pkg/
 src/
 *.pkg.tar.zst

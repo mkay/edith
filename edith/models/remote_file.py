@@ -33,7 +33,7 @@ class RemoteFileInfo:
     @property
     def icon_name(self) -> str:
         if self.is_dir:
-            return "folder-symbolic"
+            return "edith-folder-symbolic"
 
         ext = self.name.rsplit(".", 1)[-1].lower() if "." in self.name else ""
 
@@ -43,16 +43,16 @@ class RemoteFileInfo:
             "ts": "text-x-javascript-symbolic",
             "html": "text-html-symbolic",
             "css": "text-css-symbolic",
-            "json": "text-x-generic-symbolic",
+            "json": "edith-file-symbolic",
             "xml": "text-xml-symbolic",
-            "md": "text-x-generic-symbolic",
+            "md": "edith-file-symbolic",
             "sh": "text-x-script-symbolic",
             "c": "text-x-csrc-symbolic",
             "h": "text-x-chdr-symbolic",
-            "rs": "text-x-generic-symbolic",
-            "go": "text-x-generic-symbolic",
+            "rs": "edith-file-symbolic",
+            "go": "edith-file-symbolic",
         }
-        return ext_icons.get(ext, "text-x-generic-symbolic")
+        return ext_icons.get(ext, "edith-file-symbolic")
 
     def human_size(self) -> str:
         if self.is_dir:

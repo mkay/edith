@@ -1,0 +1,10 @@
+[Icon Theme]
+Name=Hicolor
+Comment=Edith custom icon overrides
+Directories=scalable/actions
+
+[scalable/actions]
+Size=48
+MinSize=1
+MaxSize=512
+Type=Scalable

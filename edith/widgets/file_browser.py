@@ -48,16 +48,17 @@ class FileBrowser(Gtk.Box):
         )
         self._path_bar.append(self._path_label)
 
-        up_btn = Gtk.Button(
-            icon_name="go-up-symbolic",
+        self._up_btn = Gtk.Button(
+            icon_name="edith-parent-dir-symbolic",
             tooltip_text="Parent Directory",
             css_classes=["flat", "circular"],
+            sensitive=False,
         )
-        up_btn.connect("clicked", self._on_go_up)
-        self._path_bar.append(up_btn)
+        self._up_btn.connect("clicked", self._on_go_up)
+        self._path_bar.append(self._up_btn)
 
         upload_btn = Gtk.Button(
-            icon_name="document-open-symbolic",
+            icon_name="edith-upload-symbolic",
             tooltip_text="Upload Files",
             css_classes=["flat", "circular"],
         )
@@ -65,7 +66,7 @@ class FileBrowser(Gtk.Box):
         self._path_bar.append(upload_btn)
 
         refresh_btn = Gtk.Button(
-            icon_name="view-refresh-symbolic",
+            icon_name="edith-refresh-symbolic",
             tooltip_text="Refresh",
             css_classes=["flat", "circular"],
         )
@@ -87,6 +88,10 @@ class FileBrowser(Gtk.Box):
         )
         self._list_box.connect("row-activated", self._on_row_activated)
 
+        dbl_click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
+        dbl_click.connect("pressed", self._on_list_double_click)
+        self._list_box.add_controller(dbl_click)
+
         sw.set_child(self._list_box)
         self.append(sw)
 
@@ -104,11 +109,18 @@ class FileBrowser(Gtk.Box):
         """Right-click context menu for file rows and empty area."""
         menu = Gio.Menu()
 
+        new_submenu = Gio.Menu()
+        new_submenu.append("File\u2026", "file.new-file")
+        new_submenu.append("Folder\u2026", "file.new-folder")
+
+        upload_submenu = Gio.Menu()
+        upload_submenu.append("File\u2026", "file.upload-files")
+        upload_submenu.append("Folder\u2026", "file.upload-folder")
+
         section_new = Gio.Menu()
-        section_new.append("New File\u2026", "file.new-file")
-        section_new.append("New Folder\u2026", "file.new-folder")
-        section_new.append("Upload Files\u2026", "file.upload-files")
-        section_new.append("Upload Folder\u2026", "file.upload-folder")
+        section_new.append_submenu("New", new_submenu)
+        section_new.append_submenu("Upload", upload_submenu)
+        section_new.append("Download", "file.download")
         menu.append_section(None, section_new)
 
         section_actions = Gio.Menu()
@@ -183,6 +195,11 @@ class FileBrowser(Gtk.Box):
         upload_folder_action.connect("activate", lambda *_: self._on_upload_folder())
         group.add_action(upload_folder_action)
 
+        self._download_action = Gio.SimpleAction.new("download", None)
+        self._download_action.connect("activate", self._on_download)
+        self._download_action.set_enabled(False)
+        group.add_action(self._download_action)
+
         refresh_action = Gio.SimpleAction.new("refresh", None)
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
@@ -215,6 +232,11 @@ class FileBrowser(Gtk.Box):
         self._copy_path_action.set_enabled(has_row)
         self._move_to_action.set_enabled(has_row)
         self._copy_to_action.set_enabled(has_row)
+
+        file_info = self._get_context_file_info()
+        self._download_action.set_enabled(
+            file_info is not None and not file_info.is_dir
+        )
 
         rect = Gdk.Rectangle()
         rect.x = int(x)
@@ -561,6 +583,7 @@ class FileBrowser(Gtk.Box):
 
         self._current_path = path
         self._path_label.set_label(path)
+        self._up_btn.set_sensitive(path != "/")
         self.emit("path-changed", path)
 
         # Show loading state
@@ -602,6 +625,16 @@ class FileBrowser(Gtk.Box):
             if row is None:
                 break
             self._list_box.remove(row)
+
+        # Parent directory shortcut
+        if self._current_path != "/":
+            parent_row = Gtk.ListBoxRow()
+            parent_row.is_parent_dir = True
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6,
+                          margin_start=8, margin_end=8, margin_top=2, margin_bottom=2)
+            box.append(Gtk.Label(label="..", xalign=0))
+            parent_row.set_child(box)
+            self._list_box.append(parent_row)
 
         if not files:
             empty = Gtk.Label(
@@ -655,16 +688,23 @@ class FileBrowser(Gtk.Box):
         self._list_box.append(error_label)
 
     def _on_row_activated(self, list_box, row):
-        child = row.get_child()
-        if not isinstance(child, FileRow):
+        if getattr(row, "is_parent_dir", False):
+            self._on_go_up(None)
             return
 
-        file_info = child.file_info
+        child = row.get_child()
+        if isinstance(child, FileRow) and child.file_info.is_dir:
+            self.load_directory(child.file_info.path)
 
-        if file_info.is_dir:
-            self.load_directory(file_info.path)
-        else:
-            self.emit("file-activated", file_info.path)
+    def _on_list_double_click(self, gesture, n_press, x, y):
+        if n_press != 2:
+            return
+        row = self._list_box.get_row_at_y(int(y))
+        if row is None:
+            return
+        child = row.get_child()
+        if isinstance(child, FileRow) and not child.file_info.is_dir:
+            self.emit("file-activated", child.file_info.path)
 
     def _on_go_up(self, btn):
         if self._current_path == "/":
@@ -725,25 +765,38 @@ class FileBrowser(Gtk.Box):
             self._do_upload_paths([local_path])
 
     def _do_upload_paths(self, local_paths):
-        client = self._window.sftp_client
         dest_dir = self._current_path
+        for local_path in local_paths:
+            name = os.path.basename(local_path)
+            remote_path = f"{dest_dir.rstrip('/')}/{name}"
+            self._window.enqueue_upload(
+                local_path,
+                remote_path,
+                on_done=lambda _: self.load_directory(dest_dir),
+            )
 
-        from edith.services.async_worker import run_async
+    def _on_download(self, action, param):
+        info = self._get_context_file_info()
+        if not info or info.is_dir:
+            return
+        dialog = Gtk.FileDialog(title="Save File", initial_name=info.name)
+        dialog.save(self.get_root(), None, self._on_download_save_chosen)
 
-        def do_upload():
-            for local_path in local_paths:
-                name = os.path.basename(local_path)
-                remote_path = f"{dest_dir.rstrip('/')}/{name}"
-                if os.path.isdir(local_path):
-                    client.upload_directory(local_path, remote_path)
-                else:
-                    client.upload(local_path, remote_path)
+    def _on_download_save_chosen(self, dialog, result):
+        try:
+            file = dialog.save_finish(result)
+        except Exception:
+            return  # user cancelled
 
-        run_async(
-            do_upload,
-            lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
-        )
+        local_path = file.get_path()
+        if not local_path:
+            return
+
+        info = self._get_context_file_info()
+        if not info or not self._window:
+            return
+
+        self._window.enqueue_download(info.path, local_path)
 
     # ------------------------------------------------------------------
     # Drag and drop — move (default) / copy (Ctrl held)

@@ -1,3 +1,4 @@
+import os
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -12,6 +13,7 @@ from edith.widgets.server_list import ServerList
 from edith.widgets.file_browser import FileBrowser
 from edith.widgets.editor_panel import EditorPanel
 from edith.widgets.status_bar import StatusBar
+from edith.widgets.transfer_panel import TransferPanel
 from edith.widgets.connect_dialog import ConnectDialog
 from edith.services import credential_store
 
@@ -29,6 +31,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._sftp_client = None
         self._connected_server = None
+        self._transfer_queue = None
 
         self._build_ui()
         self._setup_actions()
@@ -44,29 +47,28 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._sidebar_visible = True
         self._sidebar_toggle = Gtk.Button(
-            icon_name="sidebar-show-symbolic",
+            icon_name="edith-sidebar-symbolic",
             tooltip_text="Toggle Sidebar (F9)",
             focusable=False,
         )
         self._sidebar_toggle.connect("clicked", self._on_sidebar_toggled)
-        header.pack_start(self._sidebar_toggle)
 
         self._new_server_btn = Gtk.Button(
-            icon_name="list-add-symbolic",
+            icon_name="edith-server-add-symbolic",
             tooltip_text="Add Server (Ctrl+N)",
         )
         self._new_server_btn.connect("clicked", lambda _: self._on_new_server(None, None))
         header.pack_start(self._new_server_btn)
 
         self._new_folder_btn = Gtk.Button(
-            icon_name="folder-new-symbolic",
+            icon_name="edith-group-new-symbolic",
             tooltip_text="New Server Group",
         )
         self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
         header.pack_start(self._new_folder_btn)
 
         self._back_btn = Gtk.Button(
-            icon_name="go-previous-symbolic",
+            icon_name="edith-back-symbolic",
             tooltip_text="Back",
             visible=False,
             sensitive=False,
@@ -75,7 +77,7 @@ class EdithWindow(Adw.ApplicationWindow):
         header.pack_start(self._back_btn)
 
         self._forward_btn = Gtk.Button(
-            icon_name="go-next-symbolic",
+            icon_name="edith-forward-symbolic",
             tooltip_text="Forward",
             visible=False,
             sensitive=False,
@@ -84,7 +86,7 @@ class EdithWindow(Adw.ApplicationWindow):
         header.pack_start(self._forward_btn)
 
         self._connect_btn = Gtk.Button(
-            icon_name="network-wired-symbolic",
+            icon_name="edith-connect-symbolic",
             tooltip_text="Connect",
             sensitive=False,
         )
@@ -107,14 +109,30 @@ class EdithWindow(Adw.ApplicationWindow):
         header.set_title_widget(self._header_stack)
 
         menu = Gio.Menu()
-        menu.append("Syntax Theme\u2026", "app.syntax-theme")
-        menu.append("Syntax Associations\u2026", "app.syntax-associations")
-        menu.append("Editor Font\u2026", "app.editor-font")
-        menu.append("Window Size\u2026", "app.window-size")
-        menu.append("Keyboard Shortcuts", "app.shortcuts")
-        menu.append("About Edith", "app.about")
+        window_section = Gio.Menu()
+        window_section.append("New Window", "app.new-window")
+        menu.append_section(None, window_section)
+        prefs_section = Gio.Menu()
+        prefs_section.append("Syntax Theme\u2026", "app.syntax-theme")
+        prefs_section.append("Syntax Associations\u2026", "app.syntax-associations")
+        prefs_section.append("Editor Font\u2026", "app.editor-font")
+        prefs_section.append("Window Size\u2026", "app.window-size")
+        prefs_section.append("Keyboard Shortcuts", "app.shortcuts")
+        prefs_section.append("About Edith", "app.about")
+        menu.append_section(None, prefs_section)
+        self._transfer_panel = TransferPanel()
+        self._transfer_btn = Gtk.MenuButton(
+            icon_name="edith-transfers-symbolic",
+            popover=self._transfer_panel,
+            tooltip_text="Transfers",
+            visible=False,
+            sensitive=False,
+        )
+        header.pack_end(self._transfer_btn)
+        header.pack_end(self._sidebar_toggle)
+
         menu_btn = Gtk.MenuButton(
-            icon_name="open-menu-symbolic",
+            icon_name="edith-open-menu-symbolic",
             menu_model=menu,
             tooltip_text="Main Menu",
         )
@@ -228,11 +246,28 @@ class EdithWindow(Adw.ApplicationWindow):
         self.add_action(close_tab)
         app.set_accels_for_action("win.close-tab", ["<Control>w"])
 
-        # Search servers
+        # Search servers (no standalone accel — routed through win.find)
         search_servers = Gio.SimpleAction.new("search-servers", None)
         search_servers.connect("activate", self._on_search_servers)
         self.add_action(search_servers)
-        app.set_accels_for_action("win.search-servers", ["<Control>f"])
+
+        # Find in file (Ctrl+F) — also falls back to server search when no editor
+        find = Gio.SimpleAction.new("find", None)
+        find.connect("activate", self._on_find)
+        self.add_action(find)
+        app.set_accels_for_action("win.find", ["<Control>f"])
+
+        # Find + Replace (Ctrl+H)
+        find_replace = Gio.SimpleAction.new("find-replace", None)
+        find_replace.connect("activate", self._on_find_replace)
+        self.add_action(find_replace)
+        app.set_accels_for_action("win.find-replace", ["<Control><Shift>f"])
+
+        # Go to line (Ctrl+G)
+        goto_line = Gio.SimpleAction.new("goto-line", None)
+        goto_line.connect("activate", self._on_goto_line)
+        self.add_action(goto_line)
+        app.set_accels_for_action("win.goto-line", ["<Control>g"])
 
     # --- Signal handlers ---
 
@@ -267,6 +302,47 @@ class EdithWindow(Adw.ApplicationWindow):
     def _on_search_servers(self, action, param):
         if self._sidebar_stack.get_visible_child_name() == "server_list":
             self._server_list.toggle_search()
+
+    def _on_find(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.show_find()
+        elif self._sidebar_stack.get_visible_child_name() == "server_list":
+            self._server_list.toggle_search()
+
+    def _on_find_replace(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.show_replace()
+
+    def _on_goto_line(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if not editor:
+            return
+
+        dialog = Adw.AlertDialog(heading="Go to Line", body="")
+        entry = Gtk.Entry(
+            input_purpose=Gtk.InputPurpose.DIGITS,
+            placeholder_text="Line number…",
+            activates_default=True,
+            width_chars=12,
+        )
+        dialog.set_extra_child(entry)
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("go", "Go")
+        dialog.set_default_response("go")
+        dialog.set_response_appearance("go", Adw.ResponseAppearance.SUGGESTED)
+
+        def on_response(d, response):
+            if response == "go":
+                try:
+                    line = int(entry.get_text()) - 1
+                    editor.goto_line(line)
+                except ValueError:
+                    pass
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
 
     def _on_connect_btn_clicked(self, btn):
         if self._sftp_client:
@@ -376,6 +452,13 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _do_disconnect(self):
         """Actually disconnect and clean up."""
+        if self._transfer_queue:
+            self._transfer_queue.clear()
+            self._transfer_queue = None
+        self._transfer_panel.unbind_queue()
+        self._transfer_btn.set_visible(False)
+        self._transfer_btn.set_sensitive(False)
+
         if self._sftp_client:
             from edith.services.async_worker import run_async
 
@@ -400,7 +483,7 @@ class EdithWindow(Adw.ApplicationWindow):
         """Called after successful connection."""
         self._set_status("connected", f"Connected to {server_info.username}@{server_info.host}")
         self.lookup_action("disconnect").set_enabled(True)
-        self._connect_btn.set_icon_name("network-wired-disconnected-symbolic")
+        self._connect_btn.set_icon_name("edith-disconnect-symbolic")
         self._connect_btn.set_tooltip_text("Disconnect (Ctrl+D)")
 
         self._header_stack.set_visible_child_name("pathbar")
@@ -420,6 +503,19 @@ class EdithWindow(Adw.ApplicationWindow):
         self._new_server_btn.set_visible(False)
         self._new_folder_btn.set_visible(False)
 
+        # Set up transfer queue
+        from edith.services.transfer_queue import TransferQueue
+        self._transfer_queue = TransferQueue()
+        self._transfer_queue.connect("queued",   self._on_xfer_queued)
+        self._transfer_queue.connect("started",  self._on_xfer_started)
+        self._transfer_queue.connect("progress", self._on_xfer_progress)
+        self._transfer_queue.connect("done",     self._on_xfer_done)
+        self._transfer_queue.connect("failed",   self._on_xfer_failed)
+        self._transfer_queue.connect("idle",     self._on_xfer_idle)
+        self._transfer_panel.bind_queue(self._transfer_queue)
+        self._transfer_btn.set_visible(True)
+        self._transfer_btn.set_sensitive(False)
+
         toast = Adw.Toast(title=f"Connected to {server_info.display_name}")
         self._toast_overlay.add_toast(toast)
 
@@ -438,6 +534,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_disconnected(self):
         """Called after disconnection."""
+        self._status_bar.clear_transfer()
         self._set_status("disconnected", "Disconnected")
         self._status_bar.hide_language_selector()
         self._header_stack.set_visible_child_name("title")
@@ -447,7 +544,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._forward_btn.set_sensitive(False)
         self._file_browser.reset_history()
         self.lookup_action("disconnect").set_enabled(False)
-        self._connect_btn.set_icon_name("network-wired-symbolic")
+        self._connect_btn.set_icon_name("edith-connect-symbolic")
         self._connect_btn.set_tooltip_text("Connect")
         self._connect_btn.set_sensitive(self._server_list.get_selected_server() is not None)
 
@@ -470,7 +567,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def open_remote_file(self, remote_path):
         """Download and open a remote file for editing."""
-        if not self._sftp_client:
+        if not self._sftp_client or not self._transfer_queue:
             return
 
         # Check if already open
@@ -479,53 +576,89 @@ class EdithWindow(Adw.ApplicationWindow):
             self._editor_panel.focus_tab(existing)
             return
 
-        from edith.services.async_worker import run_async
         from edith.services.temp_manager import TempManager
+        from edith.services.transfer_queue import TransferAborted
 
-        self._set_status("downloading", f"Downloading {remote_path}...")
-
+        name = os.path.basename(remote_path)
         client = self._sftp_client
 
-        def do_download():
+        def do_download(progress_cb):
             local_path = TempManager.get_temp_path(remote_path)
-            client.download(remote_path, str(local_path), progress_cb=None)
+            client.download(remote_path, str(local_path), progress_cb=progress_cb)
             return local_path
 
         def on_success(local_path):
-            self._set_status("connected", f"Connected to {self._connected_server.username}@{self._connected_server.host}")
             self._editor_panel.open_file(remote_path, str(local_path))
             self._content_stack.set_visible_child_name("editor")
 
         def on_error(error):
+            if isinstance(error, TransferAborted):
+                return
             self._set_status("error", f"Download failed: {error}")
             toast = Adw.Toast(title=f"Failed to download: {error}")
             self._toast_overlay.add_toast(toast)
 
-        run_async(do_download, on_success, on_error)
+        self._transfer_queue.enqueue(name, do_download, on_success, on_error)
 
-    def save_remote_file(self, remote_path, local_path):
-        """Upload a saved local file back to the server."""
-        if not self._sftp_client:
+    def enqueue_download(self, remote_path, local_path, on_done=None):
+        """Queue a download of a remote file to a local path."""
+        if not self._sftp_client or not self._transfer_queue:
             return
 
-        from edith.services.async_worker import run_async
-        import os
+        from edith.services.transfer_queue import TransferAborted
 
-        self._set_status("uploading", f"Uploading {os.path.basename(remote_path)}...")
-
+        name = os.path.basename(remote_path)
         client = self._sftp_client
 
-        def do_upload():
-            client.upload(local_path, remote_path, progress_cb=None, overwrite=True)
+        def do_download(progress_cb):
+            client.download(remote_path, local_path, progress_cb=progress_cb)
 
         def on_success(_):
-            self._set_status("connected", f"Connected to {self._connected_server.username}@{self._connected_server.host}")
-            name = os.path.basename(remote_path)
+            if on_done:
+                on_done()
+            toast = Adw.Toast(title=f"Downloaded {name}")
+            self._toast_overlay.add_toast(toast)
+
+        def on_error(error):
+            if isinstance(error, TransferAborted):
+                return
+            toast = Adw.Toast(title=f"Download failed: {error}")
+            self._toast_overlay.add_toast(toast)
+
+        self._transfer_queue.enqueue(name, do_download, on_success, on_error)
+
+    def enqueue_upload(self, local_path, remote_path, on_done=None):
+        """Queue an upload of any local file/directory to a remote path."""
+        if not self._sftp_client or not self._transfer_queue:
+            return
+
+        name = os.path.basename(remote_path)
+        client = self._sftp_client
+
+        def do_upload(progress_cb):
+            if os.path.isdir(local_path):
+                client.upload_directory(local_path, remote_path)
+            else:
+                client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
+
+        self._transfer_queue.enqueue(name, do_upload, on_done, None)
+
+    def save_remote_file(self, remote_path, local_path):
+        """Queue an upload of a saved local file back to the server."""
+        if not self._sftp_client or not self._transfer_queue:
+            return
+
+        name = os.path.basename(remote_path)
+        client = self._sftp_client
+
+        def do_upload(progress_cb):
+            client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
+
+        def on_success(_):
             toast = Adw.Toast(title=f"Saved {name}")
             self._toast_overlay.add_toast(toast)
 
         def on_error(error):
-            self._set_status("error", f"Upload failed: {error}")
             dialog = Adw.AlertDialog(
                 heading="Upload Failed",
                 body=str(error),
@@ -533,7 +666,29 @@ class EdithWindow(Adw.ApplicationWindow):
             dialog.add_response("ok", "OK")
             dialog.present(self)
 
-        run_async(do_upload, on_success, on_error)
+        self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
+
+    # --- Transfer queue signal handlers ---
+
+    def _on_xfer_queued(self, queue, label, job_id):
+        self._transfer_btn.set_sensitive(True)
+
+    def _on_xfer_started(self, queue, label, job_id, pending):
+        self._status_bar.show_transfer(label, 0.0, pending)
+
+    def _on_xfer_progress(self, queue, label, fraction, pending):
+        self._status_bar.show_transfer(label, fraction, pending)
+
+    def _on_xfer_done(self, queue, label):
+        pass  # _on_xfer_idle restores the status bar once the queue drains
+
+    def _on_xfer_failed(self, queue, label, msg):
+        pass  # on_error callback already shows a dialog
+
+    def _on_xfer_idle(self, queue):
+        """All transfers finished — restore normal connected status."""
+        self._status_bar.clear_transfer()
+        self._transfer_btn.set_sensitive(False)
 
     def _set_status(self, state, message):
         """Update the status bar."""

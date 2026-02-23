@@ -6,7 +6,7 @@ gi.require_version("GtkSource", "5")
 
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, Gtk, GtkSource
 
 from edith import APP_ID, APP_NAME, VERSION
 from edith.window import EdithWindow
@@ -23,6 +23,13 @@ class EdithApplication(Adw.Application):
     def do_activate(self):
         win = self.props.active_window
         if not win:
+            # Load bundled icon resources and register with the icon theme
+            gresource = Path(__file__).parent / "data" / "de.singular.edith.gresource"
+            Gio.resources_register(Gio.resource_load(str(gresource)))
+            Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_resource_path(
+                "/de/singular/edith/icons/hicolor"
+            )
+
             # Load application-wide CSS
             css = Gtk.CssProvider()
             css.load_from_string(".drop-target { background-color: alpha(@accent_color, 0.15); }")
@@ -71,6 +78,11 @@ class EdithApplication(Adw.Application):
         syntax_assoc_action.connect("activate", self._on_syntax_associations)
         self.add_action(syntax_assoc_action)
 
+        new_window_action = Gio.SimpleAction.new("new-window", None)
+        new_window_action.connect("activate", self._on_new_window)
+        self.add_action(new_window_action)
+        self.set_accels_for_action("app.new-window", ["<Control><Shift>n"])
+
     def _on_about(self, action, param):
         about = Adw.AboutDialog(
             application_name=APP_NAME,
@@ -98,6 +110,10 @@ class EdithApplication(Adw.Application):
             license_type=Gtk.License.GPL_3_0,
         )
         about.present(self.props.active_window)
+
+    def _on_new_window(self, action, param):
+        win = EdithWindow(application=self)
+        win.present()
 
     def _on_syntax_theme(self, action, param):
         win = self.props.active_window
@@ -196,23 +212,26 @@ class EdithApplication(Adw.Application):
         if not win:
             return
 
-        builder = Gio.ListStore.new(Gio.ListModel)
-
-        shortcuts_window = Gio.Application.get_default().props.active_window
         # Build shortcuts window programmatically
         shortcuts = [
             ("General", [
                 ("<Control>q", "Quit"),
+                ("<Control><Shift>n", "New Window"),
                 ("F9", "Toggle sidebar"),
                 ("<Control>n", "New server"),
-                ("<Control>f", "Search servers"),
             ]),
             ("Editing", [
                 ("<Control>s", "Save file"),
                 ("<Control>w", "Close tab"),
+                ("<Control>f", "Find"),
+                ("<Control><Shift>f", "Find and Replace"),
+                ("<Control>g", "Go to Line"),
+                ("<Control>z", "Undo"),
+                ("<Control><Shift>z", "Redo"),
             ]),
             ("Connection", [
                 ("<Control>d", "Disconnect"),
+                ("<Control>f", "Search servers"),
             ]),
             ("File Browser", [
                 ("F2", "Rename"),
@@ -246,8 +265,6 @@ class EdithApplication(Adw.Application):
             f"{sections_xml}</object></child>"
             f"</object></interface>"
         )
-
-        from gi.repository import Gtk
 
         builder = Gtk.Builder.new_from_string(xml, -1)
         shortcuts_win = builder.get_object("shortcuts")

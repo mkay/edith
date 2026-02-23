@@ -287,7 +287,7 @@ class DirectoryChooserDialog(Adw.Dialog):
         path_box.append(self._path_label)
 
         up_btn = Gtk.Button(
-            icon_name="go-up-symbolic",
+            icon_name="edith-parent-dir-symbolic",
             tooltip_text="Parent Directory",
             css_classes=["flat", "circular"],
         )
@@ -373,7 +373,7 @@ class DirectoryChooserDialog(Adw.Dialog):
                 spacing=6,
                 margin_start=8, margin_end=8, margin_top=2, margin_bottom=2,
             )
-            row_box.append(Gtk.Image(icon_name="folder-symbolic"))
+            row_box.append(Gtk.Image(icon_name="edith-folder-symbolic"))
             row_box.append(Gtk.Label(label=name, xalign=0, hexpand=True, ellipsize=3))
             self._list_box.append(row_box)
 

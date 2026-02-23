@@ -15,6 +15,7 @@ widgets_sources = [
   'status_bar.py',
   'syntax_associations_dialog.py',
   'theme_chooser_dialog.py',
+  'transfer_panel.py',
   'welcome_view.py',
 ]
 

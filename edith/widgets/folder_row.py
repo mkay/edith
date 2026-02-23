@@ -37,7 +37,7 @@ class FolderRow(Gtk.Box):
         self.append(self._toggle_btn)
 
         # Folder icon
-        self._folder_icon = Gtk.Image(icon_name="folder-symbolic")
+        self._folder_icon = Gtk.Image(icon_name="edith-folder-symbolic")
         self.append(self._folder_icon)
 
         # Name label

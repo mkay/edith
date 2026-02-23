@@ -4,7 +4,7 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("GtkSource", "5")
 
-from gi.repository import Adw, Gtk, GObject, GtkSource, Pango
+from gi.repository import Adw, Gtk, GObject, GtkSource
 
 from edith.services.config import ConfigService
 

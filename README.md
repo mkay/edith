@@ -9,26 +9,30 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 
 ## Features
 
-- **Server management** — saved connections with password/key auth, organized into collapsible folder groups; change passwords after initial setup
+- **Server management** — saved connections with password/key auth, organized into collapsible folder groups; double-click to connect
 - **Server search** — Ctrl+F to filter servers by name
 - **File browser** — navigate remote directories with drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions
 - **Path bar** — clickable breadcrumb navigation in the title bar with back/forward history
 - **Tabbed editor** — GtkSourceView 5 with syntax highlighting, customizable themes and fonts
 - **Syntax selector** — per-file language override in the status bar
 - **Custom syntax associations** — map file extensions to languages (e.g. `.tpl` → PHP)
-- **Secure credentials** — passwords and key passphrases are stored in the system keychain via libsecret (GNOME Keyring or any compatible provider). They are never written to disk in plain text. Server hostnames, usernames and other non-sensitive settings are stored in `~/.config/edith/servers.json`.
+- **Secure credentials** — stored in the system keychain (GNOME Keyring or compatible); never written to disk in plain text
 - **Live editing** — files downloaded to temp, edited locally, uploaded on save
 - **Home directory support** — use `~` as initial directory to resolve the server's home path
-- **Resizable sidebar** — drag to adjust width
+- **Resizable sidebar** — drag to adjust; toggle with the button in the headerbar or F9
 
 ## Keyboard shortcuts
 
 | Key | Action |
 |-----|--------|
 | Ctrl+N | Add server |
+| Ctrl+Shift+N | New window |
 | Ctrl+F | Search servers |
 | Ctrl+D | Disconnect |
 | Ctrl+S | Save file |
+| Ctrl+Z / Ctrl+Shift+Z | Undo / Redo |
+| Ctrl+Shift+F | Find and replace |
+| Ctrl+G | Go to line |
 | Ctrl+W | Close tab |
 | Ctrl+Q | Quit |
 | F9 | Toggle sidebar |

@@ -6,6 +6,7 @@ gi.require_version("GtkSource", "5")
 from gi.repository import GObject, Gtk, GtkSource
 
 
+
 class StatusBar(Gtk.Box):
     """Status bar showing connection state, transfer progress, and syntax selector."""
 
@@ -25,7 +26,8 @@ class StatusBar(Gtk.Box):
         self.add_css_class("toolbar")
 
         # Connection status icon + label
-        self._status_icon = Gtk.Image(icon_name="network-offline-symbolic")
+        self._status_icon = Gtk.Image.new_from_icon_name("edith-disconnected-symbolic")
+        self._status_icon.set_pixel_size(16)
         self.append(self._status_icon)
 
         self._status_label = Gtk.Label(
@@ -37,16 +39,27 @@ class StatusBar(Gtk.Box):
         )
         self.append(self._status_label)
 
-        # Transfer spinner (hidden by default)
+        # Transfer area (hidden by default): spinner + label + progress bar
         self._spinner = Gtk.Spinner(spinning=False, visible=False)
         self.append(self._spinner)
 
         self._transfer_label = Gtk.Label(
             label="",
             visible=False,
+            ellipsize=3,
+            max_width_chars=32,
             css_classes=["dim-label", "caption"],
         )
         self.append(self._transfer_label)
+
+        self._progress_bar = Gtk.ProgressBar(
+            visible=False,
+            valign=Gtk.Align.CENTER,
+            width_request=90,
+            show_text=False,
+        )
+        self._progress_bar.add_css_class("osd")
+        self.append(self._progress_bar)
 
         # Syntax selector (right side, hidden until a file is open)
         self._lang_search_entry = None  # initialised in _build_language_popover
@@ -149,25 +162,65 @@ class StatusBar(Gtk.Box):
         """
         self._status_label.set_label(message)
 
-        icon_map = {
-            "disconnected": "network-offline-symbolic",
-            "connecting": "network-transmit-symbolic",
-            "connected": "network-idle-symbolic",
-            "downloading": "network-receive-symbolic",
-            "uploading": "network-transmit-symbolic",
-            "error": "dialog-error-symbolic",
+        app_icons = {
+            "disconnected": "edith-disconnected-symbolic",
+            "connected":    "edith-connected-symbolic",
         }
-        self._status_icon.set_from_icon_name(icon_map.get(state, "network-offline-symbolic"))
+        system_icons = {
+            "connecting":   "network-transmit-symbolic",
+            "downloading":  "network-receive-symbolic",
+            "uploading":    "network-transmit-symbolic",
+            "error":        "dialog-error-symbolic",
+        }
+        if state in app_icons:
+            self._status_icon.set_from_icon_name(app_icons[state])
+        else:
+            self._status_icon.set_from_icon_name(
+                system_icons.get(state, "network-offline-symbolic")
+            )
 
         is_transferring = state in ("downloading", "uploading", "connecting")
         self._spinner.set_visible(is_transferring)
         self._spinner.set_spinning(is_transferring)
 
+    def show_transfer(self, label: str, fraction: float, pending: int):
+        """Show an active transfer with live progress.
+
+        label:    filename being transferred
+        fraction: 0.0–1.0 progress; negative means indeterminate
+        pending:  how many additional items are waiting after this one
+        """
+        self._spinner.set_visible(True)
+        self._spinner.set_spinning(True)
+
+        text = label
+        if fraction >= 0:
+            text += f"  {int(fraction * 100)} %"
+        if pending > 0:
+            text += f"  (+{pending})"
+        self._transfer_label.set_label(text)
+        self._transfer_label.set_visible(True)
+
+        if fraction >= 0:
+            self._progress_bar.set_fraction(fraction)
+            self._progress_bar.set_visible(True)
+        else:
+            self._progress_bar.set_visible(False)
+
+    def clear_transfer(self):
+        """Hide the transfer progress widgets."""
+        self._spinner.set_spinning(False)
+        self._spinner.set_visible(False)
+        self._transfer_label.set_visible(False)
+        self._progress_bar.set_visible(False)
+
     def set_transfer_progress(self, text: str):
-        """Show transfer progress text."""
+        """Show transfer progress text (legacy — for downloads without queue)."""
         if text:
             self._transfer_label.set_label(text)
             self._transfer_label.set_visible(True)
+            self._spinner.set_visible(True)
+            self._spinner.set_spinning(True)
         else:
             self._transfer_label.set_visible(False)
 

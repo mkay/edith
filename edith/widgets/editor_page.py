@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("GtkSource", "5")
 
-from gi.repository import Gtk, GtkSource, GObject, Adw, Pango
+from gi.repository import Gdk, Gtk, GtkSource, GObject, Adw
 
 from edith.models.open_file import OpenFile
 from edith.services.config import ConfigService
@@ -21,12 +21,15 @@ class EditorPage(Gtk.Box):
         super().__init__(orientation=Gtk.Orientation.VERTICAL)
 
         self.open_file = open_file
+        self._search_context = None
+        self._search_settings = None
         self._build_ui()
         self._load_file()
 
     def _build_ui(self):
         # Source view
         self._buffer = GtkSource.Buffer()
+        self._buffer.set_highlight_matching_brackets(True)
         self._view = GtkSource.View(
             buffer=self._buffer,
             monospace=True,
@@ -57,10 +60,317 @@ class EditorPage(Gtk.Box):
         # Track modifications
         self._buffer.connect("modified-changed", self._on_modified_changed)
 
+        # Search bar (hidden by default, slides in from top)
+        self.append(self._build_search_bar())
+
         # Scrolled window
         sw = Gtk.ScrolledWindow(vexpand=True, hexpand=True)
         sw.set_child(self._view)
         self.append(sw)
+
+    # ------------------------------------------------------------------ #
+    #  Search bar                                                          #
+    # ------------------------------------------------------------------ #
+
+    def _build_search_bar(self):
+        self._search_settings = GtkSource.SearchSettings(wrap_around=True)
+        self._search_context = GtkSource.SearchContext(
+            buffer=self._buffer,
+            settings=self._search_settings,
+        )
+        self._search_context.connect(
+            "notify::occurrences-count", lambda *_: self._update_match_label()
+        )
+
+        self._search_revealer = Gtk.Revealer(
+            transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN,
+            transition_duration=150,
+            reveal_child=False,
+        )
+
+        bar = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
+        # ── Row 1: find ──────────────────────────────────────────────── #
+        find_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=4,
+            margin_start=6,
+            margin_end=6,
+            margin_top=4,
+            margin_bottom=2,
+        )
+
+        close_btn = Gtk.Button(
+            icon_name="window-close-symbolic",
+            has_frame=False,
+            tooltip_text="Close (Escape)",
+            focusable=False,
+        )
+        close_btn.connect("clicked", lambda _: self.hide_search())
+        find_row.append(close_btn)
+
+        self._search_entry = Gtk.SearchEntry(
+            placeholder_text="Find…",
+            hexpand=True,
+        )
+        self._search_entry.connect("search-changed", lambda _: self._update_search())
+        self._search_entry.connect("activate", lambda _: self.find_next())
+        self._search_entry.connect("next-match", lambda _: self.find_next())
+        self._search_entry.connect("previous-match", lambda _: self.find_prev())
+        self._search_entry.connect("stop-search", lambda _: self.hide_search())
+        find_row.append(self._search_entry)
+
+        self._case_btn = Gtk.ToggleButton(
+            label="Aa",
+            tooltip_text="Case Sensitive",
+            has_frame=False,
+            focusable=False,
+        )
+        self._case_btn.connect("toggled", lambda _: self._on_search_option_changed())
+        find_row.append(self._case_btn)
+
+        self._regex_btn = Gtk.ToggleButton(
+            label=".*",
+            tooltip_text="Regular Expression",
+            has_frame=False,
+            focusable=False,
+        )
+        self._regex_btn.connect("toggled", lambda _: self._on_search_option_changed())
+        find_row.append(self._regex_btn)
+
+        prev_btn = Gtk.Button(
+            icon_name="edith-parent-dir-symbolic",
+            tooltip_text="Previous Match (Shift+Enter)",
+            has_frame=False,
+            focusable=False,
+        )
+        prev_btn.connect("clicked", lambda _: self.find_prev())
+        find_row.append(prev_btn)
+
+        next_btn = Gtk.Button(
+            icon_name="go-down-symbolic",
+            tooltip_text="Next Match (Enter)",
+            has_frame=False,
+            focusable=False,
+        )
+        next_btn.connect("clicked", lambda _: self.find_next())
+        find_row.append(next_btn)
+
+        self._match_label = Gtk.Label(
+            css_classes=["dim-label"],
+            width_chars=10,
+            xalign=1.0,
+        )
+        find_row.append(self._match_label)
+
+        bar.append(find_row)
+
+        # ── Row 2: replace (hidden until Ctrl+H) ─────────────────────── #
+        self._replace_revealer = Gtk.Revealer(
+            transition_type=Gtk.RevealerTransitionType.SLIDE_DOWN,
+            transition_duration=120,
+            reveal_child=False,
+        )
+
+        replace_row = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=4,
+            margin_start=6,
+            margin_end=6,
+            margin_top=0,
+            margin_bottom=4,
+        )
+
+        # Align replace entry under the search entry (close btn is ~32px)
+        replace_row.append(Gtk.Box(width_request=32 + 4))
+
+        self._replace_entry = Gtk.Entry(
+            placeholder_text="Replace with…",
+            hexpand=True,
+        )
+        self._replace_entry.connect("activate", lambda _: self._replace_one())
+        replace_key = Gtk.EventControllerKey()
+        replace_key.connect(
+            "key-pressed",
+            lambda c, kv, kc, s: (self.hide_search(), True)[1]
+            if kv == Gdk.KEY_Escape
+            else False,
+        )
+        self._replace_entry.add_controller(replace_key)
+        replace_row.append(self._replace_entry)
+
+        replace_btn = Gtk.Button(label="Replace")
+        replace_btn.connect("clicked", lambda _: self._replace_one())
+        replace_row.append(replace_btn)
+
+        replace_all_btn = Gtk.Button(label="Replace All")
+        replace_all_btn.connect("clicked", lambda _: self._replace_all())
+        replace_row.append(replace_all_btn)
+
+        self._replace_revealer.set_child(replace_row)
+        bar.append(self._replace_revealer)
+
+        bar.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
+
+        self._search_revealer.set_child(bar)
+        return self._search_revealer
+
+    # ── Public search API ─────────────────────────────────────────────── #
+
+    def show_find(self):
+        """Show the find bar (find-only mode)."""
+        self._search_revealer.set_reveal_child(True)
+        self._replace_revealer.set_reveal_child(False)
+        self._prefill_search_entry()
+        self._search_entry.grab_focus()
+        self._search_entry.select_region(0, -1)
+        self._update_search()
+
+    def show_replace(self):
+        """Show the find+replace bar."""
+        self._search_revealer.set_reveal_child(True)
+        self._replace_revealer.set_reveal_child(True)
+        self._prefill_search_entry()
+        self._search_entry.grab_focus()
+        self._search_entry.select_region(0, -1)
+        self._update_search()
+
+    def hide_search(self):
+        """Collapse the search bar and return focus to the editor."""
+        self._search_revealer.set_reveal_child(False)
+        self._search_settings.set_search_text("")
+        self._match_label.set_text("")
+        self._match_label.remove_css_class("error")
+        self._view.grab_focus()
+
+    def find_next(self):
+        if not self._search_settings.get_search_text():
+            return
+        has_sel, _, sel_end = self._sel_bounds()
+        cursor = sel_end if has_sel else self._buffer.get_iter_at_mark(
+            self._buffer.get_insert()
+        )
+        found, ms, me, _ = self._search_context.forward(cursor)
+        if found:
+            self._buffer.select_range(ms, me)
+            self._view.scroll_to_iter(ms, 0.1, True, 0.0, 0.5)
+            self._update_match_label()
+
+    def find_prev(self):
+        if not self._search_settings.get_search_text():
+            return
+        has_sel, sel_start, _ = self._sel_bounds()
+        cursor = sel_start if has_sel else self._buffer.get_iter_at_mark(
+            self._buffer.get_insert()
+        )
+        found, ms, me, _ = self._search_context.backward(cursor)
+        if found:
+            self._buffer.select_range(ms, me)
+            self._view.scroll_to_iter(ms, 0.1, True, 0.0, 0.5)
+            self._update_match_label()
+
+    def goto_line(self, line: int):
+        """Scroll to and place cursor at the given 0-indexed line number."""
+        n = self._buffer.get_line_count()
+        line = max(0, min(line, n - 1))
+        it = self._buffer.get_iter_at_line(line)
+        self._buffer.place_cursor(it)
+        self._view.scroll_to_iter(it, 0.1, True, 0.0, 0.3)
+        self._view.grab_focus()
+
+    # ── Internal helpers ──────────────────────────────────────────────── #
+
+    def _sel_bounds(self):
+        """Return (has_sel, start_iter, end_iter) safely.
+
+        PyGObject's get_selection_bounds() returns () when nothing is
+        selected instead of (False, iter, iter), so we can't unpack it
+        directly as a 3-tuple.
+        """
+        if not self._buffer.get_has_selection():
+            cursor = self._buffer.get_iter_at_mark(self._buffer.get_insert())
+            return False, cursor, cursor
+        bounds = self._buffer.get_selection_bounds()
+        # Binding may return (start, end) or (True, start, end)
+        return True, bounds[-2], bounds[-1]
+
+    def _prefill_search_entry(self):
+        """If text is selected, pre-populate the search entry with it."""
+        has_sel, sel_start, sel_end = self._sel_bounds()
+        if has_sel:
+            text = self._buffer.get_text(sel_start, sel_end, False)
+            if "\n" not in text and len(text) < 200:
+                self._search_entry.set_text(text)
+
+    def _update_search(self):
+        text = self._search_entry.get_text()
+        self._search_settings.set_search_text(text)
+        if not text:
+            self._match_label.set_text("")
+            self._match_label.remove_css_class("error")
+            return
+        has_sel, sel_start, _ = self._sel_bounds()
+        cursor = sel_start if has_sel else self._buffer.get_iter_at_mark(
+            self._buffer.get_insert()
+        )
+        found, ms, me, _ = self._search_context.forward(cursor)
+        if found:
+            self._buffer.select_range(ms, me)
+            self._view.scroll_to_iter(ms, 0.1, True, 0.0, 0.5)
+        self._update_match_label()
+
+    def _update_match_label(self):
+        total = self._search_context.get_occurrences_count()
+        text = self._search_entry.get_text()
+        if not text:
+            self._match_label.set_text("")
+            self._match_label.remove_css_class("error")
+            return
+        if total < 0:
+            self._match_label.set_text("…")
+            self._match_label.remove_css_class("error")
+            return
+        if total == 0:
+            self._match_label.set_text("No results")
+            self._match_label.add_css_class("error")
+            return
+        self._match_label.remove_css_class("error")
+        has_sel, ms, me = self._sel_bounds()
+        if has_sel:
+            pos = self._search_context.get_occurrence_position(ms, me)
+            if pos > 0:
+                self._match_label.set_text(f"{pos} / {total}")
+                return
+        self._match_label.set_text(f"{total} matches")
+
+    def _on_search_option_changed(self):
+        self._search_settings.set_case_sensitive(self._case_btn.get_active())
+        self._search_settings.set_regex_enabled(self._regex_btn.get_active())
+        self._update_search()
+
+    def _replace_one(self):
+        has_sel, ms, me = self._sel_bounds()
+        if not has_sel:
+            self.find_next()
+            return
+        replacement = self._replace_entry.get_text()
+        try:
+            self._search_context.replace(ms, me, replacement, -1)
+        except Exception:
+            pass
+        self.find_next()
+
+    def _replace_all(self):
+        replacement = self._replace_entry.get_text()
+        try:
+            count = self._search_context.replace_all(replacement, -1)
+            self._update_match_label()
+        except Exception:
+            pass
+
+    # ------------------------------------------------------------------ #
+    #  Language / scheme / font                                            #
+    # ------------------------------------------------------------------ #
 
     def _setup_language(self):
         """Detect and set syntax highlighting language."""
@@ -177,6 +487,10 @@ class EditorPage(Gtk.Box):
             )
         self._font_css.load_from_string(css_str)
 
+    # ------------------------------------------------------------------ #
+    #  File I/O                                                            #
+    # ------------------------------------------------------------------ #
+
     def _load_file(self):
         """Load file content into the buffer."""
         try:
@@ -204,6 +518,10 @@ class EditorPage(Gtk.Box):
             f.write(text)
 
         self._buffer.set_modified(False)
+
+    # ------------------------------------------------------------------ #
+    #  Language queries                                                    #
+    # ------------------------------------------------------------------ #
 
     def get_language_name(self) -> str:
         lang = self._buffer.get_language()

@@ -85,7 +85,7 @@ class PathBar(Gtk.Box):
                 self._buttons_box.append(sep)
 
             if is_root:
-                inner = Gtk.Image(icon_name="drive-harddisk-symbolic")
+                inner = Gtk.Image(icon_name="edith-drive-symbolic")
             else:
                 inner = Gtk.Label(label=label)
                 if is_current:

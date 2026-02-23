@@ -84,15 +84,40 @@ class SftpClient:
             return self._sftp.listdir_attr(path)
 
     def download(self, remote_path: str, local_path: str, progress_cb=None):
-        """Download a remote file to a local path."""
+        """Download a remote file to a local path.
+
+        Uses a dedicated SFTP channel so the main channel stays free for
+        concurrent operations (directory listings etc.).  The manual read loop
+        avoids paramiko's prefetch buffering, so cancellation via a
+        TransferAborted exception from progress_cb stops the transfer
+        immediately.
+        """
         Path(local_path).parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            if progress_cb:
-                self._sftp.get(remote_path, local_path, callback=progress_cb)
-            else:
-                self._sftp.get(remote_path, local_path)
+            transport = self._transport
+
+        dl_sftp = paramiko.SFTPClient.from_transport(transport)
+        try:
+            try:
+                file_size = dl_sftp.stat(remote_path).st_size
+            except OSError:
+                file_size = 0
+
+            with dl_sftp.open(remote_path, "rb") as fr:
+                with open(local_path, "wb") as fl:
+                    received = 0
+                    while True:
+                        chunk = fr.read(32768)
+                        if not chunk:
+                            break
+                        fl.write(chunk)
+                        received += len(chunk)
+                        if progress_cb:
+                            progress_cb(received, file_size)
+        finally:
+            dl_sftp.close()
 
     def upload(self, local_path: str, remote_path: str, progress_cb=None, overwrite=False):
         """Upload a local file to a remote path."""

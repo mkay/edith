@@ -1,5 +1,5 @@
 pkgname=edith
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
@@ -18,11 +18,11 @@ source=()
 
 build() {
   cd "$startdir"
-  meson setup builddir --prefix=/usr --buildtype=plain
-  ninja -C builddir
+  meson setup build --prefix=/usr --buildtype=plain
+  ninja -C build
 }
 
 package() {
   cd "$startdir"
-  DESTDIR="$pkgdir" meson install -C builddir
+  DESTDIR="$pkgdir" meson install -C build
 }

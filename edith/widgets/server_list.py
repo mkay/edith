@@ -56,6 +56,10 @@ class ServerList(Gtk.Box):
         self._list_box.connect("row-activated", self._on_row_activated)
         self._list_box.connect("row-selected", self._on_row_selected)
 
+        dbl_click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
+        dbl_click.connect("pressed", self._on_list_double_click)
+        self._list_box.add_controller(dbl_click)
+
         sw.set_child(self._list_box)
         self.append(sw)
 
@@ -450,9 +454,16 @@ class ServerList(Gtk.Box):
     def _on_row_activated(self, list_box, row):
         child = row.get_child()
         if isinstance(child, FolderRow):
-            # Toggle expand/collapse
             child._on_toggle_clicked(None)
-        elif isinstance(child, ServerRow):
+
+    def _on_list_double_click(self, gesture, n_press, x, y):
+        if n_press != 2:
+            return
+        row = self._list_box.get_row_at_y(int(y))
+        if row is None:
+            return
+        child = row.get_child()
+        if isinstance(child, ServerRow):
             self.emit("server-activated", child.server_info)
 
     # ------------------------------------------------------------------
