@@ -367,6 +367,7 @@ class EdithWindow(Adw.ApplicationWindow):
                 except ValueError:
                     pass
 
+        dialog.connect("map", lambda _: entry.grab_focus())
         dialog.connect("response", on_response)
         dialog.present(self)
 

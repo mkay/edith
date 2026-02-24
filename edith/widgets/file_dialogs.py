@@ -61,6 +61,8 @@ class NameDialog(Adw.Dialog):
         toolbar_view.set_content(clamp)
         self.set_child(toolbar_view)
 
+        self.connect("map", lambda _: self._entry.grab_focus())
+
     def _on_apply(self, btn):
         text = self._entry.get_text().strip()
         if text:
