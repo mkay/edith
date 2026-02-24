@@ -31,7 +31,7 @@ class EditorPanel(Gtk.Box):
         # Tab context menu
         self._setup_tab_menu()
 
-        tab_bar = Adw.TabBar(view=self._tab_view)
+        tab_bar = Adw.TabBar(view=self._tab_view, autohide=False)
 
         self.append(tab_bar)
         self.append(self._tab_view)

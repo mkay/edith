@@ -9,7 +9,7 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 
 ## Features
 
-- **Server management** — saved connections with password/key auth, organized into collapsible folder groups; double-click to connect
+- **Server management** — saved connections with password/key auth, organized into groups; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
 - **Server search** — Ctrl+F to filter servers by name
 - **File browser** — navigate remote directories with drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions
 - **Path bar** — clickable breadcrumb navigation in the title bar with back/forward history
@@ -20,6 +20,7 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 - **Live editing** — files downloaded to temp, edited locally, uploaded on save
 - **Home directory support** — use `~` as initial directory to resolve the server's home path
 - **Resizable sidebar** — drag to adjust; toggle with the button in the headerbar or F9
+- **Safe quit** — warns before closing if there are unsaved edits or active file transfers
 
 ## Keyboard shortcuts
 
@@ -86,9 +87,9 @@ GPL-3.0-or-later
 
 ## Screenshots
 
-![Screenshot of the Welcome Screen](assets/screenshot_1.png)
+![Welcome screen](assets/edith_welcome.png)
 
-![Screenshot of the Editor](assets/screenshot_2.png)
+![Connected with file open](assets/edith_connected.png)
 
 ## Disclaimer
 

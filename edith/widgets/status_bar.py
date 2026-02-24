@@ -33,11 +33,15 @@ class StatusBar(Gtk.Box):
         self._status_label = Gtk.Label(
             label="Disconnected",
             xalign=0,
-            hexpand=True,
             ellipsize=3,
             css_classes=["dim-label", "caption"],
         )
         self.append(self._status_label)
+
+        # Spacer — always hexpand so the syntax button stays right-aligned
+        # even when the status icon/label are hidden
+        self._spacer = Gtk.Box(hexpand=True)
+        self.append(self._spacer)
 
         # Transfer area (hidden by default): spinner + label + progress bar
         self._spinner = Gtk.Spinner(spinning=False, visible=False)
@@ -228,6 +232,11 @@ class StatusBar(Gtk.Box):
         """Update the syntax button label and show it."""
         self._syntax_btn.set_label(name)
         self._syntax_btn.set_visible(True)
+
+    def hide_connection_status(self):
+        """Remove connection status icon/label from this bar (they live in the sidebar)."""
+        self._status_icon.set_visible(False)
+        self._status_label.set_visible(False)
 
     def hide_language_selector(self):
         """Hide the syntax selector (no file open)."""

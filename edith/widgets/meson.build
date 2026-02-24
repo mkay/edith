@@ -11,6 +11,7 @@ widgets_sources = [
   'path_bar.py',
   'server_edit_dialog.py',
   'server_list.py',
+  'server_panel.py',
   'server_row.py',
   'status_bar.py',
   'syntax_associations_dialog.py',

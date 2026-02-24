@@ -21,15 +21,12 @@ class ServerRow(Gtk.Box):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=8,
-            margin_start=8,
-            margin_end=8,
-            margin_top=4,
-            margin_bottom=4,
+            margin_start=12,
+            margin_end=12,
+            margin_top=10,
+            margin_bottom=10,
         )
         self.server_info = server_info
-
-        icon = Gtk.Image(icon_name="edith-server-symbolic", valign=Gtk.Align.START, margin_start=1, margin_top=5)
-        self.append(icon)
 
         labels = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, hexpand=True, spacing=2)
         name_label = Gtk.Label(

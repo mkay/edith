@@ -3,17 +3,13 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Gtk, GObject
+from gi.repository import Gtk
 
 from edith.models.server import FolderInfo
 
 
 class FolderRow(Gtk.Box):
-    """A collapsible folder row in the server list."""
-
-    __gsignals__ = {
-        "toggled": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
-    }
+    """A folder/group nav row in the server sidebar."""
 
     def __init__(self, folder_info: FolderInfo):
         super().__init__(
@@ -21,20 +17,10 @@ class FolderRow(Gtk.Box):
             spacing=8,
             margin_start=8,
             margin_end=8,
-            margin_top=4,
-            margin_bottom=4,
+            margin_top=8,
+            margin_bottom=8,
         )
         self.folder_info = folder_info
-
-        # Expand/collapse toggle
-        icon_name = "pan-down-symbolic" if folder_info.expanded else "pan-end-symbolic"
-        self._toggle_btn = Gtk.Button(
-            icon_name=icon_name,
-            css_classes=["flat", "circular"],
-            valign=Gtk.Align.CENTER,
-        )
-        self._toggle_btn.connect("clicked", self._on_toggle_clicked)
-        self.append(self._toggle_btn)
 
         # Folder icon
         self._folder_icon = Gtk.Image(icon_name="edith-folder-symbolic")
@@ -56,12 +42,6 @@ class FolderRow(Gtk.Box):
             valign=Gtk.Align.CENTER,
         )
         self.append(self._count_label)
-
-    def _on_toggle_clicked(self, btn):
-        self.folder_info.expanded = not self.folder_info.expanded
-        icon = "pan-down-symbolic" if self.folder_info.expanded else "pan-end-symbolic"
-        self._toggle_btn.set_icon_name(icon)
-        self.emit("toggled", self.folder_info.expanded)
 
     def set_count(self, n: int):
         self._count_label.set_label(str(n))

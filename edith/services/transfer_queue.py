@@ -56,6 +56,12 @@ class TransferQueue(GObject.Object):
         with self._lock:
             return len(self._queue)
 
+    @property
+    def is_busy(self) -> bool:
+        """True if a transfer is active or items are waiting."""
+        with self._lock:
+            return self._worker_running
+
     def enqueue(self, label: str, task, on_success=None, on_error=None) -> int:
         """Add a job. Returns its job_id.
 

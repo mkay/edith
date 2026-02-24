@@ -32,7 +32,14 @@ class EdithApplication(Adw.Application):
 
             # Load application-wide CSS
             css = Gtk.CssProvider()
-            css.load_from_string(".drop-target { background-color: alpha(@accent_color, 0.15); }")
+            css.load_from_string("""
+.drop-target { background-color: alpha(@accent_color, 0.15); }
+
+/* Slightly darker sidebar pane */
+.app-sidebar { background-color: shade(@window_bg_color, 0.97); }
+
+
+""")
             Gtk.StyleContext.add_provider_for_display(
                 Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )

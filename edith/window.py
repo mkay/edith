@@ -8,13 +8,14 @@ from gi.repository import Adw, Gio, GLib, Gtk
 
 from edith.services.config import ConfigService
 from edith.widgets.path_bar import PathBar
-from edith.widgets.welcome_view import WelcomeView
 from edith.widgets.server_list import ServerList
+from edith.widgets.server_panel import ServerPanel
 from edith.widgets.file_browser import FileBrowser
 from edith.widgets.editor_panel import EditorPanel
 from edith.widgets.status_bar import StatusBar
 from edith.widgets.transfer_panel import TransferPanel
 from edith.widgets.connect_dialog import ConnectDialog
+from edith.widgets.welcome_view import WelcomeView
 from edith.services import credential_store
 
 
@@ -33,40 +34,89 @@ class EdithWindow(Adw.ApplicationWindow):
         self._connected_server = None
         self._transfer_queue = None
         self._force_close = False
+        self._server_panel_populated = False
 
         self._build_ui()
         self._setup_actions()
 
     def _build_ui(self):
-        # Single ToolbarView gives us one unified header bar across the full width,
-        # avoiding the duplicate window-controls problem that appears with Gtk.Paned
-        # when each pane has its own Adw.HeaderBar.
-        toolbar_view = Adw.ToolbarView()
-
-        # === Unified header bar ===
-        header = Adw.HeaderBar()
-
-        self._sidebar_visible = True
-        self._sidebar_toggle = Gtk.Button(
-            icon_name="edith-sidebar-symbolic",
-            tooltip_text="Toggle Sidebar (F9)",
-            focusable=False,
-        )
-        self._sidebar_toggle.connect("clicked", self._on_sidebar_toggled)
+        # === Sidebar ToolbarView (has its own HeaderBar with window controls) ===
+        sidebar_header = Adw.HeaderBar(show_end_title_buttons=False)
+        sidebar_header.set_title_widget(Gtk.Label(label="Edith", css_classes=["title"]))
 
         self._new_server_btn = Gtk.Button(
             icon_name="edith-server-add-symbolic",
             tooltip_text="Add Server (Ctrl+N)",
         )
         self._new_server_btn.connect("clicked", lambda _: self._on_new_server(None, None))
-        header.pack_start(self._new_server_btn)
+        sidebar_header.pack_start(self._new_server_btn)
 
         self._new_folder_btn = Gtk.Button(
             icon_name="edith-group-new-symbolic",
             tooltip_text="New Server Group",
         )
         self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
-        header.pack_start(self._new_folder_btn)
+        sidebar_header.pack_start(self._new_folder_btn)
+
+        self._sidebar_stack = Gtk.Stack(
+            transition_type=Gtk.StackTransitionType.CROSSFADE,
+            vexpand=True,
+        )
+
+        self._server_list = ServerList()
+        self._server_list.connect("group-selected", self._on_group_selected)
+        self._sidebar_stack.add_named(self._server_list, "server_list")
+
+        self._file_browser = FileBrowser()
+        self._file_browser.set_window(self)
+        self._file_browser.connect("file-activated", self._on_file_activated)
+        self._file_browser.connect("path-changed", self._on_path_changed)
+        self._sidebar_stack.add_named(self._file_browser, "file_browser")
+
+        self._sidebar_stack.set_visible_child_name("server_list")
+
+        self._sidebar_toolbar = Adw.ToolbarView()
+        self._sidebar_toolbar.add_css_class("app-sidebar")
+        self._sidebar_toolbar.set_size_request(180, -1)
+        self._sidebar_toolbar.add_top_bar(sidebar_header)
+        self._sidebar_toolbar.set_content(self._sidebar_stack)
+
+        # Sidebar status bar (connection indicator at the sidebar bottom)
+        sidebar_status_bar = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=6,
+            margin_start=12,
+            margin_end=12,
+            margin_top=6,
+            margin_bottom=6,
+        )
+        sidebar_status_bar.add_css_class("toolbar")
+        self._sidebar_status_icon = Gtk.Image.new_from_icon_name("edith-disconnected-symbolic")
+        self._sidebar_status_icon.set_pixel_size(16)
+        sidebar_status_bar.append(self._sidebar_status_icon)
+        self._sidebar_status_label = Gtk.Label(
+            label="Disconnected",
+            xalign=0,
+            hexpand=True,
+            ellipsize=3,
+            css_classes=["dim-label", "caption"],
+        )
+        sidebar_status_bar.append(self._sidebar_status_label)
+        self._sidebar_toolbar.add_bottom_bar(sidebar_status_bar)
+
+        # === Main ToolbarView (no window controls — they live in the sidebar header) ===
+        self._main_header = Adw.HeaderBar(
+            show_start_title_buttons=False,
+            show_end_title_buttons=False,
+        )
+
+        self._connect_btn = Gtk.Button(
+            icon_name="edith-connect-symbolic",
+            tooltip_text="Connect",
+            sensitive=False,
+        )
+        self._connect_btn.connect("clicked", self._on_connect_btn_clicked)
+        self._main_header.pack_start(self._connect_btn)
 
         self._back_btn = Gtk.Button(
             icon_name="edith-back-symbolic",
@@ -75,7 +125,7 @@ class EdithWindow(Adw.ApplicationWindow):
             sensitive=False,
         )
         self._back_btn.connect("clicked", lambda _: self._file_browser.go_back())
-        header.pack_start(self._back_btn)
+        self._main_header.pack_start(self._back_btn)
 
         self._forward_btn = Gtk.Button(
             icon_name="edith-forward-symbolic",
@@ -84,22 +134,14 @@ class EdithWindow(Adw.ApplicationWindow):
             sensitive=False,
         )
         self._forward_btn.connect("clicked", lambda _: self._file_browser.go_forward())
-        header.pack_start(self._forward_btn)
+        self._main_header.pack_start(self._forward_btn)
 
-        self._connect_btn = Gtk.Button(
-            icon_name="edith-connect-symbolic",
-            tooltip_text="Connect",
-            sensitive=False,
-        )
-        self._connect_btn.connect("clicked", self._on_connect_btn_clicked)
-        header.pack_start(self._connect_btn)
-
-        # Centre: switches between plain title (idle) and path bar (connected)
+        # Centre: switches between group title (idle) and path bar (connected)
         self._header_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
             hhomogeneous=False,
         )
-        self._idle_title = Adw.WindowTitle(title="Edith", subtitle="")
+        self._idle_title = Adw.WindowTitle(title="", subtitle="")
         self._header_stack.add_named(self._idle_title, "title")
 
         self._path_bar = PathBar()
@@ -107,7 +149,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._header_stack.add_named(self._path_bar, "pathbar")
 
         self._header_stack.set_visible_child_name("title")
-        header.set_title_widget(self._header_stack)
+        self._main_header.set_title_widget(self._header_stack)
 
         menu = Gio.Menu()
         window_section = Gio.Menu()
@@ -121,6 +163,7 @@ class EdithWindow(Adw.ApplicationWindow):
         prefs_section.append("Keyboard Shortcuts", "app.shortcuts")
         prefs_section.append("About Edith", "app.about")
         menu.append_section(None, prefs_section)
+
         self._transfer_panel = TransferPanel()
         self._transfer_btn = Gtk.MenuButton(
             icon_name="edith-transfers-symbolic",
@@ -129,59 +172,25 @@ class EdithWindow(Adw.ApplicationWindow):
             visible=False,
             sensitive=False,
         )
-        header.pack_end(self._transfer_btn)
-        header.pack_end(self._sidebar_toggle)
+        self._main_header.pack_end(self._transfer_btn)
+
+        self._sidebar_visible = True
+        self._sidebar_toggle = Gtk.Button(
+            icon_name="edith-sidebar-symbolic",
+            tooltip_text="Toggle Sidebar (F9)",
+            focusable=False,
+        )
+        self._sidebar_toggle.connect("clicked", self._on_sidebar_toggled)
+        self._main_header.pack_end(self._sidebar_toggle)
 
         menu_btn = Gtk.MenuButton(
             icon_name="edith-open-menu-symbolic",
             menu_model=menu,
             tooltip_text="Main Menu",
         )
-        header.pack_end(menu_btn)
+        self._main_header.pack_end(menu_btn)
 
-        toolbar_view.add_top_bar(header)
-
-        # === Body: toast overlay wrapping resizable paned + status bar ===
-        body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-
-        self._toast_overlay = Adw.ToastOverlay(vexpand=True)
-
-        self._paned = Gtk.Paned(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            vexpand=True,
-        )
-        self._sidebar_width = 260
-
-        # --- Sidebar (no header bar of its own) ---
-        sidebar_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-        sidebar_box.set_size_request(180, -1)
-        self._sidebar_box = sidebar_box
-
-        self._sidebar_stack = Gtk.Stack(
-            transition_type=Gtk.StackTransitionType.CROSSFADE,
-            vexpand=True,
-        )
-
-        self._server_list = ServerList()
-        self._server_list.connect("server-activated", self._on_server_activated)
-        self._server_list.connect("selection-changed", self._on_server_selection_changed)
-        self._sidebar_stack.add_named(self._server_list, "server_list")
-
-        self._file_browser = FileBrowser()
-        self._file_browser.set_window(self)
-        self._file_browser.connect("file-activated", self._on_file_activated)
-        self._file_browser.connect("path-changed", self._on_path_changed)
-        self._sidebar_stack.add_named(self._file_browser, "file_browser")
-
-        self._sidebar_stack.set_visible_child_name("server_list")
-        sidebar_box.append(self._sidebar_stack)
-
-        self._paned.set_start_child(sidebar_box)
-        self._paned.set_resize_start_child(False)
-        self._paned.set_shrink_start_child(False)
-        self._paned.set_position(self._sidebar_width)
-
-        # --- Content (no header bar of its own) ---
+        # Content stack
         self._content_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
             vexpand=True,
@@ -190,6 +199,20 @@ class EdithWindow(Adw.ApplicationWindow):
         self._welcome_view = WelcomeView()
         self._content_stack.add_named(self._welcome_view, "welcome")
 
+        self._server_panel = ServerPanel()
+        self._server_panel.connect("server-activated", self._on_server_activated)
+        self._server_panel.connect("selection-changed", self._on_server_selection_changed)
+        self._server_panel.connect("servers-changed", lambda *_: self._server_list.load_servers())
+        self._content_stack.add_named(self._server_panel, "servers")
+
+        self._connected_page = Adw.StatusPage(
+            icon_name="edith-connect-symbolic",
+            title="",
+            description="Open a file from the sidebar to start editing.",
+            vexpand=True,
+        )
+        self._content_stack.add_named(self._connected_page, "connected")
+
         self._editor_panel = EditorPanel()
         self._editor_panel.set_window(self)
         self._editor_panel.connect("page-changed", self._on_editor_page_changed)
@@ -197,19 +220,34 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._content_stack.set_visible_child_name("welcome")
 
-        self._paned.set_end_child(self._content_stack)
-        self._paned.set_resize_end_child(True)
-        self._paned.set_shrink_end_child(False)
-
-        self._toast_overlay.set_child(self._paned)
-        body.append(self._toast_overlay)
+        self._toast_overlay = Adw.ToastOverlay(vexpand=True)
+        self._toast_overlay.set_child(self._content_stack)
 
         self._status_bar = StatusBar()
         self._status_bar.connect("language-selected", self._on_language_selected)
-        body.append(self._status_bar)
+        self._status_bar.hide_connection_status()
 
-        toolbar_view.set_content(body)
-        self.set_content(toolbar_view)
+        main_toolbar = Adw.ToolbarView()
+        main_toolbar.add_top_bar(self._main_header)
+        main_toolbar.add_bottom_bar(self._status_bar)
+        main_toolbar.set_content(self._toast_overlay)
+
+        # === Resizable paned: sidebar | main ===
+        self._paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
+        self._sidebar_width = 260
+
+        self._paned.set_start_child(self._sidebar_toolbar)
+        self._paned.set_resize_start_child(False)
+        self._paned.set_shrink_start_child(False)
+        self._paned.set_end_child(main_toolbar)
+        self._paned.set_resize_end_child(True)
+        self._paned.set_shrink_end_child(False)
+        self._paned.set_position(self._sidebar_width)
+
+        self.set_content(self._paned)
+
+        # Pre-load server data into the sidebar counts (no content switch yet)
+        self._server_list.load_servers()
 
     def _setup_actions(self):
         self.connect("close-request", self._on_close_request)
@@ -274,17 +312,37 @@ class EdithWindow(Adw.ApplicationWindow):
     # --- Signal handlers ---
 
     def _on_close_request(self, window):
-        if self._force_close or not self._editor_panel.has_unsaved():
+        if self._force_close:
             return False  # allow close
 
-        names = self._editor_panel.unsaved_filenames()
-        body = "Unsaved changes in: " + ", ".join(names)
+        has_unsaved = self._editor_panel.has_unsaved()
+        has_transfers = (
+            self._transfer_queue is not None and self._transfer_queue.is_busy
+        )
+
+        if not has_unsaved and not has_transfers:
+            return False  # nothing to warn about
+
+        parts = []
+        if has_unsaved:
+            names = self._editor_panel.unsaved_filenames()
+            parts.append("Unsaved changes in: " + ", ".join(names))
+        if has_transfers:
+            parts.append("Active file transfers will be cancelled.")
+
+        if has_unsaved and has_transfers:
+            heading = "Quit with unsaved changes and active transfers?"
+        elif has_unsaved:
+            heading = "Quit with unsaved changes?"
+        else:
+            heading = "Quit with active transfers?"
+
         dialog = Adw.AlertDialog(
-            heading="Quit with unsaved changes?",
-            body=body,
+            heading=heading,
+            body="\n\n".join(parts),
         )
         dialog.add_response("cancel", "Cancel")
-        dialog.add_response("quit", "Quit Without Saving")
+        dialog.add_response("quit", "Quit Anyway")
         dialog.set_response_appearance("quit", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
 
@@ -306,15 +364,34 @@ class EdithWindow(Adw.ApplicationWindow):
     def _toggle_sidebar(self):
         if self._sidebar_visible:
             self._sidebar_width = max(self._paned.get_position(), 180)
-            self._sidebar_box.set_visible(False)
+            self._sidebar_toolbar.set_visible(False)
             self._sidebar_visible = False
+            # Window controls move to the main header when sidebar is hidden
+            self._main_header.set_show_start_title_buttons(True)
         else:
-            self._sidebar_box.set_visible(True)
+            self._sidebar_toolbar.set_visible(True)
             self._paned.set_position(self._sidebar_width)
             self._sidebar_visible = True
+            self._main_header.set_show_start_title_buttons(False)
+
+    def _on_group_selected(self, server_list, group_key):
+        folders = ConfigService.load_folders()
+        servers = ConfigService.load_servers()
+        self._server_panel.show_group(group_key, folders, servers)
+        self._server_panel_populated = True
+        if group_key == "__all__":
+            title = "All Servers"
+        elif group_key == "__ungrouped__":
+            title = "Without Group"
+        else:
+            folder = next((f for f in folders if f.id == group_key), None)
+            title = folder.name if folder else ""
+        self._idle_title.set_title(title)
+        if self._content_stack.get_visible_child_name() == "welcome":
+            self._content_stack.set_visible_child_name("servers")
 
     def _on_new_server(self, action, param):
-        self._server_list.show_add_dialog()
+        self._server_panel.show_add_dialog()
 
     def _on_disconnect(self, action, param):
         self.disconnect_server()
@@ -327,14 +404,14 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_search_servers(self, action, param):
         if self._sidebar_stack.get_visible_child_name() == "server_list":
-            self._server_list.toggle_search()
+            self._server_panel.toggle_search()
 
     def _on_find(self, action, param):
         editor = self._editor_panel.get_current_editor()
         if editor:
             editor.show_find()
         elif self._sidebar_stack.get_visible_child_name() == "server_list":
-            self._server_list.toggle_search()
+            self._server_panel.toggle_search()
 
     def _on_find_replace(self, action, param):
         editor = self._editor_panel.get_current_editor()
@@ -375,11 +452,11 @@ class EdithWindow(Adw.ApplicationWindow):
         if self._sftp_client:
             self.disconnect_server()
         else:
-            server = self._server_list.get_selected_server()
+            server = self._server_panel.get_selected_server()
             if server:
                 self._initiate_connection(server)
 
-    def _on_server_selection_changed(self, server_list, is_server):
+    def _on_server_selection_changed(self, server_panel, is_server):
         if not self._sftp_client:
             self._connect_btn.set_sensitive(is_server)
 
@@ -543,6 +620,10 @@ class EdithWindow(Adw.ApplicationWindow):
         self._transfer_btn.set_visible(True)
         self._transfer_btn.set_sensitive(False)
 
+        # Show connected placeholder until the user opens a file
+        self._connected_page.set_title(f"Connected to {server_info.display_name}")
+        self._content_stack.set_visible_child_name("connected")
+
         toast = Adw.Toast(title=f"Connected to {server_info.display_name}")
         self._toast_overlay.add_toast(toast)
 
@@ -573,7 +654,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self.lookup_action("disconnect").set_enabled(False)
         self._connect_btn.set_icon_name("edith-connect-symbolic")
         self._connect_btn.set_tooltip_text("Connect")
-        self._connect_btn.set_sensitive(self._server_list.get_selected_server() is not None)
+        self._connect_btn.set_sensitive(self._server_panel.get_selected_server() is not None)
 
         # Switch sidebar back to server list
         self._sidebar_stack.set_visible_child_name("server_list")
@@ -581,8 +662,10 @@ class EdithWindow(Adw.ApplicationWindow):
         # Close all editor tabs
         self._editor_panel.close_all()
 
-        # Show welcome
-        self._content_stack.set_visible_child_name("welcome")
+        # Show server panel (populate first if the user never clicked a group)
+        if not self._server_panel_populated:
+            self._server_list.select_group("__all__")
+        self._content_stack.set_visible_child_name("servers")
 
         # Disable editor actions
         self.lookup_action("save").set_enabled(False)
@@ -718,15 +801,27 @@ class EdithWindow(Adw.ApplicationWindow):
         self._transfer_btn.set_sensitive(False)
 
     def _set_status(self, state, message):
-        """Update the status bar."""
+        """Update the status bar and sidebar connection indicator."""
         if self._status_bar:
             self._status_bar.set_status(state, message)
+        _app_icons = {
+            "disconnected": "edith-disconnected-symbolic",
+            "connected":    "edith-connected-symbolic",
+        }
+        _sys_icons = {
+            "connecting":  "network-transmit-symbolic",
+            "error":       "dialog-error-symbolic",
+        }
+        icon = _app_icons.get(state) or _sys_icons.get(state, "network-offline-symbolic")
+        self._sidebar_status_icon.set_from_icon_name(icon)
+        self._sidebar_status_label.set_label(message)
 
     def reveal_in_sidebar(self, remote_path: str):
         """Show the file in the sidebar file browser."""
-        self._sidebar_box.set_visible(True)
+        self._sidebar_toolbar.set_visible(True)
         self._paned.set_position(self._sidebar_width)
-        self._sidebar_toggle.set_active(True)
+        self._sidebar_visible = True
+        self._main_header.set_show_start_title_buttons(False)
         self._sidebar_stack.set_visible_child_name("file_browser")
         self._file_browser.reveal_file(remote_path)
 
