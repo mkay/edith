@@ -32,6 +32,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sftp_client = None
         self._connected_server = None
         self._transfer_queue = None
+        self._force_close = False
 
         self._build_ui()
         self._setup_actions()
@@ -211,6 +212,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self.set_content(toolbar_view)
 
     def _setup_actions(self):
+        self.connect("close-request", self._on_close_request)
         app = self.get_application()
 
         # Toggle sidebar
@@ -270,6 +272,30 @@ class EdithWindow(Adw.ApplicationWindow):
         app.set_accels_for_action("win.goto-line", ["<Control>g"])
 
     # --- Signal handlers ---
+
+    def _on_close_request(self, window):
+        if self._force_close or not self._editor_panel.has_unsaved():
+            return False  # allow close
+
+        names = self._editor_panel.unsaved_filenames()
+        body = "Unsaved changes in: " + ", ".join(names)
+        dialog = Adw.AlertDialog(
+            heading="Quit with unsaved changes?",
+            body=body,
+        )
+        dialog.add_response("cancel", "Cancel")
+        dialog.add_response("quit", "Quit Without Saving")
+        dialog.set_response_appearance("quit", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_default_response("cancel")
+
+        def on_response(d, response):
+            if response == "quit":
+                self._force_close = True
+                self.close()
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+        return True  # block the close
 
     def _on_sidebar_toggled(self, btn):
         self._toggle_sidebar()
