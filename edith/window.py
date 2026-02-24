@@ -309,6 +309,12 @@ class EdithWindow(Adw.ApplicationWindow):
         self.add_action(goto_line)
         app.set_accels_for_action("win.goto-line", ["<Control>g"])
 
+        # Toggle line wrap (Ctrl+Shift+W)
+        toggle_wrap = Gio.SimpleAction.new("toggle-wrap", None)
+        toggle_wrap.connect("activate", self._on_toggle_wrap)
+        self.add_action(toggle_wrap)
+        app.set_accels_for_action("win.toggle-wrap", ["<Control><Shift>w"])
+
     # --- Signal handlers ---
 
     def _on_close_request(self, window):
@@ -417,6 +423,11 @@ class EdithWindow(Adw.ApplicationWindow):
         editor = self._editor_panel.get_current_editor()
         if editor:
             editor.show_replace()
+
+    def _on_toggle_wrap(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.toggle_wrap()
 
     def _on_goto_line(self, action, param):
         editor = self._editor_panel.get_current_editor()

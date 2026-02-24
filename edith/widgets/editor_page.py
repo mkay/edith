@@ -278,6 +278,14 @@ class EditorPage(Gtk.Box):
         self._view.scroll_to_iter(it, 0.1, True, 0.0, 0.3)
         self._view.grab_focus()
 
+    def toggle_wrap(self):
+        """Toggle line wrap between WORD_CHAR and NONE."""
+        current = self._view.get_wrap_mode()
+        if current == Gtk.WrapMode.NONE:
+            self._view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        else:
+            self._view.set_wrap_mode(Gtk.WrapMode.NONE)
+
     # ── Internal helpers ──────────────────────────────────────────────── #
 
     def _sel_bounds(self):
