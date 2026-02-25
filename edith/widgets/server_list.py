@@ -228,7 +228,7 @@ class ServerList(Gtk.Box):
 
         # "Without Group" row — only when ungrouped servers exist
         if ungrouped_count > 0:
-            ug_widget = self._make_nav_row("edith-folder-symbolic", "Without Group", ungrouped_count)
+            ug_widget = self._make_nav_row("edith-folder-striped-symbolic", "Without Group", ungrouped_count)
             self._list_box.append(ug_widget)
             lbr = ug_widget.get_parent()
             if lbr:

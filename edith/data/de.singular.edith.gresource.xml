@@ -9,6 +9,7 @@
     <file alias="edith-disconnect-symbolic.svg">data/icons/hicolor/scalable/actions/edith-disconnect-symbolic.svg</file>
     <file alias="edith-server-symbolic.svg">data/icons/hicolor/scalable/actions/edith-server-symbolic.svg</file>
     <file alias="edith-folder-symbolic.svg">data/icons/hicolor/scalable/actions/edith-folder-symbolic.svg</file>
+    <file alias="edith-folder-striped-symbolic.svg">data/icons/hicolor/scalable/actions/edith-folder-striped-symbolic.svg</file>
     <file alias="edith-drive-symbolic.svg">data/icons/hicolor/scalable/actions/edith-drive-symbolic.svg</file>
     <file alias="edith-connected-symbolic.svg">data/icons/hicolor/scalable/actions/edith-connected-symbolic.svg</file>
     <file alias="edith-disconnected-symbolic.svg">data/icons/hicolor/scalable/actions/edith-disconnected-symbolic.svg</file>
