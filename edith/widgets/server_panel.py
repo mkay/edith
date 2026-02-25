@@ -158,6 +158,8 @@ class ServerPanel(Gtk.Box):
 
         # Parent the popover to the clicked ListBox so x,y are already correct
         self._server_menu.popdown()
+        if self._server_menu.get_parent() is not None:
+            self._server_menu.unparent()
         self._server_menu.set_parent(list_box)
 
         rect = Gdk.Rectangle()
