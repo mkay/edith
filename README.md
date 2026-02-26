@@ -15,7 +15,10 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 - **Server search** — Ctrl+F to filter servers by name
 - **File browser** — navigate remote directories with drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions
 - **Path bar** — clickable breadcrumb navigation in the title bar with back/forward history
-- **Tabbed editor** — GtkSourceView 5 with syntax highlighting, customizable themes and fonts
+- **Monaco editor** — VS Code's editor engine (WebKitGTK), with syntax highlighting for 80+ languages, Emmet support, find/replace, go to line, word wrap, and customizable themes and fonts
+- **Editor settings** — minimap, render whitespace, sticky scroll, font ligatures, format on save, line numbers (on/off/relative)
+- **SVG preview** — toggle a live side-by-side preview panel for SVG files; refreshes after each save
+- **Image viewer** — raster images (PNG, JPEG, GIF, WebP, BMP, ICO, TIFF, AVIF) open in a dedicated read-only tab showing dimensions, DPI, and file size
 - **Syntax selector** — per-file language override in the status bar
 - **Custom syntax associations** — map file extensions to languages (e.g. `.tpl` → PHP)
 - **Secure credentials** — stored in the system keychain (GNOME Keyring or compatible); never written to disk in plain text
@@ -49,7 +52,7 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 - Python 3
 - GTK 4
 - libadwaita
-- GtkSourceView 5
+- WebKitGTK 6.0
 - python-paramiko
 - python-gobject
 - python-keyring
