@@ -7,6 +7,8 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 
 > **Alpha software.** Early access for the brave and the bug‑tolerant.
 
+![Edith Icon](data/de.singular.edith.svg)
+
 ## Features
 
 - **Server management** — saved connections with password/key auth, organized into groups; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
