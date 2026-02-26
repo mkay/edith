@@ -216,6 +216,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._editor_panel = EditorPanel()
         self._editor_panel.set_window(self)
         self._editor_panel.connect("page-changed", self._on_editor_page_changed)
+        self._editor_panel.connect("line-ending-ready", self._on_line_ending_ready)
         self._content_stack.add_named(self._editor_panel, "editor")
 
         self._content_stack.set_visible_child_name("welcome")
@@ -225,6 +226,8 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._status_bar = StatusBar()
         self._status_bar.connect("language-selected", self._on_language_selected)
+        self._status_bar.connect("indent-changed", self._on_indent_changed)
+        self._status_bar.connect("line-ending-changed", self._on_line_ending_changed)
         self._status_bar.hide_connection_status()
 
         main_toolbar = Adw.ToolbarView()
@@ -270,7 +273,7 @@ class EdithWindow(Adw.ApplicationWindow):
         disconnect.connect("activate", self._on_disconnect)
         disconnect.set_enabled(False)
         self.add_action(disconnect)
-        app.set_accels_for_action("win.disconnect", ["<Control>d"])
+        app.set_accels_for_action("win.disconnect", [])
 
         # Save
         save = Gio.SimpleAction.new("save", None)
@@ -639,11 +642,19 @@ class EdithWindow(Adw.ApplicationWindow):
         self._toast_overlay.add_toast(toast)
 
     def _on_editor_page_changed(self, panel):
+        from edith.services.config import ConfigService
         editor = panel.get_current_editor()
         if editor:
             self._status_bar.set_language_name(editor.get_language_name())
+            insert_spaces = ConfigService.get_preference("editor_insert_spaces", True)
+            tab_size = ConfigService.get_preference("editor_tab_size", 4)
+            self._status_bar.set_indent(insert_spaces, tab_size)
+            self._status_bar.set_line_ending(editor.get_line_ending())
         else:
-            self._status_bar.hide_language_selector()
+            self._status_bar.hide_file_info()
+
+    def _on_line_ending_ready(self, panel, eol):
+        self._status_bar.set_line_ending(eol)
 
     def _on_language_selected(self, status_bar, lang_id):
         editor = self._editor_panel.get_current_editor()
@@ -651,11 +662,17 @@ class EdithWindow(Adw.ApplicationWindow):
             editor.set_language(lang_id or None)
             self._status_bar.set_language_name(editor.get_language_name())
 
+    def _on_indent_changed(self, status_bar, insert_spaces, tab_size):
+        self._editor_panel.apply_indent(insert_spaces, tab_size)
+
+    def _on_line_ending_changed(self, status_bar, eol):
+        self._editor_panel.set_current_line_ending(eol)
+
     def _on_disconnected(self):
         """Called after disconnection."""
         self._status_bar.clear_transfer()
         self._set_status("disconnected", "Disconnected")
-        self._status_bar.hide_language_selector()
+        self._status_bar.hide_file_info()
         self._header_stack.set_visible_child_name("title")
         self._back_btn.set_visible(False)
         self._forward_btn.set_visible(False)
@@ -843,6 +860,22 @@ class EdithWindow(Adw.ApplicationWindow):
     def apply_editor_font(self, font_family: str, font_size: int):
         """Apply a font to all open editor tabs."""
         self._editor_panel.apply_font(font_family, font_size)
+
+    def apply_editor_settings(self):
+        """Re-read global editor settings from config and push to all open tabs."""
+        from edith.services.config import ConfigService
+        settings = {
+            "minimap":          ConfigService.get_preference("editor_minimap", False),
+            "renderWhitespace": ConfigService.get_preference("editor_render_whitespace", "selection"),
+            "stickyScroll":     ConfigService.get_preference("editor_sticky_scroll", False),
+            "fontLigatures":    ConfigService.get_preference("editor_font_ligatures", False),
+            "lineNumbers":      ConfigService.get_preference("editor_line_numbers", "on"),
+        }
+        self._editor_panel.apply_editor_settings(settings)
+        # Refresh the indent display in the status bar too
+        insert_spaces = ConfigService.get_preference("editor_insert_spaces", True)
+        tab_size = ConfigService.get_preference("editor_tab_size", 4)
+        self._status_bar.set_indent(insert_spaces, tab_size)
 
     @property
     def sftp_client(self):

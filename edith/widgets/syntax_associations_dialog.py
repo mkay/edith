@@ -2,10 +2,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-gi.require_version("GtkSource", "5")
 
-from gi.repository import Adw, Gtk, GtkSource
+from gi.repository import Adw, Gtk
 
+from edith.monaco_languages import MONACO_LANGUAGES, get_language_name
 from edith.services.config import ConfigService
 
 
@@ -74,13 +74,10 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
         self._lang_list.set_filter_func(self._filter_lang_row)
         self._lang_list.connect("row-activated", self._on_lang_row_activated)
 
-        lm = GtkSource.LanguageManager.get_default()
-        langs = sorted(
-            [lm.get_language(lid) for lid in lm.get_language_ids()],
-            key=lambda l: l.get_name().lower(),
-        )
-        for lang in langs:
-            self._add_lang_row(lang.get_id(), lang.get_name())
+        for lang_id, display_name in MONACO_LANGUAGES:
+            if lang_id == "plaintext":
+                continue
+            self._add_lang_row(lang_id, display_name)
 
         sw = Gtk.ScrolledWindow(
             hscrollbar_policy=Gtk.PolicyType.NEVER,
@@ -171,10 +168,8 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
             self._assoc_rows.append(row)
             return
 
-        lm = GtkSource.LanguageManager.get_default()
         for ext, lang_id in sorted(assoc.items()):
-            lang = lm.get_language(lang_id)
-            lang_name = lang.get_name() if lang else lang_id
+            lang_name = get_language_name(lang_id)
 
             row = Adw.ActionRow(title=f".{ext}", subtitle=lang_name)
 

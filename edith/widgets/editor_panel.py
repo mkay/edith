@@ -7,14 +7,16 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, Gtk, GObject
 
 from edith.models.open_file import OpenFile
-from edith.widgets.editor_page import EditorPage
+from edith.widgets.image_viewer import ImageViewer, is_image_file
+from edith.widgets.monaco_editor import MonacoEditor
 
 
 class EditorPanel(Gtk.Box):
     """Tabbed editor panel using Adw.TabView."""
 
     __gsignals__ = {
-        "page-changed": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "page-changed":      (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "line-ending-ready": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self):
@@ -62,9 +64,10 @@ class EditorPanel(Gtk.Box):
         if not page:
             return
 
-        editor = page.get_child()
-        if isinstance(editor, EditorPage) and self._window:
-            self._window.reveal_in_sidebar(editor.open_file.remote_path)
+        widget = page.get_child()
+        open_file = getattr(widget, "open_file", None)
+        if open_file and self._window:
+            self._window.reveal_in_sidebar(open_file.remote_path)
 
     def set_window(self, window):
         self._window = window
@@ -76,13 +79,17 @@ class EditorPanel(Gtk.Box):
             return
 
         open_file = OpenFile(remote_path=remote_path, local_path=local_path)
-        editor = EditorPage(open_file)
-        editor.connect("modified-changed", self._on_modified_changed)
 
-        page = self._tab_view.append(editor)
+        if is_image_file(remote_path):
+            widget = ImageViewer(open_file)
+        else:
+            widget = MonacoEditor(open_file)
+            widget.connect("modified-changed", self._on_modified_changed)
+            widget.connect("line-ending-detected", self._on_editor_line_ending)
+
+        page = self._tab_view.append(widget)
         filename = os.path.basename(remote_path)
         page.set_title(filename)
-        page.set_icon(None)
         page.set_tooltip(remote_path)
 
         self._tabs[remote_path] = page
@@ -101,22 +108,23 @@ class EditorPanel(Gtk.Box):
             self._tab_view.set_selected_page(page)
 
     def save_current(self):
-        """Save the currently active tab."""
+        """Save the currently active tab (async via Monaco)."""
         page = self._tab_view.get_selected_page()
         if not page:
             return
 
         editor = page.get_child()
-        if not isinstance(editor, EditorPage):
+        if not isinstance(editor, MonacoEditor):
             return
 
-        editor.save_to_disk()
+        def on_done():
+            if self._window:
+                self._window.save_remote_file(
+                    editor.open_file.remote_path,
+                    editor.open_file.local_path,
+                )
 
-        if self._window:
-            self._window.save_remote_file(
-                editor.open_file.remote_path,
-                editor.open_file.local_path,
-            )
+        editor.save_to_disk(on_done=on_done)
 
     def close_current(self):
         """Close the currently active tab."""
@@ -134,15 +142,19 @@ class EditorPanel(Gtk.Box):
         self._tabs.clear()
 
     def _on_close_page(self, tab_view, page):
-        editor = page.get_child()
-        if isinstance(editor, EditorPage):
-            remote_path = editor.open_file.remote_path
+        widget = page.get_child()
+        if isinstance(widget, MonacoEditor):
+            remote_path = widget.open_file.remote_path
 
-            if editor.open_file.is_modified:
-                self._confirm_close(page, editor)
-                return Gdk.EVENT_STOP if hasattr(Gdk, "EVENT_STOP") else True
+            if widget.open_file.is_modified:
+                self._confirm_close(page, widget)
+                return True  # Inhibit default close, we handle it
 
             self._tabs.pop(remote_path, None)
+        else:
+            open_file = getattr(widget, "open_file", None)
+            if open_file:
+                self._tabs.pop(open_file.remote_path, None)
 
         tab_view.close_page_finish(page, True)
         return True  # Inhibit default close, we handle it
@@ -166,12 +178,17 @@ class EditorPanel(Gtk.Box):
 
     def _on_close_response(self, dialog, response, page, editor):
         if response == "save":
-            editor.save_to_disk()
-            if self._window:
-                self._window.save_remote_file(
-                    editor.open_file.remote_path,
-                    editor.open_file.local_path,
-                )
+            def on_saved():
+                if self._window:
+                    self._window.save_remote_file(
+                        editor.open_file.remote_path,
+                        editor.open_file.local_path,
+                    )
+                self._tabs.pop(editor.open_file.remote_path, None)
+                self._tab_view.close_page_finish(page, True)
+
+            editor.save_to_disk(on_done=on_saved)
+            return
 
         if response != "cancel":
             self._tabs.pop(editor.open_file.remote_path, None)
@@ -194,7 +211,7 @@ class EditorPanel(Gtk.Box):
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, EditorPage):
+            if isinstance(editor, MonacoEditor):
                 editor.apply_scheme(scheme_id)
 
     def apply_font(self, font_family: str, font_size: int):
@@ -202,15 +219,53 @@ class EditorPanel(Gtk.Box):
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, EditorPage):
+            if isinstance(editor, MonacoEditor):
                 editor.apply_font(font_family, font_size)
+
+    def _on_editor_line_ending(self, editor, eol):
+        """Forward line-ending detection to the window, but only for current tab."""
+        page = self._tab_view.get_selected_page()
+        if page and page.get_child() is editor:
+            self.emit("line-ending-ready", eol)
+
+    def apply_indent(self, insert_spaces: bool, tab_size: int):
+        """Apply indent settings to all open editor tabs."""
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            editor = page.get_child()
+            if isinstance(editor, MonacoEditor):
+                editor.set_indent(insert_spaces, tab_size)
+
+    def apply_editor_settings(self, settings: dict):
+        """Apply global editor settings to all open tabs."""
+        for i in range(self._tab_view.get_n_pages()):
+            page = self._tab_view.get_nth_page(i)
+            editor = page.get_child()
+            if not isinstance(editor, MonacoEditor):
+                continue
+            if "minimap" in settings:
+                editor.set_minimap(settings["minimap"])
+            if "renderWhitespace" in settings:
+                editor.set_render_whitespace(settings["renderWhitespace"])
+            if "stickyScroll" in settings:
+                editor.set_sticky_scroll(settings["stickyScroll"])
+            if "fontLigatures" in settings:
+                editor.set_font_ligatures(settings["fontLigatures"])
+            if "lineNumbers" in settings:
+                editor.set_line_numbers(settings["lineNumbers"])
+
+    def set_current_line_ending(self, eol: str):
+        """Change the line ending of the currently active tab."""
+        editor = self.get_current_editor()
+        if editor:
+            editor.set_line_ending(eol)
 
     def has_unsaved(self) -> bool:
         """Return True if any open tab has unsaved changes."""
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, EditorPage) and editor.open_file.is_modified:
+            if isinstance(editor, MonacoEditor) and editor.open_file.is_modified:
                 return True
         return False
 
@@ -220,16 +275,16 @@ class EditorPanel(Gtk.Box):
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, EditorPage) and editor.open_file.is_modified:
+            if isinstance(editor, MonacoEditor) and editor.open_file.is_modified:
                 names.append(editor.open_file.filename)
         return names
 
     def get_current_editor(self):
-        """Return the active EditorPage, or None."""
+        """Return the active MonacoEditor, or None."""
         page = self._tab_view.get_selected_page()
         if page:
             editor = page.get_child()
-            if isinstance(editor, EditorPage):
+            if isinstance(editor, MonacoEditor):
                 return editor
         return None
 

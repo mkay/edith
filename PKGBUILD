@@ -1,5 +1,5 @@
 pkgname=edith
-pkgver=0.1.4
+pkgver=0.2.0
 pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
@@ -9,15 +9,16 @@ depends=(
   'python-gobject'
   'gtk4'
   'libadwaita'
-  'gtksourceview5'
+  'webkitgtk-6.0'
   'python-paramiko'
   'python-keyring'
 )
-makedepends=('meson' 'ninja')
+makedepends=('meson' 'ninja' 'npm')
 source=()
 
 build() {
   cd "$startdir"
+  bash scripts/fetch-monaco.sh
   meson setup build --prefix=/usr --buildtype=plain
   ninja -C build
 }

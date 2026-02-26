@@ -2,11 +2,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-gi.require_version("GtkSource", "5")
 
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, Gtk, GtkSource
+from gi.repository import Adw, Gdk, Gio, Gtk
 
 from edith import APP_ID, APP_NAME, VERSION
 from edith.window import EdithWindow
@@ -44,16 +43,38 @@ class EdithApplication(Adw.Application):
                 Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
             )
 
-            # Register bundled style schemes
-            styles_dir = str(Path(__file__).parent / "data" / "styles")
-            sm = GtkSource.StyleSchemeManager.get_default()
-            search_path = list(sm.get_search_path())
-            if styles_dir not in search_path:
-                search_path.insert(0, styles_dir)
-                sm.set_search_path(search_path)
+            # Migrate old GtkSourceView scheme IDs to Monaco theme IDs
+            self._migrate_config()
 
             win = EdithWindow(application=self)
         win.present()
+
+    def _migrate_config(self):
+        """One-time migration from GtkSourceView config to Monaco."""
+        from edith.services.config import ConfigService
+
+        saved_scheme = ConfigService.get_preference("syntax_scheme", "")
+        if not saved_scheme:
+            return
+
+        # Map old GtkSourceView scheme IDs to Monaco theme equivalents
+        scheme_migration = {
+            "Adwaita": "vs",
+            "Adwaita-dark": "vs-dark",
+            "classic": "vs",
+            "classic-dark": "vs-dark",
+            "cobalt": "vs-dark",
+            "kate": "vs",
+            "kate-dark": "vs-dark",
+            "oblivion": "vs-dark",
+            "solarized-light": "solarized-light",
+            "solarized-dark": "solarized-dark",
+            "tango": "vs",
+            "railscasts": "monokai",
+        }
+
+        if saved_scheme in scheme_migration:
+            ConfigService.set_preference("syntax_scheme", scheme_migration[saved_scheme])
 
     def _setup_actions(self):
         quit_action = Gio.SimpleAction.new("quit", None)
@@ -85,6 +106,10 @@ class EdithApplication(Adw.Application):
         syntax_assoc_action.connect("activate", self._on_syntax_associations)
         self.add_action(syntax_assoc_action)
 
+        editor_settings_action = Gio.SimpleAction.new("editor-settings", None)
+        editor_settings_action.connect("activate", self._on_editor_settings)
+        self.add_action(editor_settings_action)
+
         new_window_action = Gio.SimpleAction.new("new-window", None)
         new_window_action.connect("activate", self._on_new_window)
         self.add_action(new_window_action)
@@ -107,7 +132,7 @@ class EdithApplication(Adw.Application):
                 "• File browser — navigate remote directories with drag-and-drop move, "
                 "upload, copy, rename, delete\n"
                 "• Path bar — clickable breadcrumb navigation with back/forward history\n"
-                "• Tabbed editor — GtkSourceView 5 with syntax highlighting, "
+                "• Tabbed editor — Monaco-powered editor with syntax highlighting, "
                 "customizable themes and fonts\n"
                 "• Secure credentials — passwords stored via GNOME Keyring / libsecret\n"
                 "• Live editing — files downloaded to temp, edited locally, uploaded on save\n"
@@ -214,6 +239,20 @@ class EdithApplication(Adw.Application):
         dialog = SyntaxAssociationsDialog()
         dialog.present(win)
 
+    def _on_editor_settings(self, action, param):
+        win = self.props.active_window
+        if not win:
+            return
+        from edith.widgets.editor_settings_dialog import EditorSettingsDialog
+        dialog = EditorSettingsDialog()
+        dialog.connect("settings-changed", self._on_editor_settings_changed)
+        dialog.present(win)
+
+    def _on_editor_settings_changed(self, dialog):
+        win = self.props.active_window
+        if win:
+            win.apply_editor_settings()
+
     def _on_shortcuts(self, action, param):
         win = self.props.active_window
         if not win:
@@ -237,7 +276,6 @@ class EdithApplication(Adw.Application):
                 ("<Control><Shift>z", "Redo"),
             ]),
             ("Connection", [
-                ("<Control>d", "Disconnect"),
                 ("<Control>f", "Search servers"),
             ]),
             ("File Browser", [
