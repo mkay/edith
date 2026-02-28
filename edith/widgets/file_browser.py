@@ -30,23 +30,16 @@ class FileBrowser(Gtk.Box):
         self._history = []
         self._history_pos = -1
 
-        # Breadcrumb / path bar
+        # Path bar — vertical: button row on top, path label below
         self._path_bar = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=4,
+            orientation=Gtk.Orientation.VERTICAL,
             margin_start=8,
             margin_end=8,
-            margin_top=6,
-            margin_bottom=6,
+            margin_top=4,
+            margin_bottom=4,
         )
-        self._path_label = Gtk.Label(
-            label="/",
-            xalign=0,
-            hexpand=True,
-            ellipsize=3,
-            css_classes=["dim-label", "caption"],
-        )
-        self._path_bar.append(self._path_label)
+
+        _btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
 
         self._up_btn = Gtk.Button(
             icon_name="edith-parent-dir-symbolic",
@@ -55,7 +48,7 @@ class FileBrowser(Gtk.Box):
             sensitive=False,
         )
         self._up_btn.connect("clicked", self._on_go_up)
-        self._path_bar.append(self._up_btn)
+        _btn_row.append(self._up_btn)
 
         upload_btn = Gtk.Button(
             icon_name="edith-upload-symbolic",
@@ -63,7 +56,7 @@ class FileBrowser(Gtk.Box):
             css_classes=["flat", "circular"],
         )
         upload_btn.connect("clicked", self._on_upload_clicked)
-        self._path_bar.append(upload_btn)
+        _btn_row.append(upload_btn)
 
         refresh_btn = Gtk.Button(
             icon_name="edith-refresh-symbolic",
@@ -71,7 +64,20 @@ class FileBrowser(Gtk.Box):
             css_classes=["flat", "circular"],
         )
         refresh_btn.connect("clicked", lambda _: self.load_directory(self._current_path))
-        self._path_bar.append(refresh_btn)
+        _btn_row.append(refresh_btn)
+
+        self._path_bar.append(_btn_row)
+
+        self._path_label = Gtk.Label(
+            label="/",
+            xalign=0,
+            hexpand=True,
+            ellipsize=3,
+            css_classes=["dim-label", "caption"],
+            margin_bottom=2,
+            tooltip_text="/",
+        )
+        self._path_bar.append(self._path_label)
 
         self.append(self._path_bar)
         self.append(Gtk.Separator())
@@ -582,7 +588,9 @@ class FileBrowser(Gtk.Box):
                 self._history_pos += 1
 
         self._current_path = path
-        self._path_label.set_label(path)
+        display = path.rstrip("/").rsplit("/", 1)[-1] or "/"
+        self._path_label.set_label(display)
+        self._path_label.set_tooltip_text(path)
         self._up_btn.set_sensitive(path != "/")
         self.emit("path-changed", path)
 

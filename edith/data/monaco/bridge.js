@@ -211,28 +211,42 @@
     });
   }
 
-  // ── Worker paths (must be set before require) ─────────────────────────
-  // Monaco needs to know where to find language service workers so that
-  // completions, hover docs, and diagnostics work for HTML/CSS/JSON/TS.
+  // ── Worker setup ────────────────────────────────────────────────────────
+  // workerMain.js bundles an AMD loader + base worker.  Its module loader
+  // tries fetch()+eval() for same-origin URLs, but WebKitGTK does not
+  // support fetch() for file:// URLs inside workers.  We create a blob
+  // worker that patches fetch() to use synchronous XMLHttpRequest (which
+  // works in workers for file:// URLs), then loads workerMain.js.
+  var monacoBaseUrl = location.href.replace(/\/[^/]*$/, "/");
   window.MonacoEnvironment = {
-    getWorkerUrl: function (_moduleId, label) {
-      var map = {
-        html:        "vs/language/html/htmlWorker.js",
-        handlebars:  "vs/language/html/htmlWorker.js",
-        razor:       "vs/language/html/htmlWorker.js",
-        css:         "vs/language/css/cssWorker.js",
-        less:        "vs/language/css/cssWorker.js",
-        scss:        "vs/language/css/cssWorker.js",
-        json:        "vs/language/json/jsonWorker.js",
-        typescript:  "vs/language/typescript/tsWorker.js",
-        javascript:  "vs/language/typescript/tsWorker.js",
-      };
-      return map[label] || "vs/base/worker/workerMain.js";
+    getWorker: function () {
+      var blob = new Blob([
+        // Patch fetch() so the AMD loader can load file:// modules
+        'var _origFetch = self.fetch;\n' +
+        'self.fetch = function(url, opts) {\n' +
+        '  if (typeof url === "string" && url.indexOf("file:") === 0) {\n' +
+        '    return new Promise(function(resolve, reject) {\n' +
+        '      try {\n' +
+        '        var xhr = new XMLHttpRequest();\n' +
+        '        xhr.open("GET", url, false);\n' +
+        '        xhr.send();\n' +
+        '        resolve({ ok: true, status: 200, text: function() { return Promise.resolve(xhr.responseText); } });\n' +
+        '      } catch(e) { reject(e); }\n' +
+        '    });\n' +
+        '  }\n' +
+        '  return _origFetch.apply(self, arguments);\n' +
+        '};\n' +
+        'self.MonacoEnvironment = { baseUrl: "' + monacoBaseUrl + '" };\n' +
+        'importScripts("' + monacoBaseUrl + 'vs/base/worker/workerMain.js");'
+      ], { type: "application/javascript" });
+      return new Worker(URL.createObjectURL(blob));
     },
   };
 
   // ── AMD loader config & editor creation ───────────────────────────────
-  require.config({ paths: { vs: "vs" } });
+  // An absolute baseUrl is required so that the AMD config Monaco
+  // serialises into Web Workers resolves modules correctly.
+  require.config({ baseUrl: monacoBaseUrl, paths: { vs: monacoBaseUrl + "vs" } });
 
   require(["vs/editor/editor.main"], function (monaco) {
     defineCustomThemes(monaco);
@@ -254,6 +268,7 @@
       bracketPairColorization: { enabled: true },
       smoothScrolling: true,
       cursorBlinking: "smooth",
+      tabCompletion: "on",
     });
 
     cleanVersionId = editor.getModel().getAlternativeVersionId();
@@ -271,9 +286,6 @@
         console.warn("Emmet init failed:", e);
       }
     }
-
-    // Tab accepts a highlighted suggestion when the dropdown is open.
-    editor.updateOptions({ tabCompletion: "on" });
 
     // Tab expands Emmet abbreviations directly (no dropdown needed).
     // Only fires when there is no selection and no suggest widget visible,
@@ -369,10 +381,11 @@
 
   // ── EdithBridge: API called from Python via evaluate_javascript ──────
   window.EdithBridge = {
-    // init(content, language, theme, fontFamily, fontSize, wordWrap, settings)
+    // init(content, language, theme, fontFamily, fontSize, wordWrap, settings, customOptions)
     // settings: { insertSpaces, tabSize, minimap, renderWhitespace,
     //             stickyScroll, fontLigatures, lineNumbers }
-    init: function (content, language, theme, fontFamily, fontSize, wordWrap, settings) {
+    // customOptions: arbitrary Monaco editor options from user config
+    init: function (content, language, theme, fontFamily, fontSize, wordWrap, settings, customOptions) {
       function run() {
         if (content != null) {
           loadingContent = true;
@@ -387,32 +400,31 @@
         if (theme) {
           monaco.editor.setTheme(theme);
         }
-        if (fontFamily) {
-          editor.updateOptions({ fontFamily: fontFamily });
-        }
-        if (fontSize) {
-          editor.updateOptions({ fontSize: fontSize });
-        }
-        if (wordWrap !== undefined) {
-          editor.updateOptions({ wordWrap: wordWrap ? "on" : "off" });
-        }
+        // Batch all options into a single updateOptions call
+        var opts = {};
+        if (fontFamily) opts.fontFamily = fontFamily;
+        if (fontSize) opts.fontSize = fontSize;
+        if (wordWrap !== undefined) opts.wordWrap = wordWrap ? "on" : "off";
         if (settings) {
           var s = settings;
           if (s.insertSpaces !== undefined) {
-            editor.updateOptions({ insertSpaces: s.insertSpaces, tabSize: s.tabSize || 4 });
+            opts.insertSpaces = s.insertSpaces;
+            opts.tabSize = s.tabSize || 4;
             editor.getModel().updateOptions({ insertSpaces: s.insertSpaces, tabSize: s.tabSize || 4 });
           }
-          if (s.minimap !== undefined)
-            editor.updateOptions({ minimap: { enabled: s.minimap } });
-          if (s.renderWhitespace)
-            editor.updateOptions({ renderWhitespace: s.renderWhitespace });
-          if (s.stickyScroll !== undefined)
-            editor.updateOptions({ stickyScroll: { enabled: s.stickyScroll } });
-          if (s.fontLigatures !== undefined)
-            editor.updateOptions({ fontLigatures: s.fontLigatures });
-          if (s.lineNumbers)
-            editor.updateOptions({ lineNumbers: s.lineNumbers });
+          if (s.minimap !== undefined) opts.minimap = { enabled: s.minimap };
+          if (s.renderWhitespace) opts.renderWhitespace = s.renderWhitespace;
+          if (s.stickyScroll !== undefined) opts.stickyScroll = { enabled: s.stickyScroll };
+          if (s.fontLigatures !== undefined) opts.fontLigatures = s.fontLigatures;
+          if (s.lineNumbers) opts.lineNumbers = s.lineNumbers;
         }
+        // Merge user custom overrides (raw Monaco options) on top
+        if (customOptions && typeof customOptions === "object") {
+          for (var key in customOptions) {
+            if (customOptions.hasOwnProperty(key)) opts[key] = customOptions[key];
+          }
+        }
+        editor.updateOptions(opts);
         // Report detected line ending to Python
         postMessage("init-complete", {
           lineEnding: editor.getModel().getEOL() === "\r\n" ? "crlf" : "lf",
@@ -449,7 +461,7 @@
       if (doFormat) {
         var action = editor.getAction("editor.action.formatDocument");
         if (action) {
-          action.run().then(send);
+          action.run().then(send, send);
           return;
         }
       }
@@ -512,6 +524,11 @@
     setLineNumbers: function (mode) {
       if (!editor) return;
       editor.updateOptions({ lineNumbers: mode });
+    },
+
+    setCustomOptions: function (opts) {
+      if (!editor || !opts || typeof opts !== "object") return;
+      editor.updateOptions(opts);
     },
 
     toggleWrap: function () {

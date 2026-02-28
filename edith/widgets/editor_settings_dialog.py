@@ -1,3 +1,5 @@
+import json
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -99,6 +101,28 @@ class EditorSettingsDialog(Adw.PreferencesDialog):
         save_group.add(self._format_row)
 
         page.add(save_group)
+
+        # ── Advanced ─────────────────────────────────────────────── #
+        advanced = Adw.PreferencesGroup(
+            title="Advanced",
+            description=(
+                "Raw Monaco editor options as JSON. These are merged on top of "
+                "all other settings. See the Monaco Editor API docs for available options."
+            ),
+        )
+
+        overrides_row = Adw.ActionRow(
+            title="Editor Overrides",
+            subtitle="Edit raw Monaco options (JSON)",
+            activatable=True,
+        )
+        overrides_row.add_suffix(
+            Gtk.Image(icon_name="go-next-symbolic")
+        )
+        overrides_row.connect("activated", self._on_overrides_activated)
+        advanced.add(overrides_row)
+
+        page.add(advanced)
         self.add(page)
 
     def _on_setting_changed(self, row, pspec):
@@ -133,3 +157,98 @@ class EditorSettingsDialog(Adw.PreferencesDialog):
         )
 
         self.emit("settings-changed")
+
+    def _on_overrides_activated(self, row):
+        current = ConfigService.get_preference("editor_overrides", {})
+        if not current:
+            text = (
+                '{\n'
+                '  // Any valid Monaco editor option can go here.\n'
+                '  // Examples:\n'
+                '  // "cursorStyle": "line",\n'
+                '  // "wordWrap": "on",\n'
+                '  // "scrollBeyondLastLine": false,\n'
+                '  // "cursorBlinking": "expand",\n'
+                '  // "smoothScrolling": true\n'
+                '}'
+            )
+        else:
+            text = json.dumps(current, indent=2)
+
+        dialog = Adw.Dialog(
+            title="Editor Overrides",
+            content_width=480,
+            content_height=420,
+        )
+
+        toolbar_view = Adw.ToolbarView()
+        header = Adw.HeaderBar(
+            show_start_title_buttons=False,
+            show_end_title_buttons=False,
+        )
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dialog.close())
+        header.pack_start(cancel_btn)
+
+        apply_btn = Gtk.Button(label="Apply", css_classes=["suggested-action"])
+        header.pack_end(apply_btn)
+        toolbar_view.add_top_bar(header)
+
+        # Text editor for JSON
+        text_view = Gtk.TextView(
+            monospace=True,
+            top_margin=12,
+            bottom_margin=12,
+            left_margin=12,
+            right_margin=12,
+        )
+        text_view.get_buffer().set_text(text)
+
+        error_label = Gtk.Label(
+            label="",
+            xalign=0,
+            css_classes=["error"],
+            margin_start=12,
+            margin_end=12,
+            margin_bottom=6,
+            visible=False,
+            wrap=True,
+        )
+
+        scrolled = Gtk.ScrolledWindow(vexpand=True)
+        scrolled.set_child(text_view)
+
+        content_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        content_box.append(scrolled)
+        content_box.append(error_label)
+        toolbar_view.set_content(content_box)
+        dialog.set_child(toolbar_view)
+
+        def on_apply(_):
+            buf = text_view.get_buffer()
+            raw = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False)
+            # Strip JS-style // comments before parsing
+            lines = []
+            for line in raw.split("\n"):
+                stripped = line.lstrip()
+                if stripped.startswith("//"):
+                    continue
+                lines.append(line)
+            cleaned = "\n".join(lines)
+            try:
+                parsed = json.loads(cleaned) if cleaned.strip() else {}
+            except json.JSONDecodeError as e:
+                error_label.set_label(f"Invalid JSON: {e}")
+                error_label.set_visible(True)
+                return
+            if not isinstance(parsed, dict):
+                error_label.set_label("Top level must be a JSON object {}")
+                error_label.set_visible(True)
+                return
+            ConfigService.set_preference("editor_overrides", parsed)
+            dialog.close()
+            self.emit("settings-changed")
+
+        apply_btn.connect("clicked", on_apply)
+        dialog.present(self)

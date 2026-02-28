@@ -191,14 +191,17 @@ class MonacoEditor(Gtk.Box):
             "lineNumbers":  ConfigService.get_preference("editor_line_numbers", "on"),
         }
 
+        custom_options = ConfigService.get_preference("editor_overrides", {})
+
         self._eval_js(
-            "EdithBridge.init({}, {}, {}, {}, {}, true, {})".format(
+            "EdithBridge.init({}, {}, {}, {}, {}, true, {}, {})".format(
                 json.dumps(content),
                 json.dumps(lang_id or "plaintext"),
                 json.dumps(theme_id),
                 json.dumps(font_family or ""),
                 json.dumps(font_size or 14),
                 json.dumps(settings),
+                json.dumps(custom_options),
             )
         )
 
@@ -326,6 +329,9 @@ class MonacoEditor(Gtk.Box):
 
     def set_line_numbers(self, mode: str):
         self._eval_js(f"EdithBridge.setLineNumbers({json.dumps(mode)})")
+
+    def apply_custom_options(self, opts: dict):
+        self._eval_js(f"EdithBridge.setCustomOptions({json.dumps(opts)})")
 
     def get_language_name(self) -> str:
         return get_language_name(self._language_id or "plaintext")

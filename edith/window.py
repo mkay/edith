@@ -159,6 +159,7 @@ class EdithWindow(Adw.ApplicationWindow):
         prefs_section.append("Syntax Theme\u2026", "app.syntax-theme")
         prefs_section.append("Syntax Associations\u2026", "app.syntax-associations")
         prefs_section.append("Editor Font\u2026", "app.editor-font")
+        prefs_section.append("Editor Settings\u2026", "app.editor-settings")
         prefs_section.append("Window Size\u2026", "app.window-size")
         prefs_section.append("Keyboard Shortcuts", "app.shortcuts")
         prefs_section.append("About Edith", "app.about")
@@ -870,6 +871,7 @@ class EdithWindow(Adw.ApplicationWindow):
             "stickyScroll":     ConfigService.get_preference("editor_sticky_scroll", False),
             "fontLigatures":    ConfigService.get_preference("editor_font_ligatures", False),
             "lineNumbers":      ConfigService.get_preference("editor_line_numbers", "on"),
+            "customOptions":    ConfigService.get_preference("editor_overrides", {}),
         }
         self._editor_panel.apply_editor_settings(settings)
         # Refresh the indent display in the status bar too

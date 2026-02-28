@@ -238,21 +238,30 @@ class EditorPanel(Gtk.Box):
 
     def apply_editor_settings(self, settings: dict):
         """Apply global editor settings to all open tabs."""
+        # Build a single Monaco options dict to avoid multiple JS roundtrips
+        opts = {}
+        if "minimap" in settings:
+            opts["minimap"] = {"enabled": settings["minimap"]}
+        if "renderWhitespace" in settings:
+            opts["renderWhitespace"] = settings["renderWhitespace"]
+        if "stickyScroll" in settings:
+            opts["stickyScroll"] = {"enabled": settings["stickyScroll"]}
+        if "fontLigatures" in settings:
+            opts["fontLigatures"] = settings["fontLigatures"]
+        if "lineNumbers" in settings:
+            opts["lineNumbers"] = settings["lineNumbers"]
+        # Merge custom overrides on top
+        if "customOptions" in settings:
+            opts.update(settings["customOptions"])
+
+        if not opts:
+            return
+
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if not isinstance(editor, MonacoEditor):
-                continue
-            if "minimap" in settings:
-                editor.set_minimap(settings["minimap"])
-            if "renderWhitespace" in settings:
-                editor.set_render_whitespace(settings["renderWhitespace"])
-            if "stickyScroll" in settings:
-                editor.set_sticky_scroll(settings["stickyScroll"])
-            if "fontLigatures" in settings:
-                editor.set_font_ligatures(settings["fontLigatures"])
-            if "lineNumbers" in settings:
-                editor.set_line_numbers(settings["lineNumbers"])
+            if isinstance(editor, MonacoEditor):
+                editor.apply_custom_options(opts)
 
     def set_current_line_ending(self, eol: str):
         """Change the line ending of the currently active tab."""
