@@ -5,3 +5,4 @@ src/
 __pycache__/
 edith/data/monaco/vs/
 edith/data/monaco/emmet.js
+*.log

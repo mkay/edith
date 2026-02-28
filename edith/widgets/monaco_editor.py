@@ -49,10 +49,17 @@ class MonacoEditor(Gtk.Box):
         settings.set_allow_file_access_from_file_urls(True)
         settings.set_allow_universal_access_from_file_urls(True)
         settings.set_javascript_can_access_clipboard(True)
+        # Disable GPU compositing to avoid a WebKit/Skia bug where GrResourceCache
+        # corrupts GPU texture state, causing SIGILL crashes via ud2 traps.
+        # (GrResourceCache::notifyARefCntReachedZero / refAndMakeResourceMRU)
+        settings.set_hardware_acceleration_policy(
+            WebKit.HardwareAccelerationPolicy.NEVER
+        )
 
         ucm = self._webview.get_user_content_manager()
         ucm.register_script_message_handler("edith")
         ucm.connect("script-message-received::edith", self._on_script_message)
+        self._webview.connect("web-process-terminated", self._on_web_process_terminated)
 
         # Intercept dead-key events before GTK's IM can swallow them.
         # The grave/backtick key is mapped as dead_grave on many keyboard
@@ -188,6 +195,15 @@ class MonacoEditor(Gtk.Box):
 
         elif msg_type == "close-requested":
             self.activate_action("win.close-tab", None)
+
+    def _on_web_process_terminated(self, webview, reason):
+        """WebKit renderer crashed — reset state and reload from disk."""
+        self._ready = False
+        self._pending_js = []
+        self._pending_save_callback = None
+        self._load_file_and_init()  # queues init JS into _pending_js
+        monaco_dir = Path(__file__).parent.parent / "data" / "monaco"
+        self._webview.load_uri((monaco_dir / "editor.html").as_uri())
 
     # ------------------------------------------------------------------ #
     #  File loading & init                                                 #
