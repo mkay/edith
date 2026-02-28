@@ -531,6 +531,11 @@
       editor.updateOptions(opts);
     },
 
+    typeText: function (text) {
+      if (!editor) return;
+      editor.trigger("keyboard", "type", { text: text });
+    },
+
     toggleWrap: function () {
       if (!editor) return;
       var current = editor.getOption(monaco.editor.EditorOption.wordWrap);

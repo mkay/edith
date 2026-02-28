@@ -54,6 +54,14 @@ class MonacoEditor(Gtk.Box):
         ucm.register_script_message_handler("edith")
         ucm.connect("script-message-received::edith", self._on_script_message)
 
+        # Intercept dead-key events before GTK's IM can swallow them.
+        # The grave/backtick key is mapped as dead_grave on many keyboard
+        # layouts, so it never reaches the WebView normally.
+        dead_key_ctrl = Gtk.EventControllerKey()
+        dead_key_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        dead_key_ctrl.connect("key-pressed", self._on_webview_key_capture)
+        self._webview.add_controller(dead_key_ctrl)
+
         monaco_dir = Path(__file__).parent.parent / "data" / "monaco"
         self._webview.load_uri((monaco_dir / "editor.html").as_uri())
 
@@ -108,6 +116,21 @@ class MonacoEditor(Gtk.Box):
     # ------------------------------------------------------------------ #
     #  JS communication                                                    #
     # ------------------------------------------------------------------ #
+
+    def _on_webview_key_capture(self, ctrl, keyval, keycode, state):
+        from gi.repository import Gdk
+        # Grave/dead_grave: commonly treated as a dead key by GTK's IM.
+        # Intercept here and inject directly into Monaco so it isn't swallowed.
+        if keyval in (Gdk.KEY_grave, Gdk.KEY_dead_grave):
+            no_mod = not (state & (
+                Gdk.ModifierType.CONTROL_MASK |
+                Gdk.ModifierType.ALT_MASK |
+                Gdk.ModifierType.SUPER_MASK
+            ))
+            if no_mod:
+                self._eval_js('EdithBridge.typeText("`")')
+                return True
+        return False
 
     def _eval_js(self, script):
         if not self._ready:
