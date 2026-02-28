@@ -20,6 +20,8 @@ class MonacoEditor(Gtk.Box):
         "modified-changed":    (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
         "save-requested":      (GObject.SignalFlags.RUN_FIRST, None, ()),
         "line-ending-detected":(GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "cursor-changed":      (GObject.SignalFlags.RUN_FIRST, None, (int, int)),
+        "wrap-changed":        (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
     }
 
     def __init__(self, open_file: OpenFile):
@@ -30,6 +32,9 @@ class MonacoEditor(Gtk.Box):
         self._pending_js = []
         self._language_id = None
         self._line_ending = "lf"
+        self._word_wrap = True
+        self._cursor_line = 1
+        self._cursor_col = 1
         self._pending_save_callback = None
         self._is_svg = open_file.filename.lower().endswith(".svg")
 
@@ -169,7 +174,18 @@ class MonacoEditor(Gtk.Box):
 
         elif msg_type == "init-complete":
             self._line_ending = data.get("lineEnding", "lf")
+            self._word_wrap = data.get("wordWrap", True)
             self.emit("line-ending-detected", self._line_ending)
+            self.emit("wrap-changed", self._word_wrap)
+
+        elif msg_type == "cursor-changed":
+            self._cursor_line = data.get("line", 1)
+            self._cursor_col = data.get("column", 1)
+            self.emit("cursor-changed", self._cursor_line, self._cursor_col)
+
+        elif msg_type == "wrap-changed":
+            self._word_wrap = data.get("wordWrap", True)
+            self.emit("wrap-changed", self._word_wrap)
 
         elif msg_type == "save-content":
             content = data.get("content", "")
@@ -385,3 +401,9 @@ class MonacoEditor(Gtk.Box):
 
     def get_line_ending(self) -> str:
         return self._line_ending
+
+    def get_word_wrap(self) -> bool:
+        return self._word_wrap
+
+    def get_cursor_position(self) -> tuple[int, int]:
+        return self._cursor_line, self._cursor_col

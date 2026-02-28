@@ -12,6 +12,16 @@ from edith.widgets.file_row import FileRow
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog
 
 
+def _path_display(path: str) -> str:
+    """Format path for the sidebar label: last 3 segments, '…' prefix if deeper."""
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return "/"
+    if len(parts) <= 3:
+        return "/ " + " / ".join(parts)
+    return "… / " + " / ".join(parts[-3:])
+
+
 class FileBrowser(Gtk.Box):
     """Remote directory tree browser sidebar widget."""
 
@@ -585,8 +595,7 @@ class FileBrowser(Gtk.Box):
                 self._history_pos += 1
 
         self._current_path = path
-        display = path.rstrip("/").rsplit("/", 1)[-1] or "/"
-        self._path_label.set_label(display)
+        self._path_label.set_label(_path_display(path))
         self._path_label.set_tooltip_text(path)
         self._up_btn.set_sensitive(path != "/")
         self.emit("path-changed", path)

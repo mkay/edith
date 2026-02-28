@@ -15,6 +15,8 @@ class StatusBar(Gtk.Box):
         "language-selected":   (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "indent-changed":      (GObject.SignalFlags.RUN_FIRST, None, (bool, int)),
         "line-ending-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "cursor-clicked":      (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "wrap-toggled":        (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
     def __init__(self):
@@ -68,6 +70,26 @@ class StatusBar(Gtk.Box):
         self.append(self._progress_bar)
 
         # ── File-info buttons (hidden when no file is open) ──────────── #
+        self._cursor_btn = Gtk.Button(
+            label="Ln 1, Col 1",
+            css_classes=["flat"],
+            visible=False,
+            valign=Gtk.Align.CENTER,
+            tooltip_text="Go to line",
+        )
+        self._cursor_btn.connect("clicked", lambda _: self.emit("cursor-clicked"))
+        self.append(self._cursor_btn)
+
+        self._wrap_btn = Gtk.Button(
+            label="Wrap",
+            css_classes=["flat"],
+            visible=False,
+            valign=Gtk.Align.CENTER,
+            tooltip_text="Toggle word wrap (Ctrl+Shift+W)",
+        )
+        self._wrap_btn.connect("clicked", lambda _: self.emit("wrap-toggled"))
+        self.append(self._wrap_btn)
+
         self._lang_search_entry = None  # set by _build_language_popover
         self._syntax_btn = Gtk.MenuButton(
             popover=self._build_language_popover(),
@@ -334,6 +356,14 @@ class StatusBar(Gtk.Box):
         else:
             self._transfer_label.set_visible(False)
 
+    def set_cursor_position(self, line: int, col: int):
+        self._cursor_btn.set_label(f"Ln {line}, Col {col}")
+        self._cursor_btn.set_visible(True)
+
+    def set_word_wrap(self, enabled: bool):
+        self._wrap_btn.set_label("Wrap" if enabled else "No Wrap")
+        self._wrap_btn.set_visible(True)
+
     def set_language_name(self, name: str):
         self._syntax_btn.set_label(name)
         self._syntax_btn.set_visible(True)
@@ -354,6 +384,8 @@ class StatusBar(Gtk.Box):
 
     def hide_file_info(self):
         """Hide all file-info buttons (no file open)."""
+        self._cursor_btn.set_visible(False)
+        self._wrap_btn.set_visible(False)
         self._syntax_btn.set_visible(False)
         self._indent_btn.set_visible(False)
         self._eol_btn.set_visible(False)

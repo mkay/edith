@@ -342,6 +342,14 @@
       "editorTextFocus && !editorHasSelection && !suggestWidgetVisible"
     );
 
+    // Report cursor position changes to Python
+    editor.onDidChangeCursorPosition(function (e) {
+      postMessage("cursor-changed", {
+        line: e.position.lineNumber,
+        column: e.position.column,
+      });
+    });
+
     // Track modification state
     editor.getModel().onDidChangeContent(function () {
       if (loadingContent) return;
@@ -428,6 +436,7 @@
         // Report detected line ending to Python
         postMessage("init-complete", {
           lineEnding: editor.getModel().getEOL() === "\r\n" ? "crlf" : "lf",
+          wordWrap: editor.getOption(monaco.editor.EditorOption.wordWrap) === "on",
         });
       }
       if (ready) run();
@@ -539,7 +548,9 @@
     toggleWrap: function () {
       if (!editor) return;
       var current = editor.getOption(monaco.editor.EditorOption.wordWrap);
-      editor.updateOptions({ wordWrap: current === "on" ? "off" : "on" });
+      var next = current === "on" ? "off" : "on";
+      editor.updateOptions({ wordWrap: next });
+      postMessage("wrap-changed", { wordWrap: next === "on" });
     },
 
     showFind: function () {

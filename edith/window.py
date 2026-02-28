@@ -229,6 +229,8 @@ class EdithWindow(Adw.ApplicationWindow):
         self._status_bar.connect("language-selected", self._on_language_selected)
         self._status_bar.connect("indent-changed", self._on_indent_changed)
         self._status_bar.connect("line-ending-changed", self._on_line_ending_changed)
+        self._status_bar.connect("cursor-clicked", lambda _: self._on_goto_line(None, None))
+        self._status_bar.connect("wrap-toggled", self._on_status_wrap_toggled)
         self._status_bar.hide_connection_status()
 
         main_toolbar = Adw.ToolbarView()
@@ -651,6 +653,13 @@ class EdithWindow(Adw.ApplicationWindow):
             tab_size = ConfigService.get_preference("editor_tab_size", 4)
             self._status_bar.set_indent(insert_spaces, tab_size)
             self._status_bar.set_line_ending(editor.get_line_ending())
+            self._status_bar.set_cursor_position(*editor.get_cursor_position())
+            self._status_bar.set_word_wrap(editor.get_word_wrap())
+            # Connect per-editor signals once (flag prevents re-connecting on tab switch)
+            if not getattr(editor, "_window_signals_connected", False):
+                editor.connect("cursor-changed", self._on_editor_cursor_changed)
+                editor.connect("wrap-changed", self._on_editor_wrap_changed)
+                editor._window_signals_connected = True
         else:
             self._status_bar.hide_file_info()
 
@@ -668,6 +677,19 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_line_ending_changed(self, status_bar, eol):
         self._editor_panel.set_current_line_ending(eol)
+
+    def _on_status_wrap_toggled(self, status_bar):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.toggle_wrap()
+
+    def _on_editor_cursor_changed(self, editor, line, col):
+        if editor is self._editor_panel.get_current_editor():
+            self._status_bar.set_cursor_position(line, col)
+
+    def _on_editor_wrap_changed(self, editor, enabled):
+        if editor is self._editor_panel.get_current_editor():
+            self._status_bar.set_word_wrap(enabled)
 
     def _on_disconnected(self):
         """Called after disconnection."""
