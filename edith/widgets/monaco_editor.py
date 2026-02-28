@@ -119,17 +119,22 @@ class MonacoEditor(Gtk.Box):
 
     def _on_webview_key_capture(self, ctrl, keyval, keycode, state):
         from gi.repository import Gdk
+        ctrl_held = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        no_alt_super = not (state & (Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK))
+
         # Grave/dead_grave: commonly treated as a dead key by GTK's IM.
         # Intercept here and inject directly into Monaco so it isn't swallowed.
         if keyval in (Gdk.KEY_grave, Gdk.KEY_dead_grave):
-            no_mod = not (state & (
-                Gdk.ModifierType.CONTROL_MASK |
-                Gdk.ModifierType.ALT_MASK |
-                Gdk.ModifierType.SUPER_MASK
-            ))
-            if no_mod:
+            if not ctrl_held and no_alt_super:
                 self._eval_js('EdithBridge.typeText("`")')
                 return True
+
+        # Ctrl+/ or Ctrl+Shift+7 (QWERTZ: Shift+7 = /) → toggle line comment.
+        # GTK swallows this before it reaches the WebView, so intercept here.
+        if keyval == Gdk.KEY_slash and ctrl_held and no_alt_super:
+            self._eval_js("EdithBridge.toggleLineComment()")
+            return True
+
         return False
 
     def _eval_js(self, script):

@@ -91,12 +91,9 @@ class FileBrowser(Gtk.Box):
         self._list_box = Gtk.ListBox(
             selection_mode=Gtk.SelectionMode.SINGLE,
             css_classes=["navigation-sidebar"],
+            activate_on_single_click=False,
         )
         self._list_box.connect("row-activated", self._on_row_activated)
-
-        dbl_click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
-        dbl_click.connect("pressed", self._on_list_double_click)
-        self._list_box.add_controller(dbl_click)
 
         sw.set_child(self._list_box)
         self.append(sw)
@@ -696,23 +693,18 @@ class FileBrowser(Gtk.Box):
         self._list_box.append(error_label)
 
     def _on_row_activated(self, list_box, row):
+        self._activate_row(row)
+
+    def _activate_row(self, row):
         if getattr(row, "is_parent_dir", False):
             self._on_go_up(None)
             return
-
         child = row.get_child()
-        if isinstance(child, FileRow) and child.file_info.is_dir:
-            self.load_directory(child.file_info.path)
-
-    def _on_list_double_click(self, gesture, n_press, x, y):
-        if n_press != 2:
-            return
-        row = self._list_box.get_row_at_y(int(y))
-        if row is None:
-            return
-        child = row.get_child()
-        if isinstance(child, FileRow) and not child.file_info.is_dir:
-            self.emit("file-activated", child.file_info.path)
+        if isinstance(child, FileRow):
+            if child.file_info.is_dir:
+                self.load_directory(child.file_info.path)
+            else:
+                self.emit("file-activated", child.file_info.path)
 
     def _on_go_up(self, btn):
         if self._current_path == "/":

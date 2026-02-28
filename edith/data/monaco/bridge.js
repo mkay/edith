@@ -578,5 +578,10 @@
       if (!editor) return false;
       return editor.getModel().getAlternativeVersionId() !== cleanVersionId;
     },
+
+    toggleLineComment: function () {
+      if (!editor) return;
+      editor.getAction("editor.action.commentLine").run();
+    },
   };
 })();

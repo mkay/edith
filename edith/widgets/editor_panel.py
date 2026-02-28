@@ -4,7 +4,7 @@ import os
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk, GObject
+from gi.repository import Adw, Gdk, Gio, Gtk, GObject
 
 from edith.models.open_file import OpenFile
 from edith.widgets.image_viewer import ImageViewer, is_image_file
@@ -42,6 +42,7 @@ class EditorPanel(Gtk.Box):
         """Context menu for tab right-click, using TabView's built-in support."""
         menu = Gio.Menu()
         menu.append("Show in Sidebar", "tab.show-in-sidebar")
+        menu.append("Copy Path", "tab.copy-path")
 
         self._tab_view.set_menu_model(menu)
         self._tab_view.connect("setup-menu", self._on_tab_setup_menu)
@@ -52,12 +53,27 @@ class EditorPanel(Gtk.Box):
         show_action.connect("activate", self._on_show_in_sidebar)
         group.add_action(show_action)
 
+        copy_path_action = Gio.SimpleAction.new("copy-path", None)
+        copy_path_action.connect("activate", self._on_copy_path)
+        group.add_action(copy_path_action)
+
         self.insert_action_group("tab", group)
 
         self._menu_page = None
 
     def _on_tab_setup_menu(self, tab_view, page):
         self._menu_page = page
+
+    def _on_copy_path(self, action, param):
+        page = self._menu_page
+        if not page:
+            return
+
+        widget = page.get_child()
+        open_file = getattr(widget, "open_file", None)
+        if open_file:
+            clipboard = Gdk.Display.get_default().get_clipboard()
+            clipboard.set(open_file.remote_path)
 
     def _on_show_in_sidebar(self, action, param):
         page = self._menu_page
