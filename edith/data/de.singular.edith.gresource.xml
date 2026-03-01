@@ -18,7 +18,7 @@
     <file alias="edith-parent-dir-symbolic.svg">data/icons/hicolor/scalable/actions/edith-parent-dir-symbolic.svg</file>
     <file alias="edith-upload-symbolic.svg">data/icons/hicolor/scalable/actions/edith-upload-symbolic.svg</file>
     <file alias="edith-refresh-symbolic.svg">data/icons/hicolor/scalable/actions/edith-refresh-symbolic.svg</file>
-    <file alias="edith-file-symbolic.svg">data/icons/hicolor/scalable/actions/edith-file-symbolic.svg</file>
+    <file alias="edith-file-unknown.svg">data/icons/hicolor/scalable/actions/edith-file-unknown.svg</file>
     <file alias="edith-transfers-symbolic.svg">data/icons/hicolor/scalable/actions/edith-transfers-symbolic.svg</file>
     <file alias="edith-file-python.svg">data/icons/hicolor/scalable/actions/edith-file-python.svg</file>
     <file alias="edith-file-javascript.svg">data/icons/hicolor/scalable/actions/edith-file-javascript.svg</file>

@@ -134,7 +134,7 @@ class RemoteFileInfo:
         if self.name.startswith("."):
             return "edith-file-dotfile"
 
-        return "edith-file-symbolic"
+        return "edith-file-unknown"
 
     def human_size(self) -> str:
         if self.is_dir:
