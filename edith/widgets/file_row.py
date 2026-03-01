@@ -23,7 +23,7 @@ class FileRow(Gtk.Box):
         self.file_info = file_info
         self.set_tooltip_text(file_info.path)
 
-        icon = Gtk.Image(icon_name=file_info.icon_name)
+        icon = Gtk.Image(icon_name=file_info.icon_name, pixel_size=20)
         self.append(icon)
 
         name_label = Gtk.Label(

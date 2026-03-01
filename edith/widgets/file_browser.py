@@ -39,6 +39,7 @@ class FileBrowser(Gtk.Box):
         self._pending_reveal = None  # filename to select after loading
         self._history = []
         self._history_pos = -1
+        self._show_hidden = False
 
         # Path bar — vertical: button row on top, path label below
         self._path_bar = Gtk.Box(
@@ -75,6 +76,14 @@ class FileBrowser(Gtk.Box):
         )
         refresh_btn.connect("clicked", lambda _: self.load_directory(self._current_path))
         _btn_row.append(refresh_btn)
+
+        self._hidden_btn = Gtk.ToggleButton(
+            icon_name="view-reveal-symbolic",
+            tooltip_text="Show Hidden Files",
+            css_classes=["flat", "circular"],
+        )
+        self._hidden_btn.connect("toggled", self._on_show_hidden_toggled)
+        _btn_row.append(self._hidden_btn)
 
         self._path_bar.append(_btn_row)
 
@@ -608,11 +617,13 @@ class FileBrowser(Gtk.Box):
 
         from edith.services.async_worker import run_async
 
+        show_hidden = self._show_hidden
+
         def do_list():
             entries = client.listdir_attr(path)
             files = []
             for attr in entries:
-                if attr.filename.startswith("."):
+                if not show_hidden and attr.filename.startswith("."):
                     continue
                 files.append(RemoteFileInfo.from_sftp_attr(attr, path))
             # Sort: directories first, then alphabetical
@@ -714,6 +725,10 @@ class FileBrowser(Gtk.Box):
                 self.load_directory(child.file_info.path)
             else:
                 self.emit("file-activated", child.file_info.path)
+
+    def _on_show_hidden_toggled(self, btn):
+        self._show_hidden = btn.get_active()
+        self.load_directory(self._current_path)
 
     def _on_go_up(self, btn):
         if self._current_path == "/":

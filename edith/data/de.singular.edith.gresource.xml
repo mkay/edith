@@ -20,5 +20,36 @@
     <file alias="edith-refresh-symbolic.svg">data/icons/hicolor/scalable/actions/edith-refresh-symbolic.svg</file>
     <file alias="edith-file-symbolic.svg">data/icons/hicolor/scalable/actions/edith-file-symbolic.svg</file>
     <file alias="edith-transfers-symbolic.svg">data/icons/hicolor/scalable/actions/edith-transfers-symbolic.svg</file>
+    <file alias="edith-file-python.svg">data/icons/hicolor/scalable/actions/edith-file-python.svg</file>
+    <file alias="edith-file-javascript.svg">data/icons/hicolor/scalable/actions/edith-file-javascript.svg</file>
+    <file alias="edith-file-typescript.svg">data/icons/hicolor/scalable/actions/edith-file-typescript.svg</file>
+    <file alias="edith-file-html.svg">data/icons/hicolor/scalable/actions/edith-file-html.svg</file>
+    <file alias="edith-file-css.svg">data/icons/hicolor/scalable/actions/edith-file-css.svg</file>
+    <file alias="edith-file-json.svg">data/icons/hicolor/scalable/actions/edith-file-json.svg</file>
+    <file alias="edith-file-yaml.svg">data/icons/hicolor/scalable/actions/edith-file-yaml.svg</file>
+    <file alias="edith-file-markdown.svg">data/icons/hicolor/scalable/actions/edith-file-markdown.svg</file>
+    <file alias="edith-file-shell.svg">data/icons/hicolor/scalable/actions/edith-file-shell.svg</file>
+    <file alias="edith-file-sql.svg">data/icons/hicolor/scalable/actions/edith-file-sql.svg</file>
+    <file alias="edith-file-xml.svg">data/icons/hicolor/scalable/actions/edith-file-xml.svg</file>
+    <file alias="edith-file-text.svg">data/icons/hicolor/scalable/actions/edith-file-text.svg</file>
+    <file alias="edith-file-dockerfile.svg">data/icons/hicolor/scalable/actions/edith-file-dockerfile.svg</file>
+    <file alias="edith-file-php.svg">data/icons/hicolor/scalable/actions/edith-file-php.svg</file>
+    <file alias="edith-file-ruby.svg">data/icons/hicolor/scalable/actions/edith-file-ruby.svg</file>
+    <file alias="edith-file-go.svg">data/icons/hicolor/scalable/actions/edith-file-go.svg</file>
+    <file alias="edith-file-rust.svg">data/icons/hicolor/scalable/actions/edith-file-rust.svg</file>
+    <file alias="edith-file-java.svg">data/icons/hicolor/scalable/actions/edith-file-java.svg</file>
+    <file alias="edith-file-c.svg">data/icons/hicolor/scalable/actions/edith-file-c.svg</file>
+    <file alias="edith-file-cpp.svg">data/icons/hicolor/scalable/actions/edith-file-cpp.svg</file>
+    <file alias="edith-file-scss.svg">data/icons/hicolor/scalable/actions/edith-file-scss.svg</file>
+    <file alias="edith-file-less.svg">data/icons/hicolor/scalable/actions/edith-file-less.svg</file>
+    <file alias="edith-file-ini.svg">data/icons/hicolor/scalable/actions/edith-file-ini.svg</file>
+    <file alias="edith-file-terraform.svg">data/icons/hicolor/scalable/actions/edith-file-terraform.svg</file>
+    <file alias="edith-file-graphql.svg">data/icons/hicolor/scalable/actions/edith-file-graphql.svg</file>
+    <file alias="edith-file-toml.svg">data/icons/hicolor/scalable/actions/edith-file-toml.svg</file>
+    <file alias="edith-file-env.svg">data/icons/hicolor/scalable/actions/edith-file-env.svg</file>
+    <file alias="edith-file-image.svg">data/icons/hicolor/scalable/actions/edith-file-image.svg</file>
+    <file alias="edith-file-archive.svg">data/icons/hicolor/scalable/actions/edith-file-archive.svg</file>
+    <file alias="edith-file-svg.svg">data/icons/hicolor/scalable/actions/edith-file-svg.svg</file>
+    <file alias="edith-file-dotfile.svg">data/icons/hicolor/scalable/actions/edith-file-dotfile.svg</file>
   </gresource>
 </gresources>
