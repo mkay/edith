@@ -26,8 +26,9 @@ class FileBrowser(Gtk.Box):
     """Remote directory tree browser sidebar widget."""
 
     __gsignals__ = {
-        "file-activated": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
-        "path-changed": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "file-activated":  (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "path-changed":    (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+        "pin-requested":   (GObject.SignalFlags.RUN_FIRST, None, (str, bool)),
     }
 
     def __init__(self):
@@ -101,6 +102,17 @@ class FileBrowser(Gtk.Box):
         self.append(self._path_bar)
         self.append(Gtk.Separator())
 
+        # Filter entry
+        self._filter_entry = Gtk.SearchEntry(
+            placeholder_text="Filter files\u2026",
+            margin_start=8,
+            margin_end=8,
+            margin_top=4,
+            margin_bottom=4,
+        )
+        self._filter_entry.connect("search-changed", self._on_filter_changed)
+        self.append(self._filter_entry)
+
         # File list
         sw = Gtk.ScrolledWindow(
             vexpand=True,
@@ -113,6 +125,7 @@ class FileBrowser(Gtk.Box):
             activate_on_single_click=False,
         )
         self._list_box.connect("row-activated", self._on_row_activated)
+        self._list_box.set_filter_func(self._filter_row)
 
         sw.set_child(self._list_box)
         self.append(sw)
@@ -145,13 +158,17 @@ class FileBrowser(Gtk.Box):
         section_new.append("Download", "file.download")
         menu.append_section(None, section_new)
 
+        actions_submenu = Gio.Menu()
+        actions_submenu.append("Duplicate", "file.duplicate")
+        actions_submenu.append("Move to\u2026", "file.move-to")
+        actions_submenu.append("Copy to\u2026", "file.copy-to")
+        actions_submenu.append("Rename\u2026", "file.rename")
+
         section_actions = Gio.Menu()
-        section_actions.append("Duplicate", "file.duplicate")
-        section_actions.append("Move to\u2026", "file.move-to")
-        section_actions.append("Copy to\u2026", "file.copy-to")
-        section_actions.append("Rename\u2026", "file.rename")
+        section_actions.append_submenu("Actions", actions_submenu)
+        section_actions.append("Pin", "file.pin")
         section_actions.append("Copy Path", "file.copy-path")
-        section_actions.append("Change Permissions\u2026", "file.chmod")
+        section_actions.append("Permissions", "file.chmod")
         section_actions.append("Properties", "file.info")
         menu.append_section(None, section_actions)
 
@@ -222,6 +239,11 @@ class FileBrowser(Gtk.Box):
         self._download_action.set_enabled(False)
         group.add_action(self._download_action)
 
+        self._pin_action = Gio.SimpleAction.new("pin", None)
+        self._pin_action.connect("activate", self._on_pin)
+        self._pin_action.set_enabled(False)
+        group.add_action(self._pin_action)
+
         refresh_action = Gio.SimpleAction.new("refresh", None)
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
@@ -254,6 +276,7 @@ class FileBrowser(Gtk.Box):
         self._copy_path_action.set_enabled(has_row)
         self._move_to_action.set_enabled(has_row)
         self._copy_to_action.set_enabled(has_row)
+        self._pin_action.set_enabled(has_row)
 
         file_info = self._get_context_file_info()
         self._download_action.set_enabled(
@@ -725,6 +748,25 @@ class FileBrowser(Gtk.Box):
                 self.load_directory(child.file_info.path)
             else:
                 self.emit("file-activated", child.file_info.path)
+
+    def _on_pin(self, action, param):
+        fi = self._get_context_file_info()
+        if fi:
+            self.emit("pin-requested", fi.path, fi.is_dir)
+
+    def _on_filter_changed(self, entry):
+        self._list_box.invalidate_filter()
+
+    def _filter_row(self, row):
+        query = self._filter_entry.get_text().strip().lower()
+        if not query:
+            return True
+        if getattr(row, "is_parent_dir", False):
+            return True
+        child = row.get_child()
+        if isinstance(child, FileRow):
+            return query in child.file_info.name.lower()
+        return True  # always show empty/error labels
 
     def _on_show_hidden_toggled(self, btn):
         self._show_hidden = btn.get_active()

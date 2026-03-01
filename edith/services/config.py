@@ -120,6 +120,63 @@ class ConfigService:
                 break
         ConfigService.save_servers(servers)
 
+    # --- Recents ---
+
+    RECENTS_MAX = 5
+
+    @staticmethod
+    def get_recents(server_id: str) -> list:
+        data = ConfigService._load_raw()
+        return data.get("recents", {}).get(server_id, [])
+
+    @staticmethod
+    def push_recent(server_id: str, path: str):
+        data = ConfigService._load_raw()
+        recents = data.get("recents", {})
+        paths = [p for p in recents.get(server_id, []) if p != path]
+        paths.insert(0, path)
+        recents[server_id] = paths[:ConfigService.RECENTS_MAX]
+        data["recents"] = recents
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+
+    @staticmethod
+    def delete_recent(server_id: str, path: str):
+        data = ConfigService._load_raw()
+        recents = data.get("recents", {})
+        recents[server_id] = [p for p in recents.get(server_id, []) if p != path]
+        data["recents"] = recents
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+
+    # --- Pins ---
+
+    @staticmethod
+    def get_pins(server_id: str) -> list:
+        data = ConfigService._load_raw()
+        return data.get("pins", {}).get(server_id, [])
+
+    @staticmethod
+    def add_pin(server_id: str, path: str, is_dir: bool):
+        data = ConfigService._load_raw()
+        pins = data.get("pins", {})
+        entries = pins.get(server_id, [])
+        if not any(e["path"] == path for e in entries):
+            entries.append({"path": path, "is_dir": is_dir})
+        pins[server_id] = entries
+        data["pins"] = pins
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+
+    @staticmethod
+    def delete_pin(server_id: str, path: str):
+        data = ConfigService._load_raw()
+        pins = data.get("pins", {})
+        pins[server_id] = [e for e in pins.get(server_id, []) if e["path"] != path]
+        data["pins"] = pins
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+
     # --- Preferences ---
 
     @staticmethod

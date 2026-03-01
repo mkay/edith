@@ -4,7 +4,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, GLib, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from edith.services.config import ConfigService
 from edith.widgets.path_bar import PathBar
@@ -70,6 +70,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._file_browser = FileBrowser()
         self._file_browser.set_window(self)
         self._file_browser.connect("file-activated", self._on_file_activated)
+        self._file_browser.connect("pin-requested", self._on_pin_requested)
         self._file_browser.connect("path-changed", self._on_path_changed)
         self._sidebar_stack.add_named(self._file_browser, "file_browser")
 
@@ -81,7 +82,40 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sidebar_toolbar.add_top_bar(sidebar_header)
         self._sidebar_toolbar.set_content(self._sidebar_stack)
 
-        # Sidebar status bar (connection indicator at the sidebar bottom)
+        # Sidebar bottom bar: pinned section (hidden until connected) + status row
+        sidebar_bottom = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+
+        # Pins list
+        self._pins_lb = Gtk.ListBox(
+            selection_mode=Gtk.SelectionMode.NONE,
+            css_classes=["navigation-sidebar"],
+        )
+        self._pins_lb.connect("row-activated", self._on_pin_activated)
+
+        pins_menu = Gio.Menu()
+        pins_menu.append("Unpin", "pins.unpin")
+        self._pins_popover = Gtk.PopoverMenu(menu_model=pins_menu, has_arrow=False)
+        self._pins_popover.set_parent(self._pins_lb)
+        self._pins_context_path = None
+
+        pins_group = Gio.SimpleActionGroup()
+        unpin_action = Gio.SimpleAction.new("unpin", None)
+        unpin_action.connect("activate", self._on_pin_remove)
+        pins_group.add_action(unpin_action)
+        self._pins_lb.insert_action_group("pins", pins_group)
+
+        pins_gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        pins_gesture.connect("pressed", self._on_pins_right_click)
+        self._pins_lb.add_controller(pins_gesture)
+
+        self._pins_section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, visible=False)
+        self._pins_section.append(self._pins_lb)
+        sidebar_bottom.append(self._pins_section)
+
+        self._pins_separator = Gtk.Separator(visible=False)
+        sidebar_bottom.append(self._pins_separator)
+
+        # Connection status row
         sidebar_status_bar = Gtk.Box(
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=6,
@@ -102,7 +136,9 @@ class EdithWindow(Adw.ApplicationWindow):
             css_classes=["dim-label", "caption"],
         )
         sidebar_status_bar.append(self._sidebar_status_label)
-        self._sidebar_toolbar.add_bottom_bar(sidebar_status_bar)
+        sidebar_bottom.append(sidebar_status_bar)
+
+        self._sidebar_toolbar.add_bottom_bar(sidebar_bottom)
 
         # === Main ToolbarView (no window controls — they live in the sidebar header) ===
         self._main_header = Adw.HeaderBar(
@@ -639,10 +675,137 @@ class EdithWindow(Adw.ApplicationWindow):
 
         # Show connected placeholder until the user opens a file
         self._connected_page.set_title(f"Connected to {server_info.display_name}")
+        self._rebuild_recents_child(server_info)
+        self._rebuild_pins_bar(server_info)
         self._content_stack.set_visible_child_name("connected")
 
         toast = Adw.Toast(title=f"Connected to {server_info.display_name}")
         self._toast_overlay.add_toast(toast)
+
+    def _rebuild_recents_child(self, server_info):
+        recents = ConfigService.get_recents(server_info.id)
+        if not recents:
+            self._connected_page.set_child(None)
+            self._connected_page.set_description("Open a file from the sidebar to start editing.")
+            return
+
+        self._connected_page.set_description(None)
+
+        lb = Gtk.ListBox(
+            css_classes=["boxed-list"],
+            selection_mode=Gtk.SelectionMode.NONE,
+        )
+        for path in recents:
+            row = Adw.ActionRow(title=os.path.basename(path), subtitle=path, activatable=True)
+            row._recent_path = path
+            row.connect("activated", self._on_recent_activated)
+            lb.append(row)
+
+        # Right-click context menu
+        menu = Gio.Menu()
+        menu.append("Remove from List", "recents.remove")
+        popover = Gtk.PopoverMenu(menu_model=menu, has_arrow=False)
+        popover.set_parent(lb)
+        self._recents_context_path = None
+
+        group = Gio.SimpleActionGroup()
+        remove_action = Gio.SimpleAction.new("remove", None)
+        remove_action.connect("activate", self._on_recent_remove)
+        group.add_action(remove_action)
+        lb.insert_action_group("recents", group)
+
+        gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        gesture.connect("pressed", self._on_recents_right_click, lb, popover)
+        lb.add_controller(gesture)
+
+        clamp = Adw.Clamp(maximum_size=480, margin_top=4, margin_bottom=4)
+        clamp.set_child(lb)
+        self._connected_page.set_child(clamp)
+
+    def _on_recent_activated(self, row):
+        self.open_remote_file(row._recent_path)
+
+    def _on_recents_right_click(self, gesture, n_press, x, y, lb, popover):
+        row = lb.get_row_at_y(int(y))
+        if row is None or not hasattr(row, "_recent_path"):
+            return
+        self._recents_context_path = row._recent_path
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+        popover.set_pointing_to(rect)
+        popover.popup()
+
+    def _on_recent_remove(self, action, param):
+        if self._recents_context_path and self._connected_server:
+            ConfigService.delete_recent(self._connected_server.id, self._recents_context_path)
+            self._recents_context_path = None
+            self._rebuild_recents_child(self._connected_server)
+
+    def _on_pin_requested(self, browser, path, is_dir):
+        if self._connected_server:
+            ConfigService.add_pin(self._connected_server.id, path, is_dir)
+            self._rebuild_pins_bar(self._connected_server)
+
+    def _rebuild_pins_bar(self, server_info):
+        from edith.models.remote_file import RemoteFileInfo
+        while (row := self._pins_lb.get_row_at_index(0)) is not None:
+            self._pins_lb.remove(row)
+
+        pins = ConfigService.get_pins(server_info.id)
+        if not pins:
+            self._pins_section.set_visible(False)
+            self._pins_separator.set_visible(False)
+            return
+
+        for entry in pins:
+            path = entry["path"]
+            is_dir = entry["is_dir"]
+            name = os.path.basename(path.rstrip("/")) or path
+            fi = RemoteFileInfo(name=name, path=path, is_dir=is_dir)
+
+            box = Gtk.Box(
+                orientation=Gtk.Orientation.HORIZONTAL,
+                spacing=6,
+                margin_start=12,
+                margin_end=12,
+                margin_top=3,
+                margin_bottom=3,
+            )
+            box.append(Gtk.Image(icon_name=fi.icon_name, pixel_size=16))
+            lbl = Gtk.Label(label=name, xalign=0, hexpand=True, ellipsize=3,
+                            css_classes=["caption"])
+            box.append(lbl)
+
+            row = Gtk.ListBoxRow(activatable=True)
+            row._pin_entry = entry
+            row.set_child(box)
+            self._pins_lb.append(row)
+
+        self._pins_section.set_visible(True)
+        self._pins_separator.set_visible(True)
+
+    def _on_pin_activated(self, lb, row):
+        entry = row._pin_entry
+        if entry["is_dir"]:
+            self._file_browser.load_directory(entry["path"])
+        else:
+            self.open_remote_file(entry["path"])
+
+    def _on_pins_right_click(self, gesture, n_press, x, y):
+        row = self._pins_lb.get_row_at_y(int(y))
+        if row is None or not hasattr(row, "_pin_entry"):
+            return
+        self._pins_context_path = row._pin_entry["path"]
+        rect = Gdk.Rectangle()
+        rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
+        self._pins_popover.set_pointing_to(rect)
+        self._pins_popover.popup()
+
+    def _on_pin_remove(self, action, param):
+        if self._pins_context_path and self._connected_server:
+            ConfigService.delete_pin(self._connected_server.id, self._pins_context_path)
+            self._pins_context_path = None
+            self._rebuild_pins_bar(self._connected_server)
 
     def _on_editor_page_changed(self, panel):
         from edith.services.config import ConfigService
@@ -662,6 +825,9 @@ class EdithWindow(Adw.ApplicationWindow):
                 editor._window_signals_connected = True
         else:
             self._status_bar.hide_file_info()
+            if self._connected_server:
+                self._rebuild_recents_child(self._connected_server)
+                self._content_stack.set_visible_child_name("connected")
 
     def _on_line_ending_ready(self, panel, eol):
         self._status_bar.set_line_ending(eol)
@@ -707,6 +873,10 @@ class EdithWindow(Adw.ApplicationWindow):
         self._connect_btn.set_tooltip_text("Connect")
         self._connect_btn.set_sensitive(self._server_panel.get_selected_server() is not None)
 
+        # Hide pinned section
+        self._pins_section.set_visible(False)
+        self._pins_separator.set_visible(False)
+
         # Switch sidebar back to server list
         self._sidebar_stack.set_visible_child_name("server_list")
 
@@ -751,6 +921,8 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_success(local_path):
             self._editor_panel.open_file(remote_path, str(local_path))
             self._content_stack.set_visible_child_name("editor")
+            if self._connected_server:
+                ConfigService.push_recent(self._connected_server.id, remote_path)
 
         def on_error(error):
             if isinstance(error, TransferAborted):
