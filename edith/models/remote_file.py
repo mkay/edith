@@ -106,10 +106,16 @@ class RemoteFileInfo:
             "toml": "edith-file-toml",
             # ENV
             "env": "edith-file-env",
+            # Documents
+            "doc": "edith-file-doc", "docx": "edith-file-doc",
+            "xls": "edith-file-xls", "xlsx": "edith-file-xls",
+            "pdf": "edith-file-pdf",
             # Images
-            "png": "edith-file-image", "jpg": "edith-file-image",
-            "jpeg": "edith-file-image", "gif": "edith-file-image",
-            "webp": "edith-file-image", "bmp": "edith-file-image",
+            "png": "edith-file-image-png",
+            "jpg": "edith-file-image-jpg", "jpeg": "edith-file-image-jpg",
+            "gif": "edith-file-image-gif",
+            "webp": "edith-file-image-webp",
+            "bmp": "edith-file-image",
             "ico": "edith-file-image", "tiff": "edith-file-image",
             "tif": "edith-file-image", "avif": "edith-file-image",
             "svg": "edith-file-svg",

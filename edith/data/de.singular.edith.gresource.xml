@@ -47,7 +47,14 @@
     <file alias="edith-file-graphql.svg">data/icons/hicolor/scalable/actions/edith-file-graphql.svg</file>
     <file alias="edith-file-toml.svg">data/icons/hicolor/scalable/actions/edith-file-toml.svg</file>
     <file alias="edith-file-env.svg">data/icons/hicolor/scalable/actions/edith-file-env.svg</file>
+    <file alias="edith-file-doc.svg">data/icons/hicolor/scalable/actions/edith-file-doc.svg</file>
+    <file alias="edith-file-xls.svg">data/icons/hicolor/scalable/actions/edith-file-xls.svg</file>
+    <file alias="edith-file-pdf.svg">data/icons/hicolor/scalable/actions/edith-file-pdf.svg</file>
     <file alias="edith-file-image.svg">data/icons/hicolor/scalable/actions/edith-file-image.svg</file>
+    <file alias="edith-file-image-jpg.svg">data/icons/hicolor/scalable/actions/edith-file-image-jpg.svg</file>
+    <file alias="edith-file-image-png.svg">data/icons/hicolor/scalable/actions/edith-file-image-png.svg</file>
+    <file alias="edith-file-image-webp.svg">data/icons/hicolor/scalable/actions/edith-file-image-webp.svg</file>
+    <file alias="edith-file-image-gif.svg">data/icons/hicolor/scalable/actions/edith-file-image-gif.svg</file>
     <file alias="edith-file-archive.svg">data/icons/hicolor/scalable/actions/edith-file-archive.svg</file>
     <file alias="edith-file-svg.svg">data/icons/hicolor/scalable/actions/edith-file-svg.svg</file>
     <file alias="edith-file-dotfile.svg">data/icons/hicolor/scalable/actions/edith-file-dotfile.svg</file>

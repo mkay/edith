@@ -1,12 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16">
-  <!-- Closed teeth (left): two interlocking chevrons -->
-  <polyline points="1.5,6 3,8 1.5,10" fill="none" stroke="#795548" stroke-width="0.85" stroke-linejoin="round"/>
-  <polyline points="3,6 4.5,8 3,10" fill="none" stroke="#795548" stroke-width="0.85" stroke-linejoin="round"/>
-  <!-- Pull tab -->
-  <rect x="5" y="5.5" width="5" height="5" rx="1" fill="none" stroke="#795548" stroke-width="0.85"/>
-  <!-- Open teeth (right): two parallel rails with crossbars -->
-  <line x1="10.5" y1="6.5" x2="14.5" y2="6.5" stroke="#795548" stroke-width="0.85"/>
-  <line x1="10.5" y1="9.5" x2="14.5" y2="9.5" stroke="#795548" stroke-width="0.85"/>
-  <line x1="11.5" y1="6" x2="11.5" y2="10" stroke="#795548" stroke-width="0.7"/>
-  <line x1="13" y1="6" x2="13" y2="10" stroke="#795548" stroke-width="0.7"/>
+<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+<rect x="3.72247" y="3.72248" width="8.55504" height="8.55504" rx="0.5" stroke="#B89629"/>
+<rect x="6.80562" y="4.41685" width="1.19438" height="1.19438" fill="#B89629"/>
+<rect x="8" y="5.61124" width="1.19438" height="1.19438" fill="#B89629"/>
+<rect x="8" y="8" width="1.19438" height="1.19438" fill="#B89629"/>
+<rect x="6.80562" y="9.19438" width="2.38876" height="1.19438" fill="#B89629"/>
+<rect x="6.80562" y="6.80562" width="1.19438" height="1.19438" fill="#B89629"/>
 </svg>
