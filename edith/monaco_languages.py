@@ -138,6 +138,7 @@ EXT_TO_MONACO = {
     "hcl": "hcl",
     "htm": "html",
     "html": "html",
+    "tpl": "html",
     "xhtml": "html",
     "ini": "ini",
     "cfg": "ini",

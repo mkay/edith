@@ -37,10 +37,27 @@ class EdithApplication(Adw.Application):
 /* Slightly darker sidebar pane */
 .app-sidebar { background-color: shade(@window_bg_color, 0.97); }
 
+/* Alternating row shading */
+columnview > listview > row:nth-child(even) {
+    background-color: rgba(128, 128, 128, 0.04);
+}
 
+/* Column view header — flat, no pill */
+columnview > header > button {
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+}
+columnview > header > button:hover {
+    background-color: rgba(128, 128, 128, 0.12);
+}
+columnview > header > button:active,
+columnview > header > button:checked {
+    background-color: rgba(128, 128, 128, 0.18);
+}
 """)
             Gtk.StyleContext.add_provider_for_display(
-                Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
+                Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER
             )
 
             # Migrate old GtkSourceView scheme IDs to Monaco theme IDs

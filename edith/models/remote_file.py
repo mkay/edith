@@ -1,5 +1,10 @@
 import stat
+import datetime
 from dataclasses import dataclass
+
+import gi
+gi.require_version("GObject", "2.0")
+from gi.repository import GObject
 
 
 @dataclass
@@ -11,6 +16,8 @@ class RemoteFileInfo:
     size: int = 0
     is_dir: bool = False
     permissions: int = 0
+    mtime: int = 0  # Unix timestamp
+    is_parent_dir: bool = False
 
     @classmethod
     def from_sftp_attr(cls, attr, parent_path: str) -> "RemoteFileInfo":
@@ -28,7 +35,22 @@ class RemoteFileInfo:
             size=attr.st_size or 0,
             is_dir=is_dir,
             permissions=attr.st_mode or 0,
+            mtime=int(attr.st_mtime or 0),
         )
+
+    def permissions_str(self) -> str:
+        if not self.permissions:
+            return "----------"
+        return stat.filemode(self.permissions)
+
+    def mtime_str(self) -> str:
+        if not self.mtime:
+            return "\u2014"
+        dt = datetime.datetime.fromtimestamp(self.mtime)
+        now = datetime.datetime.now()
+        if dt.year == now.year:
+            return dt.strftime("%b %d %H:%M")
+        return dt.strftime("%b %d  %Y")
 
     @property
     def icon_name(self) -> str:
@@ -54,8 +76,9 @@ class RemoteFileInfo:
             # TypeScript
             "ts": "edith-file-typescript", "tsx": "edith-file-typescript",
             "mts": "edith-file-typescript", "cts": "edith-file-typescript",
-            # HTML
+            # HTML / templates
             "html": "edith-file-html", "htm": "edith-file-html", "xhtml": "edith-file-html",
+            "tpl": "edith-file-html",
             # CSS
             "css": "edith-file-css",
             # JSON
@@ -138,9 +161,28 @@ class RemoteFileInfo:
 
     def human_size(self) -> str:
         if self.is_dir:
-            return ""
+            return "\u2014"
         for unit in ("B", "KB", "MB", "GB"):
             if self.size < 1024:
                 return f"{self.size:.0f} {unit}" if unit == "B" else f"{self.size:.1f} {unit}"
             self.size /= 1024
         return f"{self.size:.1f} TB"
+
+
+class RemoteFileItem(GObject.Object):
+    """GObject wrapper around RemoteFileInfo for use in Gio.ListStore."""
+
+    __gtype_name__ = "RemoteFileItem"
+
+    def __init__(self, file_info: RemoteFileInfo):
+        super().__init__()
+        self.file_info = file_info
+        self._selected = False
+
+    @GObject.Property(type=bool, default=False)
+    def selected(self) -> bool:
+        return self._selected
+
+    @selected.setter
+    def selected(self, value: bool):
+        self._selected = value

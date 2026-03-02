@@ -109,6 +109,15 @@ class EdithWindow(Adw.ApplicationWindow):
         self._pins_lb.add_controller(pins_gesture)
 
         self._pins_section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, visible=False)
+        pins_header = Gtk.Label(
+            label="Pinned",
+            xalign=0,
+            css_classes=["dim-label", "caption"],
+            margin_start=12,
+            margin_top=6,
+            margin_bottom=2,
+        )
+        self._pins_section.append(pins_header)
         self._pins_section.append(self._pins_lb)
         sidebar_bottom.append(self._pins_section)
 
@@ -218,14 +227,14 @@ class EdithWindow(Adw.ApplicationWindow):
             focusable=False,
         )
         self._sidebar_toggle.connect("clicked", self._on_sidebar_toggled)
-        self._main_header.pack_end(self._sidebar_toggle)
-
         menu_btn = Gtk.MenuButton(
             icon_name="edith-open-menu-symbolic",
             menu_model=menu,
             tooltip_text="Main Menu",
         )
         self._main_header.pack_end(menu_btn)
+
+        self._main_header.pack_end(self._sidebar_toggle)
 
         # Content stack
         self._content_stack = Gtk.Stack(
@@ -261,6 +270,16 @@ class EdithWindow(Adw.ApplicationWindow):
         self._toast_overlay = Adw.ToastOverlay(vexpand=True)
         self._toast_overlay.set_child(self._content_stack)
 
+        _toast_css = Gtk.CssProvider()
+        _toast_css.load_from_string("""
+            .toast-error-icon  { color: @error_color;   }
+            .toast-success-icon { color: @success_color; }
+        """)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(), _toast_css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
         self._status_bar = StatusBar()
         self._status_bar.connect("language-selected", self._on_language_selected)
         self._status_bar.connect("indent-changed", self._on_indent_changed)
@@ -276,7 +295,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         # === Resizable paned: sidebar | main ===
         self._paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self._sidebar_width = 260
+        self._sidebar_width = 280
 
         self._paned.set_start_child(self._sidebar_toolbar)
         self._paned.set_resize_start_child(False)
@@ -327,6 +346,11 @@ class EdithWindow(Adw.ApplicationWindow):
         close_tab.set_enabled(False)
         self.add_action(close_tab)
         app.set_accels_for_action("win.close-tab", ["<Control>w"])
+
+        reopen_tab = Gio.SimpleAction.new("reopen-tab", None)
+        reopen_tab.connect("activate", lambda *_: self._editor_panel.reopen_last_closed())
+        self.add_action(reopen_tab)
+        app.set_accels_for_action("win.reopen-tab", ["<Control><Shift>t"])
 
         # Search servers (no standalone accel — routed through win.find)
         search_servers = Gio.SimpleAction.new("search-servers", None)
@@ -679,8 +703,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._rebuild_pins_bar(server_info)
         self._content_stack.set_visible_child_name("connected")
 
-        toast = Adw.Toast(title=f"Connected to {server_info.display_name}")
-        self._toast_overlay.add_toast(toast)
+        self.show_toast(f"Connected to {server_info.display_name}", "success")
 
     def _rebuild_recents_child(self, server_info):
         recents = ConfigService.get_recents(server_info.id)
@@ -928,8 +951,7 @@ class EdithWindow(Adw.ApplicationWindow):
             if isinstance(error, TransferAborted):
                 return
             self._set_status("error", f"Download failed: {error}")
-            toast = Adw.Toast(title=f"Failed to download: {error}")
-            self._toast_overlay.add_toast(toast)
+            self.show_toast(f"Failed to download: {error}", "error")
 
         self._transfer_queue.enqueue(name, do_download, on_success, on_error)
 
@@ -944,19 +966,17 @@ class EdithWindow(Adw.ApplicationWindow):
         client = self._sftp_client
 
         def do_download(progress_cb):
-            client.download(remote_path, local_path, progress_cb=progress_cb)
+            client.download_recursive(remote_path, local_path, progress_cb=progress_cb)
 
         def on_success(_):
             if on_done:
                 on_done()
-            toast = Adw.Toast(title=f"Downloaded {name}")
-            self._toast_overlay.add_toast(toast)
+            self.show_toast(f"Downloaded {name}", "success")
 
         def on_error(error):
             if isinstance(error, TransferAborted):
                 return
-            toast = Adw.Toast(title=f"Download failed: {error}")
-            self._toast_overlay.add_toast(toast)
+            self.show_toast(f"Download failed: {error}", "error")
 
         self._transfer_queue.enqueue(name, do_download, on_success, on_error)
 
@@ -988,8 +1008,7 @@ class EdithWindow(Adw.ApplicationWindow):
             client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
 
         def on_success(_):
-            toast = Adw.Toast(title=f"Saved {name}")
-            self._toast_overlay.add_toast(toast)
+            self.show_toast(f"Saved {name}", "success")
 
         def on_error(error):
             dialog = Adw.AlertDialog(
@@ -1039,6 +1058,12 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sidebar_status_icon.set_from_icon_name(icon)
         self._sidebar_status_label.set_label(message)
 
+    def adjust_sidebar_width(self, width: int):
+        """Set the sidebar paned position (used by detail-mode toggle)."""
+        self._sidebar_width = width
+        if self._sidebar_visible:
+            self._paned.set_position(width)
+
     def reveal_in_sidebar(self, remote_path: str):
         """Show the file in the sidebar file browser."""
         self._sidebar_toolbar.set_visible(True)
@@ -1072,6 +1097,23 @@ class EdithWindow(Adw.ApplicationWindow):
         insert_spaces = ConfigService.get_preference("editor_insert_spaces", True)
         tab_size = ConfigService.get_preference("editor_tab_size", 4)
         self._status_bar.set_indent(insert_spaces, tab_size)
+
+    def show_toast(self, title: str, kind: str = "info", timeout: int = 3):
+        """Show a transient toast. kind: 'info', 'success', 'error'."""
+        _icons = {"error": ("dialog-error-symbolic", "toast-error-icon"),
+                  "success": ("emblem-ok-symbolic", "toast-success-icon")}
+        toast = Adw.Toast(timeout=timeout)
+        if kind in _icons:
+            icon_name, css_class = _icons[kind]
+            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL,
+                          spacing=8, valign=Gtk.Align.CENTER)
+            box.append(Gtk.Image(icon_name=icon_name, pixel_size=16,
+                                 css_classes=[css_class]))
+            box.append(Gtk.Label(label=title))
+            toast.set_custom_title(box)
+        else:
+            toast.set_title(title)
+        self._toast_overlay.add_toast(toast)
 
     @property
     def sftp_client(self):

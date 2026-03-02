@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" version="1.1">
+ <defs>
+  <style id="current-color-scheme" type="text/css">
+   .ColorScheme-Text { color:#444444; } .ColorScheme-Highlight { color:#4285f4; } .ColorScheme-NeutralText { color:#ff9800; } .ColorScheme-PositiveText { color:#4caf50; } .ColorScheme-NegativeText { color:#f44336; }
+  </style>
+ </defs>
+ <!-- Open eye: outer lens shape with iris cutout, plus pupil -->
+ <path style="fill:currentColor" class="ColorScheme-Text" fill-rule="evenodd"
+   d="M 8,3 C 4.5,3 1.5,5.5 0,8 1.5,10.5 4.5,13 8,13 11.5,13 14.5,10.5 16,8 14.5,5.5 11.5,3 8,3 Z
+      M 8,5 A 3,3 0 0 1 8,11 A 3,3 0 0 1 8,5 Z"/>
+ <circle style="fill:currentColor" class="ColorScheme-Text" cx="8" cy="8" r="1.25"/>
+</svg>

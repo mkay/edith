@@ -5,10 +5,9 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk, GObject, Gdk
+from gi.repository import Adw, Gio, Gtk, GObject, Gdk, Pango
 
-from edith.models.remote_file import RemoteFileInfo
-from edith.widgets.file_row import FileRow
+from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog
 
 
@@ -36,13 +35,15 @@ class FileBrowser(Gtk.Box):
 
         self._window = None
         self._current_path = "/"
-        self._expanded = set()  # set of expanded directory paths
-        self._pending_reveal = None  # filename to select after loading
+        self._pending_reveal = None
         self._history = []
         self._history_pos = -1
         self._show_hidden = False
+        self._select_mode = False
+        self._items: list[RemoteFileItem] = []
+        self._context_item: RemoteFileItem | None = None
 
-        # Path bar — vertical: button row on top, path label below
+        # ── Path bar ────────────────────────────────────────────────────
         self._path_bar = Gtk.Box(
             orientation=Gtk.Orientation.VERTICAL,
             margin_start=8,
@@ -52,15 +53,6 @@ class FileBrowser(Gtk.Box):
         )
 
         _btn_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-
-        self._up_btn = Gtk.Button(
-            icon_name="edith-parent-dir-symbolic",
-            tooltip_text="Parent Directory",
-            css_classes=["flat", "circular"],
-            sensitive=False,
-        )
-        self._up_btn.connect("clicked", self._on_go_up)
-        _btn_row.append(self._up_btn)
 
         upload_btn = Gtk.Button(
             icon_name="edith-upload-symbolic",
@@ -79,30 +71,38 @@ class FileBrowser(Gtk.Box):
         _btn_row.append(refresh_btn)
 
         self._hidden_btn = Gtk.ToggleButton(
-            icon_name="view-reveal-symbolic",
+            icon_name="edith-show-hidden-symbolic",
             tooltip_text="Show Hidden Files",
             css_classes=["flat", "circular"],
         )
         self._hidden_btn.connect("toggled", self._on_show_hidden_toggled)
         _btn_row.append(self._hidden_btn)
 
-        self._path_bar.append(_btn_row)
+        # Spacer to push the following buttons to the right
+        spacer = Gtk.Box(hexpand=True)
+        _btn_row.append(spacer)
 
-        self._path_label = Gtk.Label(
-            label="/",
-            xalign=0,
-            hexpand=True,
-            ellipsize=3,
-            css_classes=["dim-label", "caption"],
-            margin_bottom=2,
-            tooltip_text="/",
+        self._select_btn = Gtk.ToggleButton(
+            icon_name="edith-select-items-symbolic",
+            tooltip_text="Select Items",
+            css_classes=["flat", "circular"],
         )
-        self._path_bar.append(self._path_label)
+        self._select_btn.connect("toggled", self._on_select_mode_toggled)
+        _btn_row.append(self._select_btn)
 
+        self._detail_btn = Gtk.ToggleButton(
+            icon_name="edith-file-details-symbolic",
+            tooltip_text="Show File Details",
+            css_classes=["flat", "circular"],
+        )
+        self._detail_btn.connect("toggled", self._on_detail_mode_toggled)
+        _btn_row.append(self._detail_btn)
+
+        self._path_bar.append(_btn_row)
         self.append(self._path_bar)
         self.append(Gtk.Separator())
 
-        # Filter entry
+        # ── Filter entry ────────────────────────────────────────────────
         self._filter_entry = Gtk.SearchEntry(
             placeholder_text="Filter files\u2026",
             margin_start=8,
@@ -113,35 +113,416 @@ class FileBrowser(Gtk.Box):
         self._filter_entry.connect("search-changed", self._on_filter_changed)
         self.append(self._filter_entry)
 
-        # File list
-        sw = Gtk.ScrolledWindow(
+        self._path_label = Gtk.Label(
+            label="/",
+            xalign=0,
+            hexpand=True,
+            ellipsize=3,
+            css_classes=["dim-label", "caption"],
+            margin_start=12,
+            margin_end=8,
+            margin_bottom=4,
+            tooltip_text="/",
+        )
+        self.append(self._path_label)
+
+        # ── Multi-select action bar ──────────────────────────────────────
+        self._multi_bar = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=4,
+            margin_start=8, margin_end=8, margin_top=4, margin_bottom=4,
+            visible=False,
+        )
+        self._multi_count_label = Gtk.Label(
+            label="No items selected", hexpand=True, xalign=0,
+            css_classes=["dim-label"],
+        )
+        self._multi_bar.append(self._multi_count_label)
+
+        self._multi_download_btn = Gtk.Button(label="Download", css_classes=["flat"], sensitive=False)
+        self._multi_download_btn.connect("clicked", self._on_bulk_download)
+        self._multi_bar.append(self._multi_download_btn)
+
+        self._multi_move_btn = Gtk.Button(label="Move to\u2026", css_classes=["flat"], sensitive=False)
+        self._multi_move_btn.connect("clicked", self._on_bulk_move_to)
+        self._multi_bar.append(self._multi_move_btn)
+
+        self._multi_delete_btn = Gtk.Button(
+            label="Delete", css_classes=["flat", "destructive-action"], sensitive=False,
+        )
+        self._multi_delete_btn.connect("clicked", self._on_bulk_delete)
+        self._multi_bar.append(self._multi_delete_btn)
+
+        self.append(self._multi_bar)
+
+        # ── Column view model chain ──────────────────────────────────────
+        self._store = Gio.ListStore(item_type=RemoteFileItem)
+
+        # Column view — created before its sorter is retrieved
+        self._column_view = Gtk.ColumnView(
+            single_click_activate=False,
+            show_row_separators=False,
+            show_column_separators=False,
+            css_classes=["data-table"],
             vexpand=True,
-            hscrollbar_policy=Gtk.PolicyType.NEVER,
+            hexpand=True,
+        )
+        self._column_view.connect("activate", self._on_cv_activated)
+
+        # Use the ColumnView's own sorter directly so column-header clicks work.
+        # Dirs-first is baked into each column's custom sorter (see _setup_columns).
+        self._sort_model = Gtk.SortListModel(
+            model=self._store, sorter=self._column_view.get_sorter()
         )
 
-        self._list_box = Gtk.ListBox(
-            selection_mode=Gtk.SelectionMode.SINGLE,
-            css_classes=["navigation-sidebar"],
-            activate_on_single_click=False,
+        # No filter initially (= match all); set dynamically in _on_filter_changed
+        self._filter_model = Gtk.FilterListModel(model=self._sort_model)
+
+        self._selection = Gtk.SingleSelection(model=self._filter_model, autoselect=False)
+        self._column_view.set_model(self._selection)
+
+        self._setup_columns()
+
+        # ── Stack: column view ↔ status label ───────────────────────────
+        sw = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
+        sw.set_child(self._column_view)
+
+        self._stack = Gtk.Stack(vexpand=True)
+        self._stack.add_named(sw, "list")
+
+        self._status_label = Gtk.Label(
+            label="",
+            css_classes=["dim-label"],
+            margin_top=24,
+            wrap=True,
         )
-        self._list_box.connect("row-activated", self._on_row_activated)
-        self._list_box.set_filter_func(self._filter_row)
+        self._stack.add_named(self._status_label, "status")
+        self.append(self._stack)
 
-        sw.set_child(self._list_box)
-        self.append(sw)
-
-        # Loading spinner
+        # ── Loading spinner ──────────────────────────────────────────────
         self._spinner = Gtk.Spinner(spinning=False, visible=False, margin_top=16, margin_bottom=16)
         self.append(self._spinner)
 
-        # Drop target on path bar — drop here moves/copies into current directory
+        # ── Path bar drop target ─────────────────────────────────────────
         self._setup_pathbar_drop_target()
 
-        # Context menu
+        # ── Context menu ─────────────────────────────────────────────────
         self._setup_context_menu()
 
+        # ── Capture-phase key handler (select-mode shortcuts) ────────────
+        _capture_keys = Gtk.EventControllerKey()
+        _capture_keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        _capture_keys.connect("key-pressed", self._on_select_mode_key)
+        self.add_controller(_capture_keys)
+
+        # ── CSS ──────────────────────────────────────────────────────────
+        _css = Gtk.CssProvider()
+        _css.load_from_string("""
+            columnview.data-table > listview > row.multi-checked {
+                background-color: alpha(@accent_bg_color, 0.25);
+            }
+            columnview.data-table > listview > row.multi-checked:hover {
+                background-color: alpha(@accent_bg_color, 0.35);
+            }
+        """)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            _css,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Column setup
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _setup_columns(self):
+        # Checkbox column — visible only in select mode
+        check_factory = Gtk.SignalListItemFactory()
+        check_factory.connect("setup", self._setup_check_cell)
+        check_factory.connect("bind", self._bind_check_cell)
+        check_factory.connect("unbind", self._unbind_check_cell)
+        self._check_column = Gtk.ColumnViewColumn(title="", factory=check_factory)
+        self._check_column.set_fixed_width(48)
+        self._check_column.set_visible(False)
+        self._column_view.append_column(self._check_column)
+
+        # Name column
+        name_factory = Gtk.SignalListItemFactory()
+        name_factory.connect("setup", self._setup_name_cell)
+        name_factory.connect("bind", self._bind_name_cell)
+        name_factory.connect("unbind", self._unbind_name_cell)
+        name_col = Gtk.ColumnViewColumn(title="Name", factory=name_factory, expand=True, resizable=True)
+        name_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.name.lower() > b.file_info.name.lower()) - (a.file_info.name.lower() < b.file_info.name.lower())
+            )
+        ))
+        self._column_view.append_column(name_col)
+
+        # Size column
+        size_factory = Gtk.SignalListItemFactory()
+        size_factory.connect("setup", lambda f, li: self._setup_text_cell(
+            li, halign=Gtk.Align.END, css=["numeric", "dim-label"]))
+        size_factory.connect("bind", self._bind_size_cell)
+        size_factory.connect("unbind", self._unbind_text_cell)
+        self._size_col = Gtk.ColumnViewColumn(title="Size", factory=size_factory, resizable=True)
+        self._size_col.set_fixed_width(92)
+        self._size_col.set_visible(False)
+        self._size_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.size > b.file_info.size) - (a.file_info.size < b.file_info.size)
+            )
+        ))
+        self._column_view.append_column(self._size_col)
+
+        # Permissions column
+        perm_factory = Gtk.SignalListItemFactory()
+        perm_factory.connect("setup", lambda f, li: self._setup_text_cell(
+            li, css=["monospace", "dim-label"]))
+        perm_factory.connect("bind", self._bind_perm_cell)
+        perm_factory.connect("unbind", self._unbind_text_cell)
+        self._perm_col = Gtk.ColumnViewColumn(title="Permissions", factory=perm_factory)
+        self._perm_col.set_fixed_width(132)
+        self._perm_col.set_visible(False)
+        self._perm_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.permissions > b.file_info.permissions) - (a.file_info.permissions < b.file_info.permissions)
+            )
+        ))
+        self._column_view.append_column(self._perm_col)
+
+        # Modified column
+        mtime_factory = Gtk.SignalListItemFactory()
+        mtime_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
+        mtime_factory.connect("bind", self._bind_mtime_cell)
+        mtime_factory.connect("unbind", self._unbind_text_cell)
+        self._mtime_col = Gtk.ColumnViewColumn(title="Modified", factory=mtime_factory, resizable=True)
+        self._mtime_col.set_fixed_width(130)
+        self._mtime_col.set_visible(False)
+        self._mtime_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.mtime > b.file_info.mtime) - (a.file_info.mtime < b.file_info.mtime)
+            )
+        ))
+        self._column_view.append_column(self._mtime_col)
+
+    # ── Checkbox column factory ──────────────────────────────────────────
+
+    def _setup_check_cell(self, factory, list_item):
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            halign=Gtk.Align.CENTER,
+            valign=Gtk.Align.CENTER,
+            margin_start=4, margin_end=4,
+        )
+        check = Gtk.CheckButton(can_focus=False)
+        box.append(check)
+        list_item.set_child(box)
+
+    def _bind_check_cell(self, factory, list_item):
+        item = list_item.get_item()
+        box = list_item.get_child()
+        box._cv_item = item
+        check = box.get_first_child()
+
+        if item.file_info.is_parent_dir:
+            check.set_visible(False)
+            return
+
+        check.set_visible(True)
+        binding = item.bind_property(
+            "selected", check, "active",
+            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
+        )
+        handler = item.connect("notify::selected", lambda *_: self._update_multi_bar())
+        list_item._cv_binding = binding
+        list_item._cv_handler = handler
+        list_item._cv_item = item
+
+    def _unbind_check_cell(self, factory, list_item):
+        if hasattr(list_item, "_cv_binding"):
+            list_item._cv_binding.unbind()
+            del list_item._cv_binding
+        if hasattr(list_item, "_cv_item") and hasattr(list_item, "_cv_handler"):
+            list_item._cv_item.disconnect(list_item._cv_handler)
+            del list_item._cv_handler
+            del list_item._cv_item
+        box = list_item.get_child()
+        if box:
+            box._cv_item = None
+
+    # ── Name column factory ──────────────────────────────────────────────
+
+    def _setup_name_cell(self, factory, list_item):
+        box = Gtk.Box(
+            orientation=Gtk.Orientation.HORIZONTAL,
+            spacing=6,
+            margin_start=6, margin_end=8,
+            margin_top=3, margin_bottom=3,
+        )
+        icon = Gtk.Image(pixel_size=16)
+        label = Gtk.Label(xalign=0, hexpand=True, ellipsize=Pango.EllipsizeMode.END)
+        box.append(icon)
+        box.append(label)
+
+        item_ref = [None]
+        is_dir_ref = [False]
+
+        # Left click: toggle selection in select mode; double-click navigates
+        click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
+        click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+
+        def on_left_press(g, n, x, y):
+            if not self._select_mode or not item_ref[0]:
+                return
+            if item_ref[0].file_info.is_parent_dir:
+                return  # always navigate, never select
+            if n >= 2:
+                fi = item_ref[0].file_info
+                if fi.is_dir:
+                    self.load_directory(fi.path)
+                else:
+                    self.emit("file-activated", fi.path)
+            else:
+                item_ref[0].selected = not item_ref[0].selected
+            g.set_state(Gtk.EventSequenceState.CLAIMED)
+
+        click.connect("pressed", on_left_press)
+        box.add_controller(click)
+
+        # Drag source
+        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
+
+        def on_drag_prepare(d, x, y):
+            if item_ref[0]:
+                return Gdk.ContentProvider.new_for_value(
+                    GObject.Value(GObject.TYPE_STRING, item_ref[0].file_info.path)
+                )
+            return None
+
+        def on_drag_begin(d, gdk_drag):
+            if item_ref[0]:
+                fi = item_ref[0].file_info
+                drag_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+                drag_box.append(Gtk.Image(icon_name=fi.icon_name, pixel_size=16))
+                drag_box.append(Gtk.Label(label=fi.name))
+                Gtk.DragIcon.get_for_drag(gdk_drag).set_child(drag_box)
+
+        drag.connect("prepare", on_drag_prepare)
+        drag.connect("drag-begin", on_drag_begin)
+        box.add_controller(drag)
+
+        # Drop target (directories only)
+        drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+
+        def on_drop_accept(d, drop_val):
+            return is_dir_ref[0]
+
+        def on_drop_enter(d, x, y):
+            if is_dir_ref[0]:
+                box.add_css_class("drop-target")
+            return Gdk.DragAction.MOVE if is_dir_ref[0] else Gdk.DragAction(0)
+
+        def on_drop_leave(d):
+            box.remove_css_class("drop-target")
+
+        def on_drop(d, value, x, y):
+            if is_dir_ref[0] and item_ref[0]:
+                box.remove_css_class("drop-target")
+                self._perform_drag_move(value, item_ref[0].file_info.path)
+                return True
+            return False
+
+        drop.connect("accept", on_drop_accept)
+        drop.connect("enter", on_drop_enter)
+        drop.connect("leave", on_drop_leave)
+        drop.connect("drop", on_drop)
+        box.add_controller(drop)
+
+        list_item._name_item_ref = item_ref
+        list_item._name_is_dir_ref = is_dir_ref
+        list_item.set_child(box)
+
+    def _bind_name_cell(self, factory, list_item):
+        item = list_item.get_item()
+        fi = item.file_info
+        list_item._name_item_ref[0] = item
+        list_item._name_is_dir_ref[0] = fi.is_dir and not fi.is_parent_dir
+
+        box = list_item.get_child()
+        box._cv_item = item
+
+        icon = box.get_first_child()
+        label = icon.get_next_sibling()
+
+        if fi.is_parent_dir:
+            icon.set_visible(False)
+            label.set_text("..")
+            box.set_tooltip_text(None)
+        else:
+            icon.set_visible(True)
+            icon.set_from_icon_name(fi.icon_name)
+            label.set_text(fi.name)
+            box.set_tooltip_text(fi.path)
+
+    def _unbind_name_cell(self, factory, list_item):
+        if hasattr(list_item, "_name_item_ref"):
+            list_item._name_item_ref[0] = None
+        if hasattr(list_item, "_name_is_dir_ref"):
+            list_item._name_is_dir_ref[0] = False
+        box = list_item.get_child()
+        if box:
+            box._cv_item = None
+
+    # ── Generic text column helpers ──────────────────────────────────────
+
+    def _setup_text_cell(self, list_item, halign=Gtk.Align.START, css=None):
+        label = Gtk.Label(
+            halign=halign,
+            hexpand=True,
+            css_classes=css or [],
+            margin_start=6, margin_end=6,
+            margin_top=3, margin_bottom=3,
+            ellipsize=Pango.EllipsizeMode.END,
+        )
+        list_item.set_child(label)
+
+    def _bind_size_cell(self, factory, list_item):
+        item = list_item.get_item()
+        label = list_item.get_child()
+        label._cv_item = item
+        label.set_text(item.file_info.human_size())
+
+    def _bind_perm_cell(self, factory, list_item):
+        item = list_item.get_item()
+        label = list_item.get_child()
+        label._cv_item = item
+        label.set_text(item.file_info.permissions_str())
+
+    def _bind_mtime_cell(self, factory, list_item):
+        item = list_item.get_item()
+        label = list_item.get_child()
+        label._cv_item = item
+        label.set_text(item.file_info.mtime_str())
+
+    def _unbind_text_cell(self, factory, list_item):
+        label = list_item.get_child()
+        if label:
+            label._cv_item = None
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Context menu
+    # ──────────────────────────────────────────────────────────────────────
+
     def _setup_context_menu(self):
-        """Right-click context menu for file rows and empty area."""
         menu = Gio.Menu()
 
         new_submenu = Gio.Menu()
@@ -156,6 +537,7 @@ class FileBrowser(Gtk.Box):
         section_new.append_submenu("New", new_submenu)
         section_new.append_submenu("Upload", upload_submenu)
         section_new.append("Download", "file.download")
+        section_new.append("Open Locally", "file.open-locally")
         menu.append_section(None, section_new)
 
         actions_submenu = Gio.Menu()
@@ -181,7 +563,7 @@ class FileBrowser(Gtk.Box):
         menu.append_section(None, section_misc)
 
         self._context_menu = Gtk.PopoverMenu(menu_model=menu, has_arrow=False)
-        self._context_menu.set_parent(self._list_box)
+        self._context_menu.set_parent(self._column_view)
 
         # Actions
         group = Gio.SimpleActionGroup()
@@ -239,6 +621,11 @@ class FileBrowser(Gtk.Box):
         self._download_action.set_enabled(False)
         group.add_action(self._download_action)
 
+        self._open_locally_action = Gio.SimpleAction.new("open-locally", None)
+        self._open_locally_action.connect("activate", self._on_open_locally)
+        self._open_locally_action.set_enabled(False)
+        group.add_action(self._open_locally_action)
+
         self._pin_action = Gio.SimpleAction.new("pin", None)
         self._pin_action.connect("activate", self._on_pin)
         self._pin_action.set_enabled(False)
@@ -248,40 +635,50 @@ class FileBrowser(Gtk.Box):
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
 
-        self._list_box.insert_action_group("file", group)
+        self.insert_action_group("file", group)
 
-        # Gesture for right-click
-        gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
-        gesture.connect("pressed", self._on_right_click)
-        self._list_box.add_controller(gesture)
+        # Right-click: CAPTURE-phase on the column view so we always intercept
+        rclick = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+        rclick.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        rclick.connect("pressed", self._on_right_click)
+        self._column_view.add_controller(rclick)
 
-        # Keyboard shortcuts
+        # Key handler for F2 / Delete / F5 / Backspace
         key_ctrl = Gtk.EventControllerKey()
         key_ctrl.connect("key-pressed", self._on_key_pressed)
-        self._list_box.add_controller(key_ctrl)
-
-        self._context_row = None
+        self._column_view.add_controller(key_ctrl)
 
     def _on_right_click(self, gesture, n_press, x, y):
-        row = self._list_box.get_row_at_y(int(y))
-        has_row = row is not None and isinstance(row.get_child(), FileRow)
+        # Walk from the deepest picked widget up to find a cell with _cv_item
+        widget = self._column_view.pick(x, y, Gtk.PickFlags.DEFAULT)
+        item = None
+        w = widget
+        while w and w is not self._column_view:
+            cv_item = getattr(w, "_cv_item", None)
+            if cv_item is not None:
+                item = cv_item
+                break
+            w = w.get_parent()
 
-        self._context_row = row if has_row else None
+        # Treat the .. row the same as empty space for context menu purposes
+        if item is not None and item.file_info.is_parent_dir:
+            item = None
+        self._context_item = item
+        has_item = item is not None
 
-        self._rename_action.set_enabled(has_row)
-        self._chmod_action.set_enabled(has_row)
-        self._info_action.set_enabled(has_row)
-        self._delete_action.set_enabled(has_row)
-        self._duplicate_action.set_enabled(has_row)
-        self._copy_path_action.set_enabled(has_row)
-        self._move_to_action.set_enabled(has_row)
-        self._copy_to_action.set_enabled(has_row)
-        self._pin_action.set_enabled(has_row)
+        self._rename_action.set_enabled(has_item)
+        self._chmod_action.set_enabled(has_item)
+        self._info_action.set_enabled(has_item)
+        self._delete_action.set_enabled(has_item)
+        self._duplicate_action.set_enabled(has_item)
+        self._copy_path_action.set_enabled(has_item)
+        self._move_to_action.set_enabled(has_item)
+        self._copy_to_action.set_enabled(has_item)
+        self._pin_action.set_enabled(has_item)
 
-        file_info = self._get_context_file_info()
-        self._download_action.set_enabled(
-            file_info is not None and not file_info.is_dir
-        )
+        fi = item.file_info if item else None
+        self._download_action.set_enabled(fi is not None and not fi.is_dir)
+        self._open_locally_action.set_enabled(fi is not None)
 
         rect = Gdk.Rectangle()
         rect.x = int(x)
@@ -292,19 +689,24 @@ class FileBrowser(Gtk.Box):
         self._context_menu.popup()
 
     def _on_key_pressed(self, ctrl, keyval, keycode, state):
-        selected = self._list_box.get_selected_row()
+        selected = self._selection.get_selected_item()
 
         if keyval == Gdk.KEY_F2:
-            if selected and isinstance(selected.get_child(), FileRow):
-                self._context_row = selected
+            if selected:
+                self._context_item = selected
                 self._on_rename(None, None)
                 return True
 
         elif keyval == Gdk.KEY_Delete:
-            if selected and isinstance(selected.get_child(), FileRow):
-                self._context_row = selected
-                self._on_delete(None, None)
+            if self._select_mode:
+                if self._get_selected_file_infos():
+                    self._on_bulk_delete()
                 return True
+            else:
+                if selected:
+                    self._context_item = selected
+                    self._on_delete(None, None)
+                    return True
 
         elif keyval == Gdk.KEY_F5:
             self.load_directory(self._current_path)
@@ -317,11 +719,13 @@ class FileBrowser(Gtk.Box):
         return False
 
     def _get_context_file_info(self) -> RemoteFileInfo | None:
-        if self._context_row:
-            child = self._context_row.get_child()
-            if isinstance(child, FileRow):
-                return child.file_info
+        if self._context_item:
+            return self._context_item.file_info
         return None
+
+    # ──────────────────────────────────────────────────────────────────────
+    # File operation handlers (unchanged logic)
+    # ──────────────────────────────────────────────────────────────────────
 
     def _on_new_file(self, action, param):
         dialog = NameDialog("New File", "Filename")
@@ -331,17 +735,14 @@ class FileBrowser(Gtk.Box):
     def _do_new_file(self, dialog, name):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
         path = self._current_path
         full_path = f"{path.rstrip('/')}/{name}"
-
         from edith.services.async_worker import run_async
-
         run_async(
             lambda: client.create_file(full_path),
             lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
+            lambda e: self._show_op_error(str(e)),
         )
 
     def _on_new_folder(self, action, param):
@@ -352,24 +753,20 @@ class FileBrowser(Gtk.Box):
     def _do_new_folder(self, dialog, name):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
         path = self._current_path
         full_path = f"{path.rstrip('/')}/{name}"
-
         from edith.services.async_worker import run_async
-
         run_async(
             lambda: client.mkdir(full_path),
             lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
+            lambda e: self._show_op_error(str(e)),
         )
 
     def _on_rename(self, action, param):
         fi = self._get_context_file_info()
         if not fi:
             return
-
         dialog = NameDialog("Rename", "New name", initial_text=fi.name)
         dialog.connect("submitted", self._do_rename, fi)
         dialog.present(self.get_root())
@@ -377,25 +774,21 @@ class FileBrowser(Gtk.Box):
     def _do_rename(self, dialog, new_name, fi):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
         old_path = fi.path
         parent = "/".join(old_path.rstrip("/").split("/")[:-1]) or "/"
         new_path = f"{parent.rstrip('/')}/{new_name}"
-
         from edith.services.async_worker import run_async
-
         run_async(
             lambda: client.rename(old_path, new_path),
             lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
+            lambda e: self._show_op_error(str(e)),
         )
 
     def _on_chmod(self, action, param):
         fi = self._get_context_file_info()
         if not fi:
             return
-
         dialog = ChmodDialog(fi.permissions)
         dialog.connect("applied", self._do_chmod, fi)
         dialog.present(self.get_root())
@@ -403,23 +796,18 @@ class FileBrowser(Gtk.Box):
     def _do_chmod(self, dialog, mode, fi):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
-        path = fi.path
-
         from edith.services.async_worker import run_async
-
         run_async(
-            lambda: client.chmod(path, mode),
+            lambda: client.chmod(fi.path, mode),
             lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
+            lambda e: self._show_op_error(str(e)),
         )
 
     def _on_info(self, action, param):
         fi = self._get_context_file_info()
         if not fi:
             return
-
         dialog = FileInfoDialog(fi)
         dialog.present(self.get_root())
 
@@ -427,9 +815,7 @@ class FileBrowser(Gtk.Box):
         fi = self._get_context_file_info()
         if not fi:
             return
-
         kind = "folder" if fi.is_dir else "file"
-        win = self.get_root()
         dlg = Adw.AlertDialog(
             heading=f"Delete {kind}?",
             body=f"Permanently delete \u201c{fi.name}\u201d?",
@@ -438,42 +824,35 @@ class FileBrowser(Gtk.Box):
         dlg.add_response("delete", "Delete")
         dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.connect("response", self._do_delete, fi)
-        dlg.present(win)
+        dlg.present(self.get_root())
 
     def _do_delete(self, dialog, response, fi):
         if response != "delete":
             return
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
-        path = fi.path
-
+        name = fi.name
         from edith.services.async_worker import run_async
 
+        def on_deleted(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(f"Deleted \u201c{name}\u201d", "success")
+
         if fi.is_dir:
-            run_async(
-                lambda: client.rmdir_recursive(path),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.rmdir_recursive(fi.path), on_deleted,
+                      lambda e: self._show_op_error(str(e)))
         else:
-            run_async(
-                lambda: client.remove(path),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.remove(fi.path), on_deleted,
+                      lambda e: self._show_op_error(str(e)))
 
     def _on_duplicate(self, action, param):
         fi = self._get_context_file_info()
-        if not fi:
+        if not fi or not self._window or not self._window.sftp_client:
             return
-        if not self._window or not self._window.sftp_client:
-            return
-
         client = self._window.sftp_client
         src = fi.path
-        # Build "name (copy).ext" from the original name
         base = fi.name
         if not fi.is_dir and "." in base:
             stem, ext = base.rsplit(".", 1)
@@ -481,37 +860,26 @@ class FileBrowser(Gtk.Box):
         else:
             dst_name = f"{base} (copy)"
         dst = f"{self._current_path.rstrip('/')}/{dst_name}"
-
         from edith.services.async_worker import run_async
-
         if fi.is_dir:
-            run_async(
-                lambda: client.copy_remote_recursive(src, dst),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.copy_remote_recursive(src, dst),
+                      lambda _: self.load_directory(self._current_path),
+                      lambda e: self._show_op_error(str(e)))
         else:
-            run_async(
-                lambda: client.copy_remote(src, dst),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.copy_remote(src, dst),
+                      lambda _: self.load_directory(self._current_path),
+                      lambda e: self._show_op_error(str(e)))
 
     def _on_copy_path(self, action, param):
         fi = self._get_context_file_info()
         if not fi:
             return
-
-        clipboard = self.get_display().get_clipboard()
-        clipboard.set(fi.path)
+        self.get_display().get_clipboard().set(fi.path)
 
     def _on_move_to(self, action, param):
         fi = self._get_context_file_info()
-        if not fi:
+        if not fi or not self._window or not self._window.sftp_client:
             return
-        if not self._window or not self._window.sftp_client:
-            return
-
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
             title=f"Move \u201c{fi.name}\u201d to\u2026",
@@ -523,30 +891,27 @@ class FileBrowser(Gtk.Box):
     def _do_move_to(self, dialog, dest_dir, fi):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
         src = fi.path
         name = fi.name
         dst = f"{dest_dir.rstrip('/')}/{name}"
-
         if src == dst:
             return
-
         from edith.services.async_worker import run_async
+        dest_name = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
 
-        run_async(
-            lambda: client.rename(src, dst),
-            lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
-        )
+        def on_moved(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_name}\u201d", "success")
+
+        run_async(lambda: client.rename(src, dst), on_moved,
+                  lambda e: self._show_op_error(str(e)))
 
     def _on_copy_to(self, action, param):
         fi = self._get_context_file_info()
-        if not fi:
+        if not fi or not self._window or not self._window.sftp_client:
             return
-        if not self._window or not self._window.sftp_client:
-            return
-
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
             title=f"Copy \u201c{fi.name}\u201d to\u2026",
@@ -558,29 +923,26 @@ class FileBrowser(Gtk.Box):
     def _do_copy_to(self, dialog, dest_dir, fi):
         if not self._window or not self._window.sftp_client:
             return
-
         client = self._window.sftp_client
         src = fi.path
         name = fi.name
         dst = f"{dest_dir.rstrip('/')}/{name}"
-
         if src == dst:
             return
-
         from edith.services.async_worker import run_async
-
         if fi.is_dir:
-            run_async(
-                lambda: client.copy_remote_recursive(src, dst),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.copy_remote_recursive(src, dst),
+                      lambda _: self.load_directory(self._current_path),
+                      lambda e: self._show_op_error(str(e)))
         else:
-            run_async(
-                lambda: client.copy_remote(src, dst),
-                lambda _: self.load_directory(self._current_path),
-                lambda e: self._show_error(str(e)),
-            )
+            run_async(lambda: client.copy_remote(src, dst),
+                      lambda _: self.load_directory(self._current_path),
+                      lambda e: self._show_op_error(str(e)))
+
+    def _on_pin(self, action, param):
+        fi = self._get_context_file_info()
+        if fi:
+            self.emit("pin-requested", fi.path, fi.is_dir)
 
     def reveal_file(self, remote_path: str):
         """Navigate to the parent directory of remote_path and select its row."""
@@ -590,7 +952,6 @@ class FileBrowser(Gtk.Box):
         self.load_directory(parent)
 
     def set_window(self, window):
-        """Set reference to main window for SFTP access."""
         self._window = window
 
     @property
@@ -615,10 +976,16 @@ class FileBrowser(Gtk.Box):
         self._history = []
         self._history_pos = -1
 
+    # ──────────────────────────────────────────────────────────────────────
+    # Directory loading
+    # ──────────────────────────────────────────────────────────────────────
+
     def load_directory(self, path: str, add_to_history: bool = True):
-        """Load directory contents asynchronously."""
         if not self._window or not self._window.sftp_client:
             return
+
+        if self._select_mode:
+            self._exit_select_mode()
 
         if add_to_history:
             if not self._history or path != self._history[self._history_pos]:
@@ -629,17 +996,13 @@ class FileBrowser(Gtk.Box):
         self._current_path = path
         self._path_label.set_label(_path_display(path))
         self._path_label.set_tooltip_text(path)
-        self._up_btn.set_sensitive(path != "/")
         self.emit("path-changed", path)
 
-        # Show loading state
         self._spinner.set_visible(True)
         self._spinner.set_spinning(True)
 
         client = self._window.sftp_client
-
         from edith.services.async_worker import run_async
-
         show_hidden = self._show_hidden
 
         def do_list():
@@ -649,7 +1012,6 @@ class FileBrowser(Gtk.Box):
                 if not show_hidden and attr.filename.startswith("."):
                     continue
                 files.append(RemoteFileInfo.from_sftp_attr(attr, path))
-            # Sort: directories first, then alphabetical
             files.sort(key=lambda f: (not f.is_dir, f.name.lower()))
             return files
 
@@ -661,115 +1023,84 @@ class FileBrowser(Gtk.Box):
         def on_error(error):
             self._spinner.set_visible(False)
             self._spinner.set_spinning(False)
-            self._show_error(str(error))
+            self._show_listing_error(str(error))
 
         run_async(do_list, on_success, on_error)
 
     def _populate(self, files: list[RemoteFileInfo]):
-        """Populate the list with file entries."""
-        # Clear existing
-        while True:
-            row = self._list_box.get_row_at_index(0)
-            if row is None:
-                break
-            self._list_box.remove(row)
+        self._items.clear()
+        self._store.remove_all()
+        self._context_item = None
 
-        # Parent directory shortcut
+        self._stack.set_visible_child_name("list")
+
+        # Parent directory shortcut (not tracked in _items — excluded from multi-select)
         if self._current_path != "/":
-            parent_row = Gtk.ListBoxRow()
-            parent_row.is_parent_dir = True
-            box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6,
-                          margin_start=8, margin_end=8, margin_top=2, margin_bottom=2)
-            box.append(Gtk.Label(label="..", xalign=0))
-            parent_row.set_child(box)
-            self._list_box.append(parent_row)
+            parent_path = "/".join(self._current_path.rstrip("/").split("/")[:-1]) or "/"
+            parent_fi = RemoteFileInfo(
+                name="..", path=parent_path, is_dir=True, is_parent_dir=True,
+            )
+            self._store.append(RemoteFileItem(parent_fi))
 
         if not files:
-            empty = Gtk.Label(
-                label="Empty directory",
-                css_classes=["dim-label"],
-                margin_top=24,
-            )
-            self._list_box.append(empty)
+            if self._current_path == "/":
+                self._status_label.set_text("Empty directory")
+                self._status_label.remove_css_class("error")
+                self._stack.set_visible_child_name("status")
             return
 
-        for file_info in files:
-            row = FileRow(file_info)
-            self._list_box.append(row)
+        for fi in files:
+            item = RemoteFileItem(fi)
+            self._items.append(item)
+            self._store.append(item)
 
-            # Drag source on every file row
-            listbox_row = row.get_parent()
-            if listbox_row:
-                self._attach_drag_source(listbox_row, file_info)
-                # Drop target on directory rows
-                if file_info.is_dir:
-                    self._attach_dir_drop_target(listbox_row, file_info)
-
-        # Select a row if reveal was requested
         if self._pending_reveal:
             target = self._pending_reveal
             self._pending_reveal = None
-            idx = 0
-            while True:
-                row = self._list_box.get_row_at_index(idx)
-                if row is None:
+            for i in range(self._filter_model.get_n_items()):
+                item = self._filter_model.get_item(i)
+                if item.file_info.name == target:
+                    self._selection.set_selected(i)
                     break
-                child = row.get_child()
-                if isinstance(child, FileRow) and child.file_info.name == target:
-                    self._list_box.select_row(row)
-                    break
-                idx += 1
 
-    def _show_error(self, message: str):
-        while True:
-            row = self._list_box.get_row_at_index(0)
-            if row is None:
-                break
-            self._list_box.remove(row)
+    def _show_listing_error(self, message: str):
+        self._items.clear()
+        self._store.remove_all()
+        self._status_label.set_text(f"Error: {message}")
+        self._status_label.add_css_class("error")
+        self._stack.set_visible_child_name("status")
 
-        error_label = Gtk.Label(
-            label=f"Error: {message}",
-            css_classes=["dim-label", "error"],
-            margin_top=24,
-            wrap=True,
-        )
-        self._list_box.append(error_label)
+    def _show_op_error(self, message: str):
+        if self._window:
+            self._window.show_toast(f"Error: {message}", "error")
+        else:
+            self._show_listing_error(message)
 
-    def _on_row_activated(self, list_box, row):
-        self._activate_row(row)
-
-    def _activate_row(self, row):
-        if getattr(row, "is_parent_dir", False):
-            self._on_go_up(None)
+    def _on_cv_activated(self, column_view, position):
+        item = self._filter_model.get_item(position)
+        if item is None:
             return
-        child = row.get_child()
-        if isinstance(child, FileRow):
-            if child.file_info.is_dir:
-                self.load_directory(child.file_info.path)
-            else:
-                self.emit("file-activated", child.file_info.path)
-
-    def _on_pin(self, action, param):
-        fi = self._get_context_file_info()
-        if fi:
-            self.emit("pin-requested", fi.path, fi.is_dir)
+        if item.file_info.is_dir:
+            self.load_directory(item.file_info.path)
+        else:
+            self.emit("file-activated", item.file_info.path)
 
     def _on_filter_changed(self, entry):
-        self._list_box.invalidate_filter()
-
-    def _filter_row(self, row):
-        query = self._filter_entry.get_text().strip().lower()
-        if not query:
-            return True
-        if getattr(row, "is_parent_dir", False):
-            return True
-        child = row.get_child()
-        if isinstance(child, FileRow):
-            return query in child.file_info.name.lower()
-        return True  # always show empty/error labels
+        query = entry.get_text().strip().lower()
+        if query:
+            f = Gtk.CustomFilter.new(
+                lambda item, _: item.file_info.is_parent_dir or query in item.file_info.name.lower()
+            )
+            self._filter_model.set_filter(f)
+        else:
+            self._filter_model.set_filter(None)
 
     def _on_show_hidden_toggled(self, btn):
         self._show_hidden = btn.get_active()
+        btn.set_icon_name(
+            "edith-show-hidden-active-symbolic" if self._show_hidden
+            else "edith-show-hidden-symbolic"
+        )
         self.load_directory(self._current_path)
 
     def _on_go_up(self, btn):
@@ -780,14 +1111,186 @@ class FileBrowser(Gtk.Box):
             parent = "/"
         self.load_directory(parent)
 
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────
+    # Multi-select mode
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _on_select_mode_key(self, ctrl, keyval, keycode, state):
+        if not self._select_mode:
+            return False
+        if keyval == Gdk.KEY_Escape:
+            self._exit_select_mode()
+            return True
+        if keyval == Gdk.KEY_a and state & Gdk.ModifierType.CONTROL_MASK:
+            if not self._filter_entry.has_focus():
+                self._select_all_rows()
+                return True
+        return False
+
+    def _exit_select_mode(self):
+        if self._select_mode:
+            self._select_btn.set_active(False)
+
+    def _on_select_mode_toggled(self, btn):
+        self._select_mode = btn.get_active()
+        btn.set_icon_name(
+            "edith-select-items-active-symbolic" if self._select_mode
+            else "edith-select-items-symbolic"
+        )
+        if self._select_mode:
+            self._multi_bar.set_visible(True)
+            self._multi_count_label.set_label("No items selected")
+            self._multi_delete_btn.set_sensitive(False)
+            self._multi_move_btn.set_sensitive(False)
+            self._multi_download_btn.set_sensitive(False)
+            self._check_column.set_visible(True)
+        else:
+            self._clear_checked_rows()
+            self._check_column.set_visible(False)
+            self._multi_bar.set_visible(False)
+
+    def _on_detail_mode_toggled(self, btn):
+        show = btn.get_active()
+        btn.set_icon_name(
+            "edith-file-details-active-symbolic" if show
+            else "edith-file-details-symbolic"
+        )
+        self._size_col.set_visible(show)
+        self._perm_col.set_visible(show)
+        self._mtime_col.set_visible(show)
+        if self._window:
+            self._window.adjust_sidebar_width(550 if show else 280)
+
+    def _set_checkboxes_visible(self, visible: bool):
+        self._check_column.set_visible(visible)
+
+    def _select_all_rows(self):
+        for item in self._items:
+            item.selected = True
+        self._update_multi_bar()
+
+    def _clear_checked_rows(self):
+        for item in self._items:
+            item.selected = False
+        self._update_multi_bar()
+
+    def _update_multi_bar(self):
+        infos = self._get_selected_file_infos()
+        n = len(infos)
+        if n == 0:
+            self._multi_count_label.set_label("No items selected")
+        elif n == 1:
+            self._multi_count_label.set_label("1 item selected")
+        else:
+            self._multi_count_label.set_label(f"{n} items selected")
+        self._multi_delete_btn.set_sensitive(n > 0)
+        self._multi_move_btn.set_sensitive(n > 0)
+        self._multi_download_btn.set_sensitive(n > 0)
+
+    def _get_selected_file_infos(self) -> list:
+        return [item.file_info for item in self._items if item.selected]
+
+    def _on_bulk_delete(self, btn=None):
+        infos = self._get_selected_file_infos()
+        if not infos:
+            return
+        n = len(infos)
+        dlg = Adw.AlertDialog(
+            heading=f"Delete {n} item{'s' if n != 1 else ''}?",
+            body="This will permanently delete the selected files and folders.",
+        )
+        dlg.add_response("cancel", "Cancel")
+        dlg.add_response("delete", f"Delete {n} Item{'s' if n != 1 else ''}")
+        dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+        dlg.connect("response", self._do_bulk_delete, infos)
+        dlg.present(self.get_root())
+
+    def _do_bulk_delete(self, dialog, response, infos):
+        if response != "delete":
+            return
+        if not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        from edith.services.async_worker import run_async
+        items = [(fi.path, fi.is_dir) for fi in infos]
+        n = len(items)
+
+        def do_delete():
+            for path, is_dir in items:
+                if is_dir:
+                    client.rmdir_recursive(path)
+                else:
+                    client.remove(path)
+
+        def on_bulk_deleted(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(f"Deleted {n} item{'s' if n != 1 else ''}", "success")
+
+        run_async(do_delete, on_bulk_deleted, lambda e: self._show_op_error(str(e)))
+
+    def _on_bulk_move_to(self, btn=None):
+        infos = self._get_selected_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
+            return
+        dialog = DirectoryChooserDialog(
+            self._window.sftp_client,
+            title=f"Move {len(infos)} items to\u2026",
+            start_path=self._current_path,
+        )
+        dialog.connect("chosen", self._do_bulk_move_to, infos)
+        dialog.present(self.get_root())
+
+    def _do_bulk_move_to(self, dialog, dest_dir, infos):
+        if not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        from edith.services.async_worker import run_async
+        moves = [(fi.path, f"{dest_dir.rstrip('/')}/{fi.name}") for fi in infos]
+        n = len(moves)
+        dest_label = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
+
+        def do_moves():
+            for src, dst in moves:
+                if src != dst:
+                    client.rename(src, dst)
+
+        def on_bulk_moved(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(
+                    f"Moved {n} item{'s' if n != 1 else ''} to \u201c{dest_label}\u201d", "success"
+                )
+
+        run_async(do_moves, on_bulk_moved, lambda e: self._show_op_error(str(e)))
+
+    def _on_bulk_download(self, btn=None):
+        infos = self._get_selected_file_infos()
+        if not infos:
+            return
+        dialog = Gtk.FileDialog(title=f"Download {len(infos)} item{'s' if len(infos) != 1 else ''} to\u2026")
+        dialog.select_folder(self.get_root(), None,
+                             lambda d, r: self._on_bulk_download_folder(d, r, infos))
+
+    def _on_bulk_download_folder(self, dialog, result, infos):
+        try:
+            folder = dialog.select_folder_finish(result)
+        except Exception:
+            return
+        local_dir = folder.get_path()
+        if not local_dir or not self._window:
+            return
+        for fi in infos:
+            local_path = os.path.join(local_dir, fi.name)
+            self._window.enqueue_download(fi.path, local_path)
+
+    # ──────────────────────────────────────────────────────────────────────
     # Upload
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────
 
     def _on_upload_clicked(self, btn):
         if not self._window or not self._window.sftp_client:
             return
-
         dialog = Gtk.FileDialog(title="Upload Files")
         dialog.open_multiple(self.get_root(), None, self._on_upload_files_selected)
 
@@ -795,25 +1298,21 @@ class FileBrowser(Gtk.Box):
         try:
             files = dialog.open_multiple_finish(result)
         except Exception:
-            return  # user cancelled
-
+            return
         if not files or not self._window or not self._window.sftp_client:
             return
-
         paths = []
         for i in range(files.get_n_items()):
             gfile = files.get_item(i)
             local_path = gfile.get_path()
             if local_path:
                 paths.append(local_path)
-
         if paths:
             self._do_upload_paths(paths)
 
     def _on_upload_folder(self):
         if not self._window or not self._window.sftp_client:
             return
-
         dialog = Gtk.FileDialog(title="Upload Folder")
         dialog.select_folder(self.get_root(), None, self._on_upload_folder_selected)
 
@@ -821,11 +1320,9 @@ class FileBrowser(Gtk.Box):
         try:
             folder = dialog.select_folder_finish(result)
         except Exception:
-            return  # user cancelled
-
+            return
         if not folder or not self._window or not self._window.sftp_client:
             return
-
         local_path = folder.get_path()
         if local_path:
             self._do_upload_paths([local_path])
@@ -852,64 +1349,45 @@ class FileBrowser(Gtk.Box):
         try:
             file = dialog.save_finish(result)
         except Exception:
-            return  # user cancelled
-
+            return
         local_path = file.get_path()
         if not local_path:
             return
-
         info = self._get_context_file_info()
         if not info or not self._window:
             return
-
         self._window.enqueue_download(info.path, local_path)
 
-    # ------------------------------------------------------------------
-    # Drag and drop — move (default) / copy (Ctrl held)
-    # ------------------------------------------------------------------
+    def _on_open_locally(self, action, param):
+        import tempfile
+        fi = self._get_context_file_info()
+        if not fi or not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        tmp_dir = tempfile.mkdtemp(prefix="edith-")
+        local_path = os.path.join(tmp_dir, fi.name)
+        from edith.services.async_worker import run_async
 
-    def _attach_drag_source(self, listbox_row, file_info):
-        """Attach a DragSource to a file row for move."""
-        source = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
-        source.connect("prepare", self._on_drag_prepare, file_info)
-        source.connect("drag-begin", self._on_drag_begin, file_info)
-        listbox_row.add_controller(source)
+        def do_download():
+            client.download_recursive(fi.path, local_path)
 
-    def _on_drag_prepare(self, source, x, y, file_info):
-        value = GObject.Value(GObject.TYPE_STRING, file_info.path)
-        return Gdk.ContentProvider.new_for_value(value)
+        def on_done(_):
+            launcher = Gtk.FileLauncher.new(Gio.File.new_for_path(local_path))
+            launcher.launch(self.get_root(), None, self._on_launch_finish)
 
-    def _on_drag_begin(self, source, drag, file_info):
-        icon_name = file_info.icon_name
-        box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
-        box.append(Gtk.Image(icon_name=icon_name))
-        box.append(Gtk.Label(label=file_info.name))
-        drag_icon = Gtk.DragIcon.get_for_drag(drag)
-        drag_icon.set_child(box)
+        run_async(do_download, on_done, lambda e: self._show_op_error(str(e)))
 
-    def _attach_dir_drop_target(self, listbox_row, dir_info):
-        """Attach a DropTarget to a directory row to receive files."""
-        target = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
-        target.connect("drop", self._on_dir_drop, dir_info)
-        target.connect("enter", self._on_dir_drag_enter, listbox_row)
-        target.connect("leave", self._on_dir_drag_leave, listbox_row)
-        listbox_row.add_controller(target)
+    def _on_launch_finish(self, launcher, result):
+        try:
+            launcher.launch_finish(result)
+        except Exception:
+            pass
 
-    def _on_dir_drag_enter(self, target, x, y, listbox_row):
-        listbox_row.add_css_class("drop-target")
-        return Gdk.DragAction.MOVE
-
-    def _on_dir_drag_leave(self, target, listbox_row):
-        listbox_row.remove_css_class("drop-target")
-
-    def _on_dir_drop(self, target, value, x, y, dir_info):
-        src_path = value
-        dest_dir = dir_info.path
-        self._perform_drag_move(src_path, dest_dir)
-        return True
+    # ──────────────────────────────────────────────────────────────────────
+    # Drag and drop
+    # ──────────────────────────────────────────────────────────────────────
 
     def _setup_pathbar_drop_target(self):
-        """Drop target on path bar to move into the current directory."""
         target = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
         target.connect("drop", self._on_pathbar_drop)
         target.connect("enter", self._on_pathbar_drag_enter)
@@ -924,35 +1402,29 @@ class FileBrowser(Gtk.Box):
         self._path_bar.remove_css_class("drop-target")
 
     def _on_pathbar_drop(self, target, value, x, y):
-        src_path = value
-        dest_dir = self._current_path
-        self._perform_drag_move(src_path, dest_dir)
+        self._perform_drag_move(value, self._current_path)
         return True
 
     def _perform_drag_move(self, src_path, dest_dir):
-        """Move src_path into dest_dir via rename."""
         if not self._window or not self._window.sftp_client:
             return
-
         name = src_path.rstrip("/").rsplit("/", 1)[-1]
         dst_path = f"{dest_dir.rstrip('/')}/{name}"
-
-        # Don't drop onto own parent (no-op) or onto itself
         src_parent = "/".join(src_path.rstrip("/").split("/")[:-1]) or "/"
         if src_parent == dest_dir.rstrip("/") or src_parent == dest_dir:
             return
         if src_path.rstrip("/") == dest_dir.rstrip("/"):
             return
-        # Don't drop a folder into its own subtree
         if dest_dir.rstrip("/").startswith(src_path.rstrip("/") + "/"):
             return
-
         client = self._window.sftp_client
-
         from edith.services.async_worker import run_async
+        dest_label = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
 
-        run_async(
-            lambda: client.rename(src_path, dst_path),
-            lambda _: self.load_directory(self._current_path),
-            lambda e: self._show_error(str(e)),
-        )
+        def on_drag_moved(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_label}\u201d", "success")
+
+        run_async(lambda: client.rename(src_path, dst_path), on_drag_moved,
+                  lambda e: self._show_op_error(str(e)))

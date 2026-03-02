@@ -24,6 +24,7 @@ class EditorPanel(Gtk.Box):
 
         self._window = None
         self._tabs = {}  # remote_path -> Adw.TabPage
+        self._closed_tab_paths = []  # stack for reopen-closed-tab (most recent last)
 
         # Tab bar
         self._tab_view = Adw.TabView()
@@ -41,8 +42,16 @@ class EditorPanel(Gtk.Box):
     def _setup_tab_menu(self):
         """Context menu for tab right-click, using TabView's built-in support."""
         menu = Gio.Menu()
-        menu.append("Show in Sidebar", "tab.show-in-sidebar")
-        menu.append("Copy Path", "tab.copy-path")
+
+        section1 = Gio.Menu()
+        section1.append("Show in Sidebar", "tab.show-in-sidebar")
+        section1.append("Copy Path", "tab.copy-path")
+        menu.append_section(None, section1)
+
+        section2 = Gio.Menu()
+        section2.append("Close Others", "tab.close-others")
+        section2.append("Close to Right", "tab.close-to-right")
+        menu.append_section(None, section2)
 
         self._tab_view.set_menu_model(menu)
         self._tab_view.connect("setup-menu", self._on_tab_setup_menu)
@@ -57,12 +66,24 @@ class EditorPanel(Gtk.Box):
         copy_path_action.connect("activate", self._on_copy_path)
         group.add_action(copy_path_action)
 
+        self._close_others_action = Gio.SimpleAction.new("close-others", None)
+        self._close_others_action.connect("activate", self._on_close_others)
+        group.add_action(self._close_others_action)
+
+        self._close_to_right_action = Gio.SimpleAction.new("close-to-right", None)
+        self._close_to_right_action.connect("activate", self._on_close_to_right)
+        group.add_action(self._close_to_right_action)
+
         self.insert_action_group("tab", group)
 
         self._menu_page = None
 
     def _on_tab_setup_menu(self, tab_view, page):
         self._menu_page = page
+        n = tab_view.get_n_pages()
+        pos = tab_view.get_page_position(page) if page else 0
+        self._close_others_action.set_enabled(page is not None and n > 1)
+        self._close_to_right_action.set_enabled(page is not None and pos < n - 1)
 
     def _on_copy_path(self, action, param):
         page = self._menu_page
@@ -84,6 +105,30 @@ class EditorPanel(Gtk.Box):
         open_file = getattr(widget, "open_file", None)
         if open_file and self._window:
             self._window.reveal_in_sidebar(open_file.remote_path)
+
+    def _on_close_others(self, action, param):
+        page = self._menu_page
+        if not page:
+            return
+        pages_to_close = [
+            self._tab_view.get_nth_page(i)
+            for i in range(self._tab_view.get_n_pages())
+            if self._tab_view.get_nth_page(i) != page
+        ]
+        for p in pages_to_close:
+            self._tab_view.close_page(p)
+
+    def _on_close_to_right(self, action, param):
+        page = self._menu_page
+        if not page:
+            return
+        pos = self._tab_view.get_page_position(page)
+        pages_to_close = [
+            self._tab_view.get_nth_page(i)
+            for i in range(pos + 1, self._tab_view.get_n_pages())
+        ]
+        for p in pages_to_close:
+            self._tab_view.close_page(p)
 
     def set_window(self, window):
         self._window = window
@@ -157,6 +202,25 @@ class EditorPanel(Gtk.Box):
                 self._tab_view.close_page_finish(page, True)
         self._tabs.clear()
 
+    def _record_close(self, page):
+        widget = page.get_child()
+        open_file = getattr(widget, "open_file", None)
+        if not open_file:
+            return
+        path = open_file.remote_path
+        # Keep only the most recent occurrence
+        self._closed_tab_paths = [p for p in self._closed_tab_paths if p != path]
+        self._closed_tab_paths.append(path)
+        if len(self._closed_tab_paths) > 10:
+            self._closed_tab_paths.pop(0)
+
+    def reopen_last_closed(self):
+        """Reopen the most recently closed tab."""
+        if not self._closed_tab_paths or not self._window:
+            return
+        remote_path = self._closed_tab_paths.pop()
+        self._window.open_remote_file(remote_path)
+
     def _on_close_page(self, tab_view, page):
         widget = page.get_child()
         if isinstance(widget, MonacoEditor):
@@ -172,6 +236,7 @@ class EditorPanel(Gtk.Box):
             if open_file:
                 self._tabs.pop(open_file.remote_path, None)
 
+        self._record_close(page)
         tab_view.close_page_finish(page, True)
         return True  # Inhibit default close, we handle it
 
@@ -201,6 +266,7 @@ class EditorPanel(Gtk.Box):
                         editor.open_file.local_path,
                     )
                 self._tabs.pop(editor.open_file.remote_path, None)
+                self._record_close(page)
                 self._tab_view.close_page_finish(page, True)
 
             editor.save_to_disk(on_done=on_saved)
@@ -208,6 +274,7 @@ class EditorPanel(Gtk.Box):
 
         if response != "cancel":
             self._tabs.pop(editor.open_file.remote_path, None)
+            self._record_close(page)
             self._tab_view.close_page_finish(page, True)
         else:
             self._tab_view.close_page_finish(page, False)

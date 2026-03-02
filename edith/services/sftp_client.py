@@ -119,6 +119,45 @@ class SftpClient:
         finally:
             dl_sftp.close()
 
+    def download_recursive(self, remote_path: str, local_path: str, progress_cb=None):
+        """Download a remote file or directory tree to a local path."""
+        with self._lock:
+            if not self._sftp:
+                raise RuntimeError("Not connected")
+            transport = self._transport
+            remote_stat = self._sftp.stat(remote_path)
+
+        if stat.S_ISDIR(remote_stat.st_mode):
+            Path(local_path).mkdir(parents=True, exist_ok=True)
+            dl_sftp = paramiko.SFTPClient.from_transport(transport)
+            try:
+                self._download_dir_unlocked(dl_sftp, remote_path, local_path, progress_cb)
+            finally:
+                dl_sftp.close()
+        else:
+            self.download(remote_path, local_path, progress_cb=progress_cb)
+
+    def _download_dir_unlocked(self, dl_sftp, remote_path: str, local_path: str, progress_cb=None):
+        Path(local_path).mkdir(parents=True, exist_ok=True)
+        for attr in dl_sftp.listdir_attr(remote_path):
+            child_remote = f"{remote_path.rstrip('/')}/{attr.filename}"
+            child_local = os.path.join(local_path, attr.filename)
+            if stat.S_ISDIR(attr.st_mode):
+                self._download_dir_unlocked(dl_sftp, child_remote, child_local, progress_cb)
+            else:
+                file_size = attr.st_size or 0
+                with dl_sftp.open(child_remote, "rb") as fr:
+                    with open(child_local, "wb") as fl:
+                        received = 0
+                        while True:
+                            chunk = fr.read(32768)
+                            if not chunk:
+                                break
+                            fl.write(chunk)
+                            received += len(chunk)
+                            if progress_cb:
+                                progress_cb(received, file_size)
+
     def upload(self, local_path: str, remote_path: str, progress_cb=None, overwrite=False):
         """Upload a local file to a remote path."""
         with self._lock:

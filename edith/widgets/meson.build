@@ -5,7 +5,6 @@ widgets_sources = [
   'editor_panel.py',
   'file_browser.py',
   'file_dialogs.py',
-  'file_row.py',
   'folder_row.py',
   'font_chooser_dialog.py',
   'image_viewer.py',
