@@ -218,8 +218,6 @@ class EdithWindow(Adw.ApplicationWindow):
             visible=False,
             sensitive=False,
         )
-        self._main_header.pack_end(self._transfer_btn)
-
         self._sidebar_visible = True
         self._sidebar_toggle = Gtk.Button(
             icon_name="edith-sidebar-symbolic",
@@ -233,6 +231,7 @@ class EdithWindow(Adw.ApplicationWindow):
             tooltip_text="Main Menu",
         )
         self._main_header.pack_end(menu_btn)
+        self._main_header.pack_end(self._transfer_btn)
 
         self._main_header.pack_end(self._sidebar_toggle)
 
