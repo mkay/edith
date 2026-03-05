@@ -112,6 +112,20 @@ class ConfigService:
         return folders
 
     @staticmethod
+    def reorder_folders(ordered_ids: list):
+        """Reorder the folders list to match the given ID order and save."""
+        folders = ConfigService.load_folders()
+        id_to_folder = {f.id: f for f in folders}
+        reordered = [id_to_folder[fid] for fid in ordered_ids if fid in id_to_folder]
+        # Append any folders not in the list (shouldn't happen, but be safe)
+        seen = set(ordered_ids)
+        for f in folders:
+            if f.id not in seen:
+                reordered.append(f)
+        ConfigService.save_folders(reordered)
+        return reordered
+
+    @staticmethod
     def move_server_to_folder(server_id: str, folder_id: str):
         servers = ConfigService.load_servers()
         for s in servers:
@@ -174,6 +188,29 @@ class ConfigService:
         pins = data.get("pins", {})
         pins[server_id] = [e for e in pins.get(server_id, []) if e["path"] != path]
         data["pins"] = pins
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+
+    # --- Pinned servers ---
+
+    @staticmethod
+    def get_pinned_servers() -> list:
+        data = ConfigService._load_raw()
+        return data.get("pinned_servers", [])
+
+    @staticmethod
+    def is_server_pinned(server_id: str) -> bool:
+        return server_id in ConfigService.get_pinned_servers()
+
+    @staticmethod
+    def toggle_server_pin(server_id: str):
+        data = ConfigService._load_raw()
+        pins = data.get("pinned_servers", [])
+        if server_id in pins:
+            pins.remove(server_id)
+        else:
+            pins.append(server_id)
+        data["pinned_servers"] = pins
         CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         SERVERS_FILE.write_text(json.dumps(data, indent=2))
 

@@ -2,6 +2,9 @@
 <gresources>
   <gresource prefix="/de/singular/edith/icons/hicolor/scalable/actions">
     <file alias="edith-sidebar-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-symbolic.svg</file>
+    <file alias="edith-sidebar-show-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-show-symbolic.svg</file>
+    <file alias="edith-sidebar-hide-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-hide-symbolic.svg</file>
+    <file alias="edith-pin-symbolic.svg">data/icons/hicolor/scalable/actions/edith-pin-symbolic.svg</file>
     <file alias="edith-server-add-symbolic.svg">data/icons/hicolor/scalable/actions/edith-server-add-symbolic.svg</file>
     <file alias="edith-group-new-symbolic.svg">data/icons/hicolor/scalable/actions/edith-group-new-symbolic.svg</file>
     <file alias="edith-open-menu-symbolic.svg">data/icons/hicolor/scalable/actions/edith-open-menu-symbolic.svg</file>

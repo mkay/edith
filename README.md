@@ -11,7 +11,7 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 
 ## Features
 
-- **Server management** — saved connections with password/key auth, organized into groups; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
+- **Server management** — saved connections with password/key auth, organized into groups; drag-and-drop reordering of groups in the sidebar; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
 - **Server search** — Ctrl+F to filter servers by name
 - **File browser** — navigate remote directories; column view with sortable Name, Size, Permissions, and Modified columns; show/hide detail columns with a toggle; alternating row shading; drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions
 - **Multi-select** — toggle selection mode to select multiple files and folders for bulk delete, move, or download

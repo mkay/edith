@@ -234,15 +234,75 @@ class ServerList(Gtk.Box):
             if lbr:
                 self._row_keys[lbr] = "__ungrouped__"
 
-        # One FolderRow per folder, sorted alphabetically
-        for folder in sorted(self._folders, key=lambda f: f.name.lower()):
+        # One FolderRow per folder, in config order (user-defined via drag-and-drop)
+        for folder in self._folders:
             folder_row = FolderRow(folder)
             folder_row.set_count(folder_counts.get(folder.id, 0))
             self._list_box.append(folder_row)
             lbr = folder_row.get_parent()
             if lbr:
                 self._row_keys[lbr] = folder.id
+                self._setup_folder_dnd(lbr, folder)
             self._folder_rows[folder.id] = folder_row
+
+    # ------------------------------------------------------------------
+    # Folder drag-and-drop reordering
+    # ------------------------------------------------------------------
+
+    def _setup_folder_dnd(self, list_box_row, folder: "FolderInfo"):
+        """Attach DragSource and DropTarget to a folder's ListBoxRow for reordering."""
+
+        # Drag source
+        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
+
+        def on_drag_prepare(d, x, y):
+            return Gdk.ContentProvider.new_for_value(
+                GObject.Value(GObject.TYPE_STRING, folder.id)
+            )
+
+        def on_drag_begin(d, gdk_drag):
+            drag_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            drag_box.append(Gtk.Image(icon_name="edith-folder-symbolic", pixel_size=16))
+            drag_box.append(Gtk.Label(label=folder.name))
+            Gtk.DragIcon.get_for_drag(gdk_drag).set_child(drag_box)
+
+        drag.connect("prepare", on_drag_prepare)
+        drag.connect("drag-begin", on_drag_begin)
+        list_box_row.add_controller(drag)
+
+        # Drop target
+        drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+
+        def on_drop_enter(d, x, y):
+            list_box_row.add_css_class("drop-target")
+            return Gdk.DragAction.MOVE
+
+        def on_drop_leave(d):
+            list_box_row.remove_css_class("drop-target")
+
+        def on_drop(d, value, x, y):
+            list_box_row.remove_css_class("drop-target")
+            source_id = value
+            target_id = folder.id
+            if source_id == target_id:
+                return False
+            # Reorder: move source to target's position
+            ordered_ids = [f.id for f in self._folders]
+            if source_id not in ordered_ids:
+                return False
+            ordered_ids.remove(source_id)
+            target_idx = ordered_ids.index(target_id)
+            ordered_ids.insert(target_idx, source_id)
+            current_key = self._get_selected_key()
+            self._folders = ConfigService.reorder_folders(ordered_ids)
+            self._rebuild_list()
+            self.select_group(current_key or "__all__")
+            return True
+
+        drop.connect("enter", on_drop_enter)
+        drop.connect("leave", on_drop_leave)
+        drop.connect("drop", on_drop)
+        list_box_row.add_controller(drop)
 
     def _make_nav_row(self, icon_name: str, label: str, count: int) -> "Gtk.Box":
         box = Gtk.Box(

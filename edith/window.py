@@ -220,7 +220,7 @@ class EdithWindow(Adw.ApplicationWindow):
         )
         self._sidebar_visible = True
         self._sidebar_toggle = Gtk.Button(
-            icon_name="edith-sidebar-symbolic",
+            icon_name="edith-sidebar-hide-symbolic",
             tooltip_text="Toggle Sidebar (F9)",
             focusable=False,
         )
@@ -437,12 +437,14 @@ class EdithWindow(Adw.ApplicationWindow):
             self._sidebar_width = max(self._paned.get_position(), 180)
             self._sidebar_toolbar.set_visible(False)
             self._sidebar_visible = False
+            self._sidebar_toggle.set_icon_name("edith-sidebar-show-symbolic")
             # Window controls move to the main header when sidebar is hidden
             self._main_header.set_show_start_title_buttons(True)
         else:
             self._sidebar_toolbar.set_visible(True)
             self._paned.set_position(self._sidebar_width)
             self._sidebar_visible = True
+            self._sidebar_toggle.set_icon_name("edith-sidebar-hide-symbolic")
             self._main_header.set_show_start_title_buttons(False)
 
     def _on_group_selected(self, server_list, group_key):

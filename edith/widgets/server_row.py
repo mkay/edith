@@ -15,9 +15,10 @@ class ServerRow(Gtk.Box):
         "connect-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "edit-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
         "delete-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
+        "unpin-requested": (GObject.SignalFlags.RUN_FIRST, None, ()),
     }
 
-    def __init__(self, server_info: ServerInfo):
+    def __init__(self, server_info: ServerInfo, pinned: bool = False):
         super().__init__(
             orientation=Gtk.Orientation.HORIZONTAL,
             spacing=8,
@@ -42,6 +43,17 @@ class ServerRow(Gtk.Box):
         labels.append(name_label)
         labels.append(detail_label)
         self.append(labels)
+
+        if pinned:
+            pin_btn = Gtk.Button(
+                icon_name="edith-pin-symbolic",
+                valign=Gtk.Align.CENTER,
+                css_classes=["flat", "dim-label"],
+                tooltip_text="Unpin",
+                focusable=False,
+            )
+            pin_btn.connect("clicked", lambda _: self.emit("unpin-requested"))
+            self.append(pin_btn)
 
         self._name_label = name_label
         self._detail_label = detail_label

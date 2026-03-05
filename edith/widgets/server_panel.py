@@ -107,14 +107,22 @@ class ServerPanel(Gtk.Box):
     # ------------------------------------------------------------------
 
     def _setup_context_menu(self):
-        server_menu = Gio.Menu()
-        server_menu.append("Connect", "server.connect")
-        server_menu.append("Edit", "server.edit")
-        server_menu.append("Change Password\u2026", "server.change-password")
-        server_menu.append("Remove from Group", "server.ungroup")
-        server_menu.append("Delete", "server.delete")
+        self._server_menu_model = Gio.Menu()
+        self._server_menu_model.append("Connect", "server.connect")
+        self._server_menu_model.append("Edit", "server.edit")
+        self._server_menu_model.append("Change Password\u2026", "server.change-password")
 
-        self._server_menu = Gtk.PopoverMenu(menu_model=server_menu, has_arrow=False)
+        self._pin_menu_item = Gio.MenuItem.new("Pin", "server.toggle-pin")
+        pin_section = Gio.Menu()
+        pin_section.append_item(self._pin_menu_item)
+        self._server_menu_model.append_section(None, pin_section)
+
+        other_section = Gio.Menu()
+        other_section.append("Remove from Group", "server.ungroup")
+        other_section.append("Delete", "server.delete")
+        self._server_menu_model.append_section(None, other_section)
+
+        self._server_menu = Gtk.PopoverMenu(menu_model=self._server_menu_model, has_arrow=False)
 
         server_group = Gio.SimpleActionGroup()
 
@@ -138,6 +146,10 @@ class ServerPanel(Gtk.Box):
         self._change_password_action.connect("activate", self._on_context_change_password)
         server_group.add_action(self._change_password_action)
 
+        toggle_pin_action = Gio.SimpleAction.new("toggle-pin", None)
+        toggle_pin_action.connect("activate", self._on_context_toggle_pin)
+        server_group.add_action(toggle_pin_action)
+
         # Action group on self — reachable from any child ListBox up the hierarchy
         self.insert_action_group("server", server_group)
 
@@ -155,6 +167,13 @@ class ServerPanel(Gtk.Box):
         self._context_row = row
         self._ungroup_action.set_enabled(child.server_info.folder_id != "")
         self._change_password_action.set_enabled(child.server_info.auth_method != "key")
+
+        # Update pin label dynamically (pin section is at flat index 3)
+        pin_label = "Unpin" if ConfigService.is_server_pinned(child.server_info.id) else "Pin"
+        pin_section = Gio.Menu()
+        pin_section.append(pin_label, "server.toggle-pin")
+        self._server_menu_model.remove(3)
+        self._server_menu_model.insert_section(3, None, pin_section)
 
         # Parent the popover to the clicked ListBox so x,y are already correct
         self._server_menu.popdown()
@@ -206,6 +225,13 @@ class ServerPanel(Gtk.Box):
             child = self._context_row.get_child()
             if isinstance(child, ServerRow):
                 self._show_change_password_dialog(child.server_info)
+
+    def _on_context_toggle_pin(self, action, param):
+        if self._context_row:
+            child = self._context_row.get_child()
+            if isinstance(child, ServerRow):
+                ConfigService.toggle_server_pin(child.server_info.id)
+                self._rebuild_list()
 
     def _show_change_password_dialog(self, server_info):
         dialog = Adw.Dialog(
@@ -345,6 +371,27 @@ class ServerPanel(Gtk.Box):
         lb.add_controller(gesture)
         return lb
 
+    def _partition_pinned(self, servers: list) -> tuple:
+        """Split servers into (pinned, unpinned) preserving order within each."""
+        pinned_ids = set(ConfigService.get_pinned_servers())
+        pinned, unpinned = [], []
+        for s in servers:
+            if s.id in pinned_ids:
+                pinned.append(s)
+            else:
+                unpinned.append(s)
+        return pinned, unpinned
+
+    def _make_server_row(self, server: ServerInfo, pinned: bool) -> ServerRow:
+        row = ServerRow(server, pinned=pinned)
+        if pinned:
+            row.connect("unpin-requested", self._on_unpin_requested)
+        return row
+
+    def _on_unpin_requested(self, server_row):
+        ConfigService.toggle_server_pin(server_row.server_info.id)
+        self._rebuild_list()
+
     def _add_section(self, title: str, servers: list, is_first: bool = False):
         """Append a group header label followed by a boxed-list for its servers."""
         label = Gtk.Label(
@@ -356,16 +403,22 @@ class ServerPanel(Gtk.Box):
         )
         self._content_box.append(label)
         lb = self._make_list_box()
-        for s in servers:
-            lb.append(ServerRow(s))
+        pinned, unpinned = self._partition_pinned(servers)
+        for s in pinned:
+            lb.append(self._make_server_row(s, True))
+        for s in unpinned:
+            lb.append(self._make_server_row(s, False))
         self._content_box.append(lb)
         self._list_boxes.append(lb)
 
     def _add_flat_list(self, servers: list):
         """Append a boxed-list without a header (used for single-group views)."""
         lb = self._make_list_box()
-        for s in servers:
-            lb.append(ServerRow(s))
+        pinned, unpinned = self._partition_pinned(servers)
+        for s in pinned:
+            lb.append(self._make_server_row(s, True))
+        for s in unpinned:
+            lb.append(self._make_server_row(s, False))
         self._content_box.append(lb)
         self._list_boxes.append(lb)
 
@@ -423,7 +476,7 @@ class ServerPanel(Gtk.Box):
 
         total = 0
         is_first = True
-        for folder in sorted(self._folders, key=lambda f: f.name.lower()):
+        for folder in self._folders:
             members = sorted(folder_groups.get(folder.id, []), key=lambda s: s.display_name.lower())
             if not members:
                 continue
