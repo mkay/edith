@@ -24,27 +24,48 @@ class SftpClient:
         password: str | None = None,
         key_file: str | None = None,
         passphrase: str | None = None,
+        timeout: float = 10,
     ):
         """Connect to an SFTP server. Blocks until connected."""
-        transport = paramiko.Transport((host, port))
+        import socket
+
+        sock = socket.create_connection((host, port), timeout=timeout)
+        transport = paramiko.Transport(sock)
+        transport.start_client()
 
         pkey = None
         if key_file and os.path.isfile(key_file):
-            pkey = paramiko.RSAKey.from_private_key_file(
-                key_file, password=passphrase
-            )
+            pkey = paramiko.PKey.from_path(key_file, passphrase=passphrase)
 
         if pkey:
-            transport.connect(username=username, pkey=pkey)
+            transport.auth_publickey(username, pkey)
         elif password:
-            transport.connect(username=username, password=password)
+            transport.auth_password(username, password)
         else:
-            raise ValueError("No authentication method provided")
+            # Try SSH agent
+            agent = paramiko.Agent()
+            agent_keys = agent.get_keys()
+            if not agent_keys:
+                agent.close()
+                raise ValueError("No authentication method provided (no password, key file, or SSH agent keys)")
+            authenticated = False
+            for agent_key in agent_keys:
+                try:
+                    transport.auth_publickey(username, agent_key)
+                    authenticated = True
+                    break
+                except paramiko.AuthenticationException:
+                    continue
+            agent.close()
+            if not authenticated:
+                raise paramiko.AuthenticationException("All SSH agent keys were rejected")
 
+        transport.set_keepalive(30)
         sftp = paramiko.SFTPClient.from_transport(transport)
 
-        self._transport = transport
-        self._sftp = sftp
+        with self._lock:
+            self._transport = transport
+            self._sftp = sftp
 
     def close(self):
         with self._lock:
