@@ -65,6 +65,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._server_list = ServerList()
         self._server_list.connect("group-selected", self._on_group_selected)
+        self._server_list.connect("add-server-to-folder", self._on_add_server_to_folder)
         self._sidebar_stack.add_named(self._server_list, "server_list")
 
         self._file_browser = FileBrowser()
@@ -466,6 +467,9 @@ class EdithWindow(Adw.ApplicationWindow):
     def _on_new_server(self, action, param):
         self._server_panel.show_add_dialog()
 
+    def _on_add_server_to_folder(self, server_list, folder_id):
+        self._server_panel.show_add_dialog(folder_id=folder_id)
+
     def _on_disconnect(self, action, param):
         self.disconnect_server()
 
@@ -548,8 +552,20 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _initiate_connection(self, server_info):
         """Start the connection flow — prompt for credentials if needed."""
+        protocol = getattr(server_info, "protocol", "sftp")
+
         # Try stored credential first
         stored = credential_store.get_password(server_info.id)
+
+        if protocol in ("ftp", "ftps"):
+            # FTP uses password-only auth
+            if stored:
+                self.connect_to_server(server_info, password=stored)
+            else:
+                dialog = ConnectDialog(server_info)
+                dialog.connect("connect", lambda d, pw, pp: self.connect_to_server(server_info, password=pw))
+                dialog.present(self)
+            return
 
         if server_info.auth_method == "key" and server_info.key_file:
             # Key-only auth, no password needed
@@ -570,23 +586,39 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def connect_to_server(self, server_info, password=None, passphrase=None):
         """Initiate connection to a server."""
-        from edith.services.sftp_client import SftpClient
         from edith.services.async_worker import run_async
 
         self._set_status("connecting", f"Connecting to {server_info.host}...")
 
         initial_dir = server_info.initial_directory or "/"
+        protocol = getattr(server_info, "protocol", "sftp")
 
         def do_connect():
-            client = SftpClient()
-            client.connect(
-                host=server_info.host,
-                port=server_info.port,
-                username=server_info.username,
-                password=password,
-                key_file=server_info.key_file or None,
-                passphrase=passphrase,
-            )
+            if protocol in ("ftp", "ftps"):
+                from edith.services.ftp_client import FtpClient
+                client = FtpClient()
+                encryption = getattr(server_info, "ftp_encryption", "none")
+                # Migrate legacy "ftps" protocol value
+                if protocol == "ftps" and encryption == "none":
+                    encryption = "implicit"
+                client.connect(
+                    host=server_info.host,
+                    port=server_info.port,
+                    username=server_info.username,
+                    password=password,
+                    encryption=encryption,
+                )
+            else:
+                from edith.services.sftp_client import SftpClient
+                client = SftpClient()
+                client.connect(
+                    host=server_info.host,
+                    port=server_info.port,
+                    username=server_info.username,
+                    password=password,
+                    key_file=server_info.key_file or None,
+                    passphrase=passphrase,
+                )
             resolved = initial_dir
             if initial_dir == "~" or initial_dir.startswith("~/"):
                 home = client.normalize(".")
@@ -980,6 +1012,36 @@ class EdithWindow(Adw.ApplicationWindow):
             self.show_toast(f"Download failed: {error}", "error")
 
         self._transfer_queue.enqueue(name, do_download, on_success, on_error)
+
+    def enqueue_bulk_download(self, items: list, on_done=None):
+        """Download multiple files with a single summary notification.
+
+        items: list of (remote_path, local_path) tuples.
+        """
+        if not self._sftp_client or not self._transfer_queue:
+            return
+
+        from edith.services.transfer_queue import TransferAborted
+
+        n = len(items)
+        label = f"{n} file{'s' if n != 1 else ''}"
+        client = self._sftp_client
+
+        def do_download(progress_cb):
+            for remote_path, local_path in items:
+                client.download_recursive(remote_path, local_path, progress_cb=progress_cb)
+
+        def on_success(_):
+            if on_done:
+                on_done()
+            self.show_toast(f"Downloaded {label}", "success")
+
+        def on_error(error):
+            if isinstance(error, TransferAborted):
+                return
+            self.show_toast(f"Download failed: {error}", "error")
+
+        self._transfer_queue.enqueue(label, do_download, on_success, on_error)
 
     def enqueue_upload(self, local_path, remote_path, on_done=None):
         """Queue an upload of any local file/directory to a remote path."""

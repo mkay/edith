@@ -1,9 +1,9 @@
 # Edith
 
-A GTK4/libadwaita SFTP client for live remote file editing.
+A GTK4/libadwaita SFTP/FTP client for live remote file editing.
 (a poor man's Nova ©)
 
-Connect to remote servers over SSH, browse files, and edit them in a tabbed editor with syntax highlighting — changes are uploaded back on save.
+Connect to remote servers over SFTP or FTP, browse files, and edit them in a tabbed editor with syntax highlighting — changes are uploaded back on save.
 
 > **Alpha software.** Early access for the brave and the bug‑tolerant.
 
@@ -11,6 +11,7 @@ Connect to remote servers over SSH, browse files, and edit them in a tabbed edit
 
 ## Features
 
+- **SFTP & FTP** — connect via SFTP (SSH), plain FTP, or FTPS with explicit TLS (optional/required) and implicit TLS
 - **Server management** — saved connections with password/key auth, organized into groups; drag-and-drop reordering of groups in the sidebar; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
 - **Server search** — Ctrl+F to filter servers by name
 - **File browser** — navigate remote directories; column view with sortable Name, Size, Permissions, and Modified columns; show/hide detail columns with a toggle; alternating row shading; drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions

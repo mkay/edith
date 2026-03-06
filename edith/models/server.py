@@ -12,6 +12,8 @@ class ServerInfo:
     username: str = ""
     key_file: str = ""
     auth_method: str = "password"  # "password", "key", "key+passphrase"
+    protocol: str = "sftp"  # "sftp", "ftp"
+    ftp_encryption: str = "none"  # "none", "explicit_optional", "explicit_required", "implicit"
     initial_directory: str = "/"
     id: str = field(default_factory=lambda: "")
     folder_id: str = ""  # empty = ungrouped

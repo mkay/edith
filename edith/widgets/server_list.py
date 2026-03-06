@@ -17,6 +17,7 @@ class ServerList(Gtk.Box):
     __gsignals__ = {
         "group-selected": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
         "selection-changed": (GObject.SignalFlags.RUN_FIRST, None, (bool,)),
+        "add-server-to-folder": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
     }
 
     def __init__(self):
@@ -54,6 +55,7 @@ class ServerList(Gtk.Box):
     def _setup_context_menus(self):
         # --- Folder context menu ---
         folder_menu = Gio.Menu()
+        folder_menu.append("Add Server Here\u2026", "folder.add-server")
         folder_menu.append("Rename Group\u2026", "folder.rename")
         folder_menu.append("Delete Group", "folder.delete-folder")
 
@@ -61,6 +63,10 @@ class ServerList(Gtk.Box):
         self._folder_menu.set_parent(self._list_box)
 
         folder_group = Gio.SimpleActionGroup()
+
+        add_server_action = Gio.SimpleAction.new("add-server", None)
+        add_server_action.connect("activate", self._on_folder_add_server)
+        folder_group.add_action(add_server_action)
 
         rename_action = Gio.SimpleAction.new("rename", None)
         rename_action.connect("activate", self._on_folder_rename)
@@ -118,6 +124,13 @@ class ServerList(Gtk.Box):
     # ------------------------------------------------------------------
     # Context menu actions — folder
     # ------------------------------------------------------------------
+
+    def _on_folder_add_server(self, action, param):
+        if not self._context_row:
+            return
+        child = self._context_row.get_child()
+        if isinstance(child, FolderRow):
+            self.emit("add-server-to-folder", child.folder_info.id)
 
     def _on_folder_rename(self, action, param):
         if not self._context_row:

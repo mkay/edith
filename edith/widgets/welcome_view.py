@@ -17,7 +17,7 @@ class WelcomeView(Adw.Bin):
         status = Adw.StatusPage(
             icon_name="de.singular.edith-symbolic",
             title="Welcome to Edith",
-            description=f"A code editor that talks SFTP\nVersion {VERSION}\n\nEdith is alpha software.\nIt's guaranteed to surprise you — sometimes even in a good way.\n\nConnect to a server and open a file to start editing",
+            description=f"A code editor that talks (S)FTP\nVersion {VERSION}\n\nEdith is alpha software.\nIt's guaranteed to surprise you — sometimes even in a good way.\n\nConnect to a server and open a file to start editing",
             vexpand=True,
             hexpand=True,
         )

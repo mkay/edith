@@ -55,6 +55,30 @@ columnview > header > button:active,
 columnview > header > button:checked {
     background-color: rgba(128, 128, 128, 0.18);
 }
+
+/* Protocol badges */
+.protocol-badge {
+    border-radius: 3px;
+    padding: 0px 5px;
+    font-weight: 600;
+    font-size: 0.7em;
+}
+.badge-ssh {
+    background-color: alpha(@success_color, 0.15);
+    color: @success_color;
+}
+.badge-tls {
+    background-color: alpha(#3584e4, 0.1);
+    color: alpha(#3584e4, 0.7);
+}
+.badge-insecure {
+    background-color: alpha(@warning_color, 0.15);
+    color: @warning_color;
+}
+
+/* Test connection status */
+label.success { color: @success_color; }
+label.error { color: @error_color; }
 """)
             Gtk.StyleContext.add_provider_for_display(
                 Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER

@@ -40,6 +40,7 @@ class FileBrowser(Gtk.Box):
         self._history_pos = -1
         self._show_hidden = False
         self._select_mode = False
+        self._updating_select_all = False
         self._items: list[RemoteFileItem] = []
         self._context_item: RemoteFileItem | None = None
 
@@ -133,6 +134,13 @@ class FileBrowser(Gtk.Box):
             margin_start=8, margin_end=8, margin_top=4, margin_bottom=4,
             visible=False,
         )
+        self._select_all_check = Gtk.CheckButton(
+            tooltip_text="Select All / None",
+            can_focus=False,
+        )
+        self._select_all_check.connect("toggled", self._on_select_all_toggled)
+        self._multi_bar.append(self._select_all_check)
+
         self._multi_count_label = Gtk.Label(
             label="No items selected", hexpand=True, xalign=0,
             css_classes=["dim-label"],
@@ -1164,6 +1172,14 @@ class FileBrowser(Gtk.Box):
     def _set_checkboxes_visible(self, visible: bool):
         self._check_column.set_visible(visible)
 
+    def _on_select_all_toggled(self, btn):
+        if self._updating_select_all:
+            return
+        if btn.get_active():
+            self._select_all_rows()
+        else:
+            self._clear_checked_rows()
+
     def _select_all_rows(self):
         for item in self._items:
             item.selected = True
@@ -1177,6 +1193,7 @@ class FileBrowser(Gtk.Box):
     def _update_multi_bar(self):
         infos = self._get_selected_file_infos()
         n = len(infos)
+        total = len([i for i in self._items if not i.file_info.is_parent_dir])
         if n == 0:
             self._multi_count_label.set_label("No items selected")
         elif n == 1:
@@ -1186,6 +1203,18 @@ class FileBrowser(Gtk.Box):
         self._multi_delete_btn.set_sensitive(n > 0)
         self._multi_move_btn.set_sensitive(n > 0)
         self._multi_download_btn.set_sensitive(n > 0)
+
+        # Sync select-all checkbox state
+        self._updating_select_all = True
+        if n == 0:
+            self._select_all_check.set_inconsistent(False)
+            self._select_all_check.set_active(False)
+        elif n >= total and total > 0:
+            self._select_all_check.set_inconsistent(False)
+            self._select_all_check.set_active(True)
+        else:
+            self._select_all_check.set_inconsistent(True)
+        self._updating_select_all = False
 
     def _get_selected_file_infos(self) -> list:
         return [item.file_info for item in self._items if item.selected]
@@ -1280,9 +1309,9 @@ class FileBrowser(Gtk.Box):
         local_dir = folder.get_path()
         if not local_dir or not self._window:
             return
-        for fi in infos:
-            local_path = os.path.join(local_dir, fi.name)
-            self._window.enqueue_download(fi.path, local_path)
+        self._window.enqueue_bulk_download(
+            [(fi.path, os.path.join(local_dir, fi.name)) for fi in infos]
+        )
 
     # ──────────────────────────────────────────────────────────────────────
     # Upload

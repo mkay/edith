@@ -166,7 +166,10 @@ class ServerPanel(Gtk.Box):
 
         self._context_row = row
         self._ungroup_action.set_enabled(child.server_info.folder_id != "")
-        self._change_password_action.set_enabled(child.server_info.auth_method != "key")
+        protocol = getattr(child.server_info, "protocol", "sftp")
+        self._change_password_action.set_enabled(
+            protocol in ("ftp", "ftps") or child.server_info.auth_method != "key"
+        )
 
         # Update pin label dynamically (pin section is at flat index 3)
         pin_label = "Unpin" if ConfigService.is_server_pinned(child.server_info.id) else "Pin"
@@ -279,7 +282,7 @@ class ServerPanel(Gtk.Box):
 
     def show_add_dialog(self, folder_id: str = ""):
         win = self.get_root()
-        dialog = ServerEditDialog()
+        dialog = ServerEditDialog(folder_id=folder_id)
         dialog.connect("saved", self._on_server_added)
         dialog.present(win)
 

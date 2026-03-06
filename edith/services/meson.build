@@ -3,6 +3,7 @@ services_sources = [
   'async_worker.py',
   'config.py',
   'credential_store.py',
+  'ftp_client.py',
   'sftp_client.py',
   'temp_manager.py',
   'transfer_queue.py',
