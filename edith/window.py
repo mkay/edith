@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -57,6 +58,15 @@ class EdithWindow(Adw.ApplicationWindow):
         )
         self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
         sidebar_header.pack_start(self._new_folder_btn)
+
+        sidebar_menu = Gio.Menu()
+        sidebar_menu.append("Import from FileZilla\u2026", "win.import-filezilla")
+        sidebar_menu_btn = Gtk.MenuButton(
+            icon_name="edith-open-menu-symbolic",
+            menu_model=sidebar_menu,
+            tooltip_text="More Options",
+        )
+        sidebar_header.pack_end(sidebar_menu_btn)
 
         self._sidebar_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
@@ -326,6 +336,11 @@ class EdithWindow(Adw.ApplicationWindow):
         self.add_action(new_server)
         app.set_accels_for_action("win.new-server", ["<Control>n"])
 
+        # Import from FileZilla
+        import_fz = Gio.SimpleAction.new("import-filezilla", None)
+        import_fz.connect("activate", self._on_import_filezilla)
+        self.add_action(import_fz)
+
         # Disconnect
         disconnect = Gio.SimpleAction.new("disconnect", None)
         disconnect.connect("activate", self._on_disconnect)
@@ -466,6 +481,69 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_new_server(self, action, param):
         self._server_panel.show_add_dialog()
+
+    def _on_import_filezilla(self, action, param):
+        default_path = Path(
+            os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
+        ) / "filezilla" / "sitemanager.xml"
+
+        dialog = Gtk.FileDialog(title="Import FileZilla Sites")
+        xml_filter = Gtk.FileFilter()
+        xml_filter.set_name("XML files")
+        xml_filter.add_pattern("*.xml")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(xml_filter)
+        dialog.set_filters(filters)
+        if default_path.exists():
+            dialog.set_initial_file(Gio.File.new_for_path(str(default_path)))
+        dialog.open(self, None, self._on_filezilla_file_chosen)
+
+    def _on_filezilla_file_chosen(self, dialog, result):
+        try:
+            gfile = dialog.open_finish(result)
+        except GLib.Error:
+            return
+        if gfile is None:
+            return
+
+        from edith.services.filezilla_import import parse_sitemanager
+
+        path = Path(gfile.get_path())
+        try:
+            servers, folders = parse_sitemanager(path)
+        except Exception as e:
+            err = Adw.AlertDialog(heading="Import Failed", body=str(e))
+            err.add_response("ok", "OK")
+            err.present(self)
+            return
+
+        if not servers:
+            err = Adw.AlertDialog(heading="No Servers Found", body="The selected file contained no server entries.")
+            err.add_response("ok", "OK")
+            err.present(self)
+            return
+
+        # Add folders first so folder_ids are valid
+        existing_folders = ConfigService.load_folders()
+        for folder in folders:
+            existing_folders.append(folder)
+        ConfigService.save_folders(existing_folders)
+
+        for server in servers:
+            ConfigService.add_server(server)
+
+        self._server_list.load_servers()
+        self._server_panel.reload()
+        self._server_panel.emit("servers-changed")
+
+        info = Adw.AlertDialog(
+            heading="Import Complete",
+            body=f"Imported {len(servers)} server{'s' if len(servers) != 1 else ''}"
+                 + (f" in {len(folders)} group{'s' if len(folders) != 1 else ''}" if folders else "")
+                 + ".\n\nPasswords could not be imported — you'll need to re-enter them.",
+        )
+        info.add_response("ok", "OK")
+        info.present(self)
 
     def _on_add_server_to_folder(self, server_list, folder_id):
         self._server_panel.show_add_dialog(folder_id=folder_id)
