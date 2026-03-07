@@ -1,5 +1,5 @@
 pkgname=edith
-pkgver=0.4.0
+pkgver=0.4.1
 pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
