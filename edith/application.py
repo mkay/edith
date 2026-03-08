@@ -180,7 +180,7 @@ label.error { color: @error_color; }
                 "• Home directory support — use ~ as initial directory\n"
                 "• Resizable sidebar"
             ),
-            license_type=Gtk.License.GPL_3_0,
+            license_type=Gtk.License.MIT_X11,
         )
         about.present(self.props.active_window)
 

@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk, GObject, Gdk
+from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk
 
 from edith.models.server import ServerInfo
 from edith.services.config import ConfigService
@@ -117,8 +117,9 @@ class ServerPanel(Gtk.Box):
         pin_section.append_item(self._pin_menu_item)
         self._server_menu_model.append_section(None, pin_section)
 
+        self._move_submenu = Gio.Menu()
         other_section = Gio.Menu()
-        other_section.append("Remove from Group", "server.ungroup")
+        other_section.append_submenu("Move to Group", self._move_submenu)
         other_section.append("Delete", "server.delete")
         self._server_menu_model.append_section(None, other_section)
 
@@ -138,9 +139,9 @@ class ServerPanel(Gtk.Box):
         delete_action.connect("activate", self._on_context_delete)
         server_group.add_action(delete_action)
 
-        self._ungroup_action = Gio.SimpleAction.new("ungroup", None)
-        self._ungroup_action.connect("activate", self._on_context_ungroup)
-        server_group.add_action(self._ungroup_action)
+        move_to_group_action = Gio.SimpleAction.new("move-to-group", GLib.VariantType.new("s"))
+        move_to_group_action.connect("activate", self._on_context_move_to_group)
+        server_group.add_action(move_to_group_action)
 
         self._change_password_action = Gio.SimpleAction.new("change-password", None)
         self._change_password_action.connect("activate", self._on_context_change_password)
@@ -165,7 +166,7 @@ class ServerPanel(Gtk.Box):
             return
 
         self._context_row = row
-        self._ungroup_action.set_enabled(child.server_info.folder_id != "")
+        self._populate_move_submenu(child.server_info.folder_id)
         protocol = getattr(child.server_info, "protocol", "sftp")
         self._change_password_action.set_enabled(
             protocol in ("ftp", "ftps") or child.server_info.auth_method != "key"
@@ -214,11 +215,29 @@ class ServerPanel(Gtk.Box):
             if isinstance(child, ServerRow):
                 self._confirm_delete(child.server_info)
 
-    def _on_context_ungroup(self, action, param):
+    def _populate_move_submenu(self, current_folder_id: str):
+        """Rebuild the 'Move to Group' submenu with all folders except the current one."""
+        self._move_submenu.remove_all()
+        for folder in self._folders:
+            if folder.id == current_folder_id:
+                continue
+            item = Gio.MenuItem.new(folder.name, None)
+            item.set_action_and_target_value(
+                "server.move-to-group", GLib.Variant.new_string(folder.id)
+            )
+            self._move_submenu.append_item(item)
+        if current_folder_id != "":
+            item = Gio.MenuItem.new("No Group", None)
+            item.set_action_and_target_value(
+                "server.move-to-group", GLib.Variant.new_string("")
+            )
+            self._move_submenu.append_item(item)
+
+    def _on_context_move_to_group(self, action, param):
         if self._context_row:
             child = self._context_row.get_child()
             if isinstance(child, ServerRow):
-                child.server_info.folder_id = ""
+                child.server_info.folder_id = param.get_string()
                 ConfigService.update_server(child.server_info)
                 self.reload()
                 self.emit("servers-changed")

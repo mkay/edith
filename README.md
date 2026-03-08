@@ -92,7 +92,7 @@ Or launch from your application menu.
 
 ## License
 
-GPL-3.0-or-later
+MIT
 
 ## Screenshots
 
