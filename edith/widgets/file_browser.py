@@ -143,16 +143,24 @@ class FileBrowser(Gtk.Box):
         self._multi_bar.append(self._select_all_check)
 
         self._multi_count_label = Gtk.Label(
-            label="No items selected", hexpand=True, xalign=0,
-            css_classes=["dim-label"],
+            label="", hexpand=True, xalign=0,
+            css_classes=["dim-label", "caption"],
         )
         self._multi_bar.append(self._multi_count_label)
+
+        self._multi_archive_btn = Gtk.Button(label="Archive", css_classes=["flat"], sensitive=False)
+        self._multi_archive_btn.connect("clicked", self._on_bulk_archive)
+        self._multi_bar.append(self._multi_archive_btn)
 
         self._multi_download_btn = Gtk.Button(label="Download", css_classes=["flat"], sensitive=False)
         self._multi_download_btn.connect("clicked", self._on_bulk_download)
         self._multi_bar.append(self._multi_download_btn)
 
-        self._multi_move_btn = Gtk.Button(label="Move to\u2026", css_classes=["flat"], sensitive=False)
+        self._multi_copy_btn = Gtk.Button(label="Copy", css_classes=["flat"], sensitive=False)
+        self._multi_copy_btn.connect("clicked", self._on_bulk_copy_to)
+        self._multi_bar.append(self._multi_copy_btn)
+
+        self._multi_move_btn = Gtk.Button(label="Move", css_classes=["flat"], sensitive=False)
         self._multi_move_btn.connect("clicked", self._on_bulk_move_to)
         self._multi_bar.append(self._multi_move_btn)
 
@@ -700,16 +708,19 @@ class FileBrowser(Gtk.Box):
         self._open_locally_action.set_enabled(fi is not None and not fi.is_dir)
 
         # Archive: only for SFTP connections, when item is readable and
-        # current directory is writable
+        # current directory is writable.  Directories require exec support
+        # (server-side tar/zip) since SFTP-only download+reupload is not
+        # viable for large trees.
         archive_ok = False
         if has_item and fi and self._window:
             from edith.services.sftp_client import SftpClient
             client = self._window.sftp_client
             if isinstance(client, SftpClient):
                 item_readable = bool(fi.permissions & 0o444)
-                # Check current dir is writable from cached listing permissions
                 cur_dir_writable = self._cur_dir_writable
                 archive_ok = item_readable and cur_dir_writable
+                if fi.is_dir and not getattr(client, "can_exec", False):
+                    archive_ok = False
         self._archive_action.set_enabled(archive_ok)
 
         rect = Gdk.Rectangle()
@@ -996,27 +1007,30 @@ class FileBrowser(Gtk.Box):
         if not self._window or not self._window.sftp_client:
             return
         client = self._window.sftp_client
-        import tarfile
-        import zipfile
-        import tempfile
-        import shutil
+        import shlex
 
         cur_dir = self._current_path
         remote_src = fi.path
         is_dir = fi.is_dir
 
-        # Normalize archive name / compression
+        # Normalize archive name / format
         if archive_name.endswith(".zip"):
+            archive_fmt = "zip"
             archive_mode = "zip"
         elif archive_name.endswith((".tar.gz", ".tgz")):
+            archive_fmt = "tar.gz"
             archive_mode = "w:gz"
         elif archive_name.endswith((".tar.bz2", ".tbz2")):
+            archive_fmt = "tar.bz2"
             archive_mode = "w:bz2"
         elif archive_name.endswith((".tar.xz", ".txz")):
+            archive_fmt = "tar.xz"
             archive_mode = "w:xz"
         elif archive_name.endswith(".tar"):
+            archive_fmt = "tar"
             archive_mode = "w:"
         else:
+            archive_fmt = "tar.gz"
             archive_mode = "w:gz"
             archive_name += ".tar.gz"
 
@@ -1027,44 +1041,80 @@ class FileBrowser(Gtk.Box):
         if not queue:
             return
 
-        def do_archive(progress_cb):
+        def _try_remote_exec(progress_cb):
+            """Try creating archive server-side via SSH exec."""
+            src_name = shlex.quote(fi.name)
+            parent_dir = shlex.quote(cur_dir)
+            dst = shlex.quote(remote_archive)
+
+            if archive_fmt == "zip":
+                cmd = f"cd {parent_dir} && zip -qr {dst} {src_name}"
+            else:
+                tar_flags = {
+                    "tar.gz": "czf", "tar.bz2": "cjf",
+                    "tar.xz": "cJf", "tar": "cf",
+                }
+                cmd = f"tar {tar_flags[archive_fmt]} {dst} -C {parent_dir} {src_name}"
+
+            exit_code, _stdout, stderr = client.exec_command(cmd, timeout=600)
+            if exit_code != 0:
+                raise RuntimeError(stderr.strip() or f"exit code {exit_code}")
+            return final_name
+
+        def _fallback_single_file(progress_cb):
+            """Archive a single file: download, compress locally, upload."""
+            import tarfile
+            import zipfile
+            import tempfile
+            import shutil
+
             tmp_dir = tempfile.mkdtemp(prefix="edith-archive-")
             try:
-                # Phase 1: Download source to temp dir
                 local_src = os.path.join(tmp_dir, fi.name)
-                if is_dir:
-                    client.download_recursive(remote_src, local_src, progress_cb=progress_cb)
-                else:
-                    client.download(remote_src, local_src, progress_cb=progress_cb)
+                client.download(remote_src, local_src,
+                                progress_cb=lambda d, t: progress_cb(0, 0))
 
-                # Phase 2: Create archive locally
                 archive_local = os.path.join(tmp_dir, final_name)
-
                 if archive_mode == "zip":
                     with zipfile.ZipFile(archive_local, "w", zipfile.ZIP_DEFLATED) as zf:
-                        if is_dir:
-                            for root, dirs, files in os.walk(local_src):
-                                for f in files:
-                                    full = os.path.join(root, f)
-                                    arcname = os.path.join(fi.name, os.path.relpath(full, local_src))
-                                    zf.write(full, arcname)
-                                if not files and not dirs:
-                                    arcname = os.path.join(fi.name, os.path.relpath(root, local_src)) + "/"
-                                    zf.writestr(arcname, "")
-                        else:
-                            zf.write(local_src, fi.name)
+                        zf.write(local_src, fi.name)
                 else:
                     with tarfile.open(archive_local, archive_mode) as tf:
                         tf.add(local_src, arcname=fi.name)
 
-                # Phase 3: Upload archive back to server
                 archive_size = os.path.getsize(archive_local)
                 client.upload(archive_local, remote_archive, overwrite=False,
-                              progress_cb=lambda done, _total: progress_cb(done, archive_size))
+                              progress_cb=lambda done, _t: progress_cb(done, archive_size))
 
                 return final_name
             finally:
                 shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        def do_archive(progress_cb):
+            # Check if archive already exists
+            try:
+                client.stat(remote_archive)
+                raise FileExistsError(f"'{final_name}' already exists on the server")
+            except FileNotFoundError:
+                pass
+
+            # Directories always use server-side exec (menu is hidden
+            # when exec is unavailable).  Single files try exec first,
+            # then fall back to download+compress+upload.
+            if is_dir:
+                return _try_remote_exec(progress_cb)
+
+            try:
+                return _try_remote_exec(progress_cb)
+            except Exception:
+                # Clean up partial archive if exec left one behind
+                try:
+                    client.stat(remote_archive)
+                    client.remove(remote_archive)
+                except (FileNotFoundError, OSError):
+                    pass
+
+            return _fallback_single_file(progress_cb)
 
         def on_success(name):
             self.load_directory(cur_dir)
@@ -1330,14 +1380,23 @@ class FileBrowser(Gtk.Box):
         n = len(infos)
         total = len([i for i in self._items if not i.file_info.is_parent_dir])
         if n == 0:
-            self._multi_count_label.set_label("No items selected")
+            self._multi_count_label.set_label("")
         elif n == 1:
-            self._multi_count_label.set_label("1 item selected")
+            self._multi_count_label.set_label("1 selected")
         else:
-            self._multi_count_label.set_label(f"{n} items selected")
-        self._multi_delete_btn.set_sensitive(n > 0)
-        self._multi_move_btn.set_sensitive(n > 0)
-        self._multi_download_btn.set_sensitive(n > 0)
+            self._multi_count_label.set_label(f"{n} selected")
+        has_sel = n > 0
+        self._multi_delete_btn.set_sensitive(has_sel)
+        self._multi_move_btn.set_sensitive(has_sel)
+        self._multi_copy_btn.set_sensitive(has_sel)
+        self._multi_download_btn.set_sensitive(has_sel)
+        # Archive: exec handles anything; without exec, only files are viable
+        has_exec = self._window is not None and getattr(
+            self._window.sftp_client, "can_exec", False)
+        all_files = has_sel and not any(fi.is_dir for fi in infos)
+        can_archive = has_sel and (has_exec or all_files)
+        self._multi_archive_btn.set_sensitive(can_archive)
+        self._multi_archive_btn.set_visible(has_exec or all_files)
 
         # Sync select-all checkbox state
         self._updating_select_all = True
@@ -1446,6 +1505,171 @@ class FileBrowser(Gtk.Box):
             return
         self._window.enqueue_bulk_download(
             [(fi.path, os.path.join(local_dir, fi.name)) for fi in infos]
+        )
+
+    def _on_bulk_copy_to(self, btn=None):
+        infos = self._get_selected_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
+            return
+        dialog = DirectoryChooserDialog(
+            self._window.sftp_client,
+            title=f"Copy {len(infos)} items",
+            start_path=self._current_path,
+        )
+        dialog.connect("chosen", self._do_bulk_copy_to, infos)
+        dialog.present(self.get_root())
+
+    def _do_bulk_copy_to(self, dialog, dest_dir, infos):
+        if not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        from edith.services.async_worker import run_async
+        copies = [(fi.path, f"{dest_dir.rstrip('/')}/{fi.name}", fi.is_dir) for fi in infos]
+        n = len(copies)
+        dest_label = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
+
+        def do_copies():
+            for src, dst, is_dir in copies:
+                if src != dst:
+                    if is_dir:
+                        client.copy_remote_recursive(src, dst)
+                    else:
+                        client.copy_remote(src, dst)
+
+        def on_bulk_copied(_):
+            self.load_directory(self._current_path)
+            if self._window:
+                self._window.show_toast(
+                    f"Copied {n} item{'s' if n != 1 else ''} to \u201c{dest_label}\u201d", "success"
+                )
+
+        run_async(do_copies, on_bulk_copied, lambda e: self._show_op_error(str(e)))
+
+    def _on_bulk_archive(self, btn=None):
+        infos = self._get_selected_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
+            return
+        dialog = ArchiveDialog("archive")
+        dialog.connect("submitted", self._do_bulk_archive, infos)
+        dialog.present(self.get_root())
+
+    def _do_bulk_archive(self, dialog, archive_name, infos):
+        if not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        import shlex
+
+        cur_dir = self._current_path
+
+        # Normalize archive name / format
+        if archive_name.endswith(".zip"):
+            archive_fmt = "zip"
+            archive_mode = "zip"
+        elif archive_name.endswith((".tar.gz", ".tgz")):
+            archive_fmt = "tar.gz"
+            archive_mode = "w:gz"
+        elif archive_name.endswith((".tar.bz2", ".tbz2")):
+            archive_fmt = "tar.bz2"
+            archive_mode = "w:bz2"
+        elif archive_name.endswith((".tar.xz", ".txz")):
+            archive_fmt = "tar.xz"
+            archive_mode = "w:xz"
+        elif archive_name.endswith(".tar"):
+            archive_fmt = "tar"
+            archive_mode = "w:"
+        else:
+            archive_fmt = "tar.gz"
+            archive_mode = "w:gz"
+            archive_name += ".tar.gz"
+
+        remote_archive = f"{cur_dir.rstrip('/')}/{archive_name}"
+        final_name = archive_name
+
+        queue = self._window._transfer_queue
+        if not queue:
+            return
+
+        def _exec_archive(progress_cb):
+            parent_dir = shlex.quote(cur_dir)
+            dst = shlex.quote(remote_archive)
+            src_names = " ".join(shlex.quote(fi.name) for fi in infos)
+
+            if archive_fmt == "zip":
+                cmd = f"cd {parent_dir} && zip -qr {dst} {src_names}"
+            else:
+                tar_flags = {
+                    "tar.gz": "czf", "tar.bz2": "cjf",
+                    "tar.xz": "cJf", "tar": "cf",
+                }
+                cmd = f"tar {tar_flags[archive_fmt]} {dst} -C {parent_dir} {src_names}"
+
+            exit_code, _stdout, stderr = client.exec_command(cmd, timeout=600)
+            if exit_code != 0:
+                raise RuntimeError(stderr.strip() or f"exit code {exit_code}")
+            return final_name
+
+        def _fallback_files(progress_cb):
+            """Download files, compress locally, upload back."""
+            import tarfile
+            import zipfile
+            import tempfile
+            import shutil
+
+            tmp_dir = tempfile.mkdtemp(prefix="edith-archive-")
+            try:
+                for fi in infos:
+                    local_path = os.path.join(tmp_dir, fi.name)
+                    client.download(fi.path, local_path,
+                                    progress_cb=lambda d, t: progress_cb(0, 0))
+
+                archive_local = os.path.join(tmp_dir, final_name)
+                if archive_mode == "zip":
+                    with zipfile.ZipFile(archive_local, "w", zipfile.ZIP_DEFLATED) as zf:
+                        for fi in infos:
+                            zf.write(os.path.join(tmp_dir, fi.name), fi.name)
+                else:
+                    with tarfile.open(archive_local, archive_mode) as tf:
+                        for fi in infos:
+                            tf.add(os.path.join(tmp_dir, fi.name), arcname=fi.name)
+
+                archive_size = os.path.getsize(archive_local)
+                client.upload(archive_local, remote_archive, overwrite=False,
+                              progress_cb=lambda done, _t: progress_cb(done, archive_size))
+
+                return final_name
+            finally:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        def do_archive(progress_cb):
+            # Check if archive already exists
+            try:
+                client.stat(remote_archive)
+                raise FileExistsError(f"'{final_name}' already exists on the server")
+            except FileNotFoundError:
+                pass
+
+            # Try exec first, fall back to local for files-only
+            try:
+                return _exec_archive(progress_cb)
+            except Exception:
+                try:
+                    client.stat(remote_archive)
+                    client.remove(remote_archive)
+                except (FileNotFoundError, OSError):
+                    pass
+
+            return _fallback_files(progress_cb)
+
+        def on_success(name):
+            self.load_directory(cur_dir)
+            if self._window:
+                self._window.show_toast(f"Created \u201c{name}\u201d", "success")
+
+        queue.enqueue(
+            f"Archive {len(infos)} items",
+            do_archive,
+            on_success,
+            lambda e: self._show_op_error(str(e)),
         )
 
     # ──────────────────────────────────────────────────────────────────────

@@ -210,7 +210,7 @@ class TransferPanel(Gtk.Popover):
     def _on_started(self, queue, label, job_id, pending):
         self._active_job_id = job_id
         if job_id in self._rows:
-            self._rows[job_id][0].set_active(0.0)
+            self._rows[job_id][0].set_active(-1)
 
     def _on_progress(self, queue, label, fraction, pending):
         if self._active_job_id is not None and self._active_job_id in self._rows:

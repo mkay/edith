@@ -701,6 +701,13 @@ class EdithWindow(Adw.ApplicationWindow):
             if initial_dir == "~" or initial_dir.startswith("~/"):
                 home = client.normalize(".")
                 resolved = home + initial_dir[1:]
+            # Probe exec capability (shared hosts often block it)
+            if hasattr(client, "exec_command"):
+                try:
+                    code, _, _ = client.exec_command("echo ok", timeout=5)
+                    client.can_exec = code == 0
+                except Exception:
+                    client.can_exec = False
             return client, resolved
 
         def on_success(result):

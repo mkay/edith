@@ -16,6 +16,7 @@ class SftpClient:
         self._transport = None
         self._sftp = None
         self._lock = threading.Lock()
+        self.can_exec = False
 
     def connect(
         self,
