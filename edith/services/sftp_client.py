@@ -3,6 +3,7 @@
 import os
 import stat
 import threading
+import time
 from pathlib import Path
 
 import paramiko
@@ -336,6 +337,76 @@ class SftpClient:
         except FileNotFoundError:
             return False
         except OSError:
+            return False
+
+    def exec_command(self, command: str, timeout: float = 60) -> tuple[int, str, str]:
+        """Execute a command on the remote server via SSH.
+
+        Returns (exit_status, stdout, stderr).
+        """
+        with self._lock:
+            if not self._transport or not self._transport.is_active():
+                raise RuntimeError("Not connected")
+            transport = self._transport
+
+        channel = transport.open_session()
+        try:
+            channel.settimeout(timeout)
+            channel.exec_command(command)
+
+            # Read all output then wait for exit
+            stdout_chunks = []
+            stderr_chunks = []
+
+            while not channel.exit_status_ready():
+                if channel.recv_ready():
+                    data = channel.recv(65536)
+                    if data:
+                        stdout_chunks.append(data.decode("utf-8", errors="replace"))
+                if channel.recv_stderr_ready():
+                    data = channel.recv_stderr(65536)
+                    if data:
+                        stderr_chunks.append(data.decode("utf-8", errors="replace"))
+                time.sleep(0.05)
+
+            # Drain remaining data after exit
+            while True:
+                data = channel.recv(65536)
+                if not data:
+                    break
+                stdout_chunks.append(data.decode("utf-8", errors="replace"))
+            while True:
+                data = channel.recv_stderr(65536)
+                if not data:
+                    break
+                stderr_chunks.append(data.decode("utf-8", errors="replace"))
+
+            exit_status = channel.recv_exit_status()
+            return exit_status, "".join(stdout_chunks), "".join(stderr_chunks)
+        finally:
+            channel.close()
+
+    def can_write_dir(self, path: str) -> bool:
+        """Check if the current user can write to a remote directory."""
+        try:
+            st = self.stat(path)
+            mode = st.st_mode
+            if not stat.S_ISDIR(mode):
+                return False
+            # Owner write bit is a reasonable heuristic; the server may also
+            # grant access via group or other bits, but checking uid/gid
+            # reliably is complex.  Use a practical test instead.
+            return bool(mode & (stat.S_IWUSR | stat.S_IWGRP | stat.S_IWOTH))
+        except Exception:
+            return False
+
+    def can_read(self, path: str) -> bool:
+        """Check if the current user can read a remote path."""
+        try:
+            st = self.stat(path)
+            mode = st.st_mode
+            return bool(mode & (stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH))
+        except Exception:
             return False
 
     def is_dir(self, path: str) -> bool:

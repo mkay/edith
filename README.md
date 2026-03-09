@@ -14,7 +14,8 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 - **SFTP & FTP** — connect via SFTP (SSH), plain FTP, or FTPS with explicit TLS (optional/required) and implicit TLS
 - **Server management** — saved connections with password/key auth, organized into groups; drag-and-drop reordering of groups in the sidebar; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
 - **Server search** — Ctrl+F to filter servers by name
-- **File browser** — navigate remote directories; column view with sortable Name, Size, Permissions, and Modified columns; show/hide detail columns with a toggle; alternating row shading; drag-and-drop move, upload, copy, rename, delete; keyboard shortcuts for common actions
+- **File browser** — navigate remote directories; column view with sortable Name, Size, Permissions, and Modified columns; show/hide detail columns with a toggle; alternating row shading; drag-and-drop move, upload, copy, rename, delete; download files and folders; keyboard shortcuts for common actions
+- **Create archive** — create tar.gz, tar.bz2, tar.xz, tar, or zip archives from remote files and folders directly on the server (SFTP only); downloads, compresses locally, and uploads the archive with progress feedback
 - **Multi-select** — toggle selection mode to select multiple files and folders for bulk delete, move, or download
 - **Show hidden files** — toggle to reveal or hide dot-files; button icon reflects the current state
 - **Pin to sidebar** — pin frequently used files and folders to the top of the sidebar for quick access

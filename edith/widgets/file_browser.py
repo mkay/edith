@@ -8,7 +8,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, Gtk, GObject, Gdk, Pango
 
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
-from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog
+from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
 
 
 def _path_display(path: str) -> str:
@@ -43,6 +43,7 @@ class FileBrowser(Gtk.Box):
         self._updating_select_all = False
         self._items: list[RemoteFileItem] = []
         self._context_item: RemoteFileItem | None = None
+        self._cur_dir_writable: bool = False
 
         # ── Path bar ────────────────────────────────────────────────────
         self._path_bar = Gtk.Box(
@@ -533,39 +534,40 @@ class FileBrowser(Gtk.Box):
     def _setup_context_menu(self):
         menu = Gio.Menu()
 
-        new_submenu = Gio.Menu()
-        new_submenu.append("File\u2026", "file.new-file")
-        new_submenu.append("Folder\u2026", "file.new-folder")
-
-        upload_submenu = Gio.Menu()
-        upload_submenu.append("File\u2026", "file.upload-files")
-        upload_submenu.append("Folder\u2026", "file.upload-folder")
-
+        # New File / New Folder
         section_new = Gio.Menu()
-        section_new.append_submenu("New", new_submenu)
-        section_new.append_submenu("Upload", upload_submenu)
-        section_new.append("Download", "file.download")
-        section_new.append("Open Locally", "file.open-locally")
+        section_new.append("New File", "file.new-file")
+        section_new.append("New Folder", "file.new-folder")
         menu.append_section(None, section_new)
 
+        # Information
+        section_info = Gio.Menu()
+        section_info.append("Information", "file.information")
+        menu.append_section(None, section_info)
+
+        # Delete, Actions submenu, Upload submenu, Rename, etc.
         actions_submenu = Gio.Menu()
+        actions_submenu.append("Move to", "file.move-to")
+        actions_submenu.append("Copy to", "file.copy-to")
         actions_submenu.append("Duplicate", "file.duplicate")
-        actions_submenu.append("Move to\u2026", "file.move-to")
-        actions_submenu.append("Copy to\u2026", "file.copy-to")
-        actions_submenu.append("Rename\u2026", "file.rename")
+        actions_submenu.append("Download", "file.download")
+        actions_submenu.append("Open Locally", "file.open-locally")
 
-        section_actions = Gio.Menu()
-        section_actions.append_submenu("Actions", actions_submenu)
-        section_actions.append("Pin", "file.pin")
-        section_actions.append("Copy Path", "file.copy-path")
-        section_actions.append("Permissions", "file.chmod")
-        section_actions.append("Properties", "file.info")
-        menu.append_section(None, section_actions)
+        upload_submenu = Gio.Menu()
+        upload_submenu.append("File", "file.upload-files")
+        upload_submenu.append("Folder", "file.upload-folder")
 
-        section_danger = Gio.Menu()
-        section_danger.append("Delete", "file.delete")
-        menu.append_section(None, section_danger)
+        section_ops = Gio.Menu()
+        section_ops.append("Delete", "file.delete")
+        section_ops.append_submenu("Actions", actions_submenu)
+        section_ops.append_submenu("Upload", upload_submenu)
+        section_ops.append("Rename", "file.rename")
+        section_ops.append("Copy Path", "file.copy-path")
+        section_ops.append("Create Archive", "file.create-archive")
+        section_ops.append("Pin", "file.pin")
+        menu.append_section(None, section_ops)
 
+        # Refresh
         section_misc = Gio.Menu()
         section_misc.append("Refresh", "file.refresh")
         menu.append_section(None, section_misc)
@@ -595,6 +597,11 @@ class FileBrowser(Gtk.Box):
         self._info_action = Gio.SimpleAction.new("info", None)
         self._info_action.connect("activate", self._on_info)
         group.add_action(self._info_action)
+
+        self._information_action = Gio.SimpleAction.new("information", None)
+        self._information_action.connect("activate", self._on_information)
+        self._information_action.set_enabled(False)
+        group.add_action(self._information_action)
 
         self._delete_action = Gio.SimpleAction.new("delete", None)
         self._delete_action.connect("activate", self._on_delete)
@@ -639,6 +646,11 @@ class FileBrowser(Gtk.Box):
         self._pin_action.set_enabled(False)
         group.add_action(self._pin_action)
 
+        self._archive_action = Gio.SimpleAction.new("create-archive", None)
+        self._archive_action.connect("activate", self._on_create_archive)
+        self._archive_action.set_enabled(False)
+        group.add_action(self._archive_action)
+
         refresh_action = Gio.SimpleAction.new("refresh", None)
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
@@ -674,9 +686,8 @@ class FileBrowser(Gtk.Box):
         self._context_item = item
         has_item = item is not None
 
+        self._information_action.set_enabled(has_item)
         self._rename_action.set_enabled(has_item)
-        self._chmod_action.set_enabled(has_item)
-        self._info_action.set_enabled(has_item)
         self._delete_action.set_enabled(has_item)
         self._duplicate_action.set_enabled(has_item)
         self._copy_path_action.set_enabled(has_item)
@@ -685,8 +696,21 @@ class FileBrowser(Gtk.Box):
         self._pin_action.set_enabled(has_item)
 
         fi = item.file_info if item else None
-        self._download_action.set_enabled(fi is not None and not fi.is_dir)
-        self._open_locally_action.set_enabled(fi is not None)
+        self._download_action.set_enabled(fi is not None)
+        self._open_locally_action.set_enabled(fi is not None and not fi.is_dir)
+
+        # Archive: only for SFTP connections, when item is readable and
+        # current directory is writable
+        archive_ok = False
+        if has_item and fi and self._window:
+            from edith.services.sftp_client import SftpClient
+            client = self._window.sftp_client
+            if isinstance(client, SftpClient):
+                item_readable = bool(fi.permissions & 0o444)
+                # Check current dir is writable from cached listing permissions
+                cur_dir_writable = self._cur_dir_writable
+                archive_ok = item_readable and cur_dir_writable
+        self._archive_action.set_enabled(archive_ok)
 
         rect = Gdk.Rectangle()
         rect.x = int(x)
@@ -817,6 +841,14 @@ class FileBrowser(Gtk.Box):
         if not fi:
             return
         dialog = FileInfoDialog(fi)
+        dialog.present(self.get_root())
+
+    def _on_information(self, action, param):
+        fi = self._get_context_file_info()
+        if not fi:
+            return
+        dialog = InformationDialog(fi)
+        dialog.connect("chmod-applied", self._do_chmod, fi)
         dialog.present(self.get_root())
 
     def _on_delete(self, action, param):
@@ -952,6 +984,100 @@ class FileBrowser(Gtk.Box):
         if fi:
             self.emit("pin-requested", fi.path, fi.is_dir)
 
+    def _on_create_archive(self, action, param):
+        fi = self._get_context_file_info()
+        if not fi or not self._window or not self._window.sftp_client:
+            return
+        dialog = ArchiveDialog(fi.name)
+        dialog.connect("submitted", self._do_create_archive, fi)
+        dialog.present(self.get_root())
+
+    def _do_create_archive(self, dialog, archive_name, fi):
+        if not self._window or not self._window.sftp_client:
+            return
+        client = self._window.sftp_client
+        import tarfile
+        import zipfile
+        import tempfile
+        import shutil
+
+        cur_dir = self._current_path
+        remote_src = fi.path
+        is_dir = fi.is_dir
+
+        # Normalize archive name / compression
+        if archive_name.endswith(".zip"):
+            archive_mode = "zip"
+        elif archive_name.endswith((".tar.gz", ".tgz")):
+            archive_mode = "w:gz"
+        elif archive_name.endswith((".tar.bz2", ".tbz2")):
+            archive_mode = "w:bz2"
+        elif archive_name.endswith((".tar.xz", ".txz")):
+            archive_mode = "w:xz"
+        elif archive_name.endswith(".tar"):
+            archive_mode = "w:"
+        else:
+            archive_mode = "w:gz"
+            archive_name += ".tar.gz"
+
+        remote_archive = f"{cur_dir.rstrip('/')}/{archive_name}"
+        final_name = archive_name
+
+        queue = self._window._transfer_queue
+        if not queue:
+            return
+
+        def do_archive(progress_cb):
+            tmp_dir = tempfile.mkdtemp(prefix="edith-archive-")
+            try:
+                # Phase 1: Download source to temp dir
+                local_src = os.path.join(tmp_dir, fi.name)
+                if is_dir:
+                    client.download_recursive(remote_src, local_src, progress_cb=progress_cb)
+                else:
+                    client.download(remote_src, local_src, progress_cb=progress_cb)
+
+                # Phase 2: Create archive locally
+                archive_local = os.path.join(tmp_dir, final_name)
+
+                if archive_mode == "zip":
+                    with zipfile.ZipFile(archive_local, "w", zipfile.ZIP_DEFLATED) as zf:
+                        if is_dir:
+                            for root, dirs, files in os.walk(local_src):
+                                for f in files:
+                                    full = os.path.join(root, f)
+                                    arcname = os.path.join(fi.name, os.path.relpath(full, local_src))
+                                    zf.write(full, arcname)
+                                if not files and not dirs:
+                                    arcname = os.path.join(fi.name, os.path.relpath(root, local_src)) + "/"
+                                    zf.writestr(arcname, "")
+                        else:
+                            zf.write(local_src, fi.name)
+                else:
+                    with tarfile.open(archive_local, archive_mode) as tf:
+                        tf.add(local_src, arcname=fi.name)
+
+                # Phase 3: Upload archive back to server
+                archive_size = os.path.getsize(archive_local)
+                client.upload(archive_local, remote_archive, overwrite=False,
+                              progress_cb=lambda done, _total: progress_cb(done, archive_size))
+
+                return final_name
+            finally:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+        def on_success(name):
+            self.load_directory(cur_dir)
+            if self._window:
+                self._window.show_toast(f"Created \u201c{name}\u201d", "success")
+
+        queue.enqueue(
+            f"Archive {fi.name}",
+            do_archive,
+            on_success,
+            lambda e: self._show_op_error(str(e)),
+        )
+
     def reveal_file(self, remote_path: str):
         """Navigate to the parent directory of remote_path and select its row."""
         parent = "/".join(remote_path.rstrip("/").split("/")[:-1]) or "/"
@@ -1021,9 +1147,18 @@ class FileBrowser(Gtk.Box):
                     continue
                 files.append(RemoteFileInfo.from_sftp_attr(attr, path))
             files.sort(key=lambda f: (not f.is_dir, f.name.lower()))
-            return files
+            # Check if current directory is writable (for archive feature)
+            dir_writable = False
+            try:
+                st = client.stat(path)
+                dir_writable = bool(st.st_mode & 0o222)
+            except Exception:
+                pass
+            return files, dir_writable
 
-        def on_success(files):
+        def on_success(result):
+            files, dir_writable = result
+            self._cur_dir_writable = dir_writable
             self._spinner.set_visible(False)
             self._spinner.set_spinning(False)
             self._populate(files)
@@ -1369,10 +1504,28 @@ class FileBrowser(Gtk.Box):
 
     def _on_download(self, action, param):
         info = self._get_context_file_info()
-        if not info or info.is_dir:
+        if not info:
             return
-        dialog = Gtk.FileDialog(title="Save File", initial_name=info.name)
-        dialog.save(self.get_root(), None, self._on_download_save_chosen)
+        if info.is_dir:
+            dialog = Gtk.FileDialog(title=f"Download \u201c{info.name}\u201d to")
+            dialog.select_folder(self.get_root(), None, self._on_download_folder_chosen)
+        else:
+            dialog = Gtk.FileDialog(title="Save File", initial_name=info.name)
+            dialog.save(self.get_root(), None, self._on_download_save_chosen)
+
+    def _on_download_folder_chosen(self, dialog, result):
+        try:
+            folder = dialog.select_folder_finish(result)
+        except Exception:
+            return
+        local_dir = folder.get_path()
+        if not local_dir:
+            return
+        info = self._get_context_file_info()
+        if not info or not self._window:
+            return
+        local_path = os.path.join(local_dir, info.name)
+        self._window.enqueue_download(info.path, local_path)
 
     def _on_download_save_chosen(self, dialog, result):
         try:

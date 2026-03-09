@@ -70,6 +70,87 @@ class NameDialog(Adw.Dialog):
             self.close()
 
 
+_ARCHIVE_FORMATS = [
+    ("tar.gz", "tar.gz (gzip)"),
+    ("tar.bz2", "tar.bz2 (bzip2)"),
+    ("tar.xz", "tar.xz (xz)"),
+    ("tar", "tar (no compression)"),
+    ("zip", "zip"),
+]
+
+
+class ArchiveDialog(Adw.Dialog):
+    """Dialog for creating an archive: name entry + format dropdown."""
+
+    __gsignals__ = {
+        "submitted": (GObject.SignalFlags.RUN_FIRST, None, (str,)),
+    }
+
+    def __init__(self, item_name: str):
+        super().__init__(title="Create Archive", content_width=360, content_height=240)
+        self._item_stem = item_name.rsplit(".", 1)[0] if "." in item_name and not item_name.startswith(".") else item_name
+        self._build_ui()
+
+    def _build_ui(self):
+        toolbar_view = Adw.ToolbarView()
+
+        header = Adw.HeaderBar(
+            show_start_title_buttons=False, show_end_title_buttons=False
+        )
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: self.close())
+        header.pack_start(cancel_btn)
+
+        apply_btn = Gtk.Button(label="Create", css_classes=["suggested-action"])
+        apply_btn.connect("clicked", self._on_apply)
+        header.pack_end(apply_btn)
+
+        toolbar_view.add_top_bar(header)
+
+        clamp = Adw.Clamp(
+            maximum_size=340,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
+        )
+
+        group = Adw.PreferencesGroup()
+
+        self._entry = Adw.EntryRow(title="Archive name")
+        self._entry.set_text(self._item_stem)
+        self._entry.connect("entry-activated", lambda _: self._on_apply(None))
+        group.add(self._entry)
+
+        string_list = Gtk.StringList()
+        for _, label in _ARCHIVE_FORMATS:
+            string_list.append(label)
+        self._format_row = Adw.ComboRow(title="Format", model=string_list)
+        self._format_row.set_selected(0)
+        group.add(self._format_row)
+
+        clamp.set_child(group)
+        toolbar_view.set_content(clamp)
+        self.set_child(toolbar_view)
+
+        self.connect("map", lambda _: self._entry.grab_focus())
+
+    def _on_apply(self, btn):
+        name = self._entry.get_text().strip()
+        if not name:
+            return
+        ext = _ARCHIVE_FORMATS[self._format_row.get_selected()][0]
+        # Strip any existing archive extension the user may have typed
+        for known_ext, _ in _ARCHIVE_FORMATS:
+            if name.endswith(f".{known_ext}"):
+                name = name[: -len(known_ext) - 1]
+                break
+        full_name = f"{name}.{ext}"
+        self.emit("submitted", full_name)
+        self.close()
+
+
 class ChmodDialog(Adw.Dialog):
     """Permission editor with a 3x3 checkbox grid and octal preview."""
 
@@ -240,6 +321,134 @@ class FileInfoDialog(Adw.Dialog):
                 + ("x" if triplet & 1 else "-")
             )
         return "".join(parts)
+
+
+class InformationDialog(Adw.Dialog):
+    """Combined file properties and permission editor dialog."""
+
+    __gsignals__ = {
+        "chmod-applied": (GObject.SignalFlags.RUN_FIRST, None, (int,)),
+    }
+
+    def __init__(self, file_info: RemoteFileInfo):
+        super().__init__(
+            title="Information", content_width=380, content_height=-1,
+        )
+        self._file_info = file_info
+        self._mode = file_info.permissions & 0o777
+        self._checks = {}
+        self._build_ui()
+
+    def _build_ui(self):
+        fi = self._file_info
+        toolbar_view = Adw.ToolbarView()
+
+        header = Adw.HeaderBar(
+            show_start_title_buttons=False, show_end_title_buttons=False
+        )
+
+        close_btn = Gtk.Button(label="Close")
+        close_btn.connect("clicked", lambda _: self.close())
+        header.pack_start(close_btn)
+
+        self._apply_btn = Gtk.Button(
+            label="Apply", css_classes=["suggested-action"], sensitive=False
+        )
+        self._apply_btn.connect("clicked", self._on_apply)
+        header.pack_end(self._apply_btn)
+
+        toolbar_view.add_top_bar(header)
+
+        clamp = Adw.Clamp(
+            maximum_size=360,
+            margin_top=12,
+            margin_bottom=12,
+            margin_start=12,
+            margin_end=12,
+        )
+
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
+
+        # Properties section
+        props_group = Adw.PreferencesGroup(title="Properties")
+        props_group.add(self._info_row("Name", fi.name))
+        props_group.add(self._info_row("Path", fi.path))
+        props_group.add(self._info_row("Type", "Directory" if fi.is_dir else "File"))
+        if not fi.is_dir:
+            props_group.add(self._info_row("Size", self._format_size(fi.size)))
+        if fi.mtime:
+            props_group.add(self._info_row("Modified", fi.mtime_str()))
+        box.append(props_group)
+
+        # Permissions section
+        perm_group = Adw.PreferencesGroup(title="Permissions")
+
+        grid = Gtk.Grid(
+            row_spacing=8, column_spacing=12,
+            margin_start=12, margin_end=12, margin_top=4, margin_bottom=8,
+        )
+
+        for col, label in enumerate(["Read", "Write", "Execute"], start=1):
+            grid.attach(
+                Gtk.Label(label=label, css_classes=["dim-label", "caption"]),
+                col, 0, 1, 1,
+            )
+
+        categories = [("Owner", 6), ("Group", 3), ("Other", 0)]
+        perms = [("r", 2), ("w", 1), ("x", 0)]
+
+        for row_idx, (cat_name, shift) in enumerate(categories, start=1):
+            grid.attach(
+                Gtk.Label(label=cat_name, xalign=0, hexpand=True), 0, row_idx, 1, 1
+            )
+            for col_idx, (perm_char, bit_offset) in enumerate(perms, start=1):
+                bit = 1 << (shift + bit_offset)
+                check = Gtk.CheckButton(active=bool(self._mode & bit))
+                check.connect("toggled", self._on_check_toggled)
+                self._checks[(cat_name, perm_char)] = (check, bit)
+                grid.attach(check, col_idx, row_idx, 1, 1)
+
+        perm_group.add(grid)
+
+        self._octal_label = Gtk.Label(
+            label=f"{self._mode:04o}",
+            css_classes=["title-3", "monospace"],
+            margin_bottom=8,
+        )
+        perm_group.add(self._octal_label)
+
+        box.append(perm_group)
+
+        clamp.set_child(box)
+        toolbar_view.set_content(clamp)
+        self.set_child(toolbar_view)
+
+    def _info_row(self, title: str, value: str) -> Adw.ActionRow:
+        row = Adw.ActionRow(title=title, subtitle=value)
+        row.set_subtitle_selectable(True)
+        return row
+
+    @staticmethod
+    def _format_size(size: int) -> str:
+        for unit in ("B", "KB", "MB", "GB"):
+            if size < 1024:
+                return f"{size:.0f} {unit}" if unit == "B" else f"{size:.1f} {unit}"
+            size /= 1024
+        return f"{size:.1f} TB"
+
+    def _on_check_toggled(self, check):
+        mode = 0
+        for (cat, perm), (cb, bit) in self._checks.items():
+            if cb.get_active():
+                mode |= bit
+        self._mode = mode
+        self._octal_label.set_label(f"{self._mode:04o}")
+        # Enable Apply only if permissions actually changed
+        self._apply_btn.set_sensitive(self._mode != (self._file_info.permissions & 0o777))
+
+    def _on_apply(self, btn):
+        self.emit("chmod-applied", self._mode)
+        self.close()
 
 
 class DirectoryChooserDialog(Adw.Dialog):
