@@ -284,12 +284,14 @@ class FtpClient:
                 file_size = int(facts.get("size", 0))
                 received = [0]
                 with open(child_local, "wb") as f:
-                    def callback(chunk, _r=received, _s=file_size):
-                        f.write(chunk)
-                        _r[0] += len(chunk)
-                        if progress_cb:
-                            progress_cb(_r[0], _s)
-                    self._ftp.retrbinary(f"RETR {child_remote}", callback)
+                    def make_callback(r, s):
+                        def callback(chunk):
+                            f.write(chunk)
+                            r[0] += len(chunk)
+                            if progress_cb:
+                                progress_cb(r[0], s)
+                        return callback
+                    self._ftp.retrbinary(f"RETR {child_remote}", make_callback(received, file_size))
 
     def _listdir_list_raw(self, path: str) -> list:
         """LIST fallback returning (name, facts) tuples like mlsd."""
