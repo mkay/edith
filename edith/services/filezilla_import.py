@@ -1,4 +1,4 @@
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple
 
@@ -48,7 +48,7 @@ def _decode_remote_dir(raw: str) -> str:
     for _ in range(count):
         if i >= len(parts):
             break
-        length = int(parts[i])
+        int(parts[i])  # skip length field
         i += 1
         name = parts[i] if i < len(parts) else ""
         segments.append(name)

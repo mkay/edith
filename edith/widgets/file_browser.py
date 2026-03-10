@@ -1202,7 +1202,7 @@ class FileBrowser(Gtk.Box):
             try:
                 st = client.stat(path)
                 dir_writable = bool(st.st_mode & 0o222)
-            except Exception:
+            except OSError:
                 pass
             return files, dir_writable
 

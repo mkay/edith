@@ -321,7 +321,7 @@ class ServerEditDialog(Adw.Dialog):
             # Close test connection
             try:
                 client.close()
-            except Exception:
+            except OSError:
                 pass
             self._test_client = None
 

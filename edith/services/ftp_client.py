@@ -2,7 +2,6 @@
 
 import os
 import socket
-import ssl
 import stat as stat_module
 import threading
 from ftplib import FTP, FTP_TLS
@@ -113,7 +112,7 @@ class FtpClient:
         elif encryption == "explicit_optional":
             try:
                 ftp.auth()
-            except Exception:
+            except OSError:
                 pass  # server doesn't support TLS, continue unencrypted
 
         ftp.login(username or "anonymous", password or "")
@@ -283,9 +282,9 @@ class FtpClient:
                 self._download_dir_unlocked(child_remote, child_local, progress_cb)
             else:
                 file_size = int(facts.get("size", 0))
-                received = 0
+                received = [0]
                 with open(child_local, "wb") as f:
-                    def callback(chunk, _r=[received], _s=file_size):
+                    def callback(chunk, _r=received, _s=file_size):
                         f.write(chunk)
                         _r[0] += len(chunk)
                         if progress_cb:

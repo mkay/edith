@@ -429,7 +429,7 @@
         // Merge user custom overrides (raw Monaco options) on top
         if (customOptions && typeof customOptions === "object") {
           for (var key in customOptions) {
-            if (customOptions.hasOwnProperty(key)) opts[key] = customOptions[key];
+            if (Object.prototype.hasOwnProperty.call(customOptions, key)) opts[key] = customOptions[key];
           }
         }
         editor.updateOptions(opts);

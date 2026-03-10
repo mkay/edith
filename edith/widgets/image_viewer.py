@@ -89,7 +89,7 @@ class ImageViewer(Gtk.Box):
                     parts.append(f"{x_dpi} dpi")
                 else:
                     parts.append(f"{x_dpi} × {y_dpi} dpi")
-        except Exception:
+        except (ValueError, AttributeError):
             pass
 
         return parts

@@ -74,13 +74,13 @@ class SftpClient:
             if self._sftp:
                 try:
                     self._sftp.close()
-                except Exception:
+                except OSError:
                     pass
                 self._sftp = None
             if self._transport:
                 try:
                     self._transport.close()
-                except Exception:
+                except OSError:
                     pass
                 self._transport = None
 

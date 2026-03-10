@@ -6,7 +6,7 @@ gi.require_version("WebKit", "6.0")
 
 from pathlib import Path
 
-from gi.repository import Adw, GLib, Gtk, GObject, WebKit
+from gi.repository import Adw, Gtk, GObject, WebKit
 
 from edith.models.open_file import OpenFile
 from edith.monaco_languages import EXT_TO_MONACO, get_language_name
@@ -192,7 +192,7 @@ class MonacoEditor(Gtk.Box):
             try:
                 with open(self.open_file.local_path, "w") as f:
                     f.write(content)
-            except Exception:
+            except OSError:
                 pass
             self._eval_js("EdithBridge.markClean()")
             self._refresh_svg_preview()

@@ -12,6 +12,7 @@ depends=(
   'webkitgtk-6.0'
   'python-paramiko'
   'python-keyring'
+  'python-defusedxml'
 )
 makedepends=('meson' 'ninja' 'npm')
 source=()
