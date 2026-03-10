@@ -81,8 +81,8 @@ class ConnectDialog(Adw.Dialog):
         self.set_child(toolbar_view)
 
     def _on_connect(self, btn):
-        password = ""
-        passphrase = ""
+        password = ""  # nosec B105
+        passphrase = ""  # nosec B105
 
         if self._password_row:
             password = self._password_row.get_text()

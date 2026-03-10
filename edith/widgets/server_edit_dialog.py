@@ -111,7 +111,7 @@ class ServerEditDialog(Adw.Dialog):
         self._auth_combo = Adw.ComboRow(title="Authentication")
         auth_model = Gtk.StringList.new(["Password", "SSH Key", "SSH Key + Passphrase"])
         self._auth_combo.set_model(auth_model)
-        method_map = {"password": 0, "key": 1, "key+passphrase": 2}
+        method_map = {"password": 0, "key": 1, "key+passphrase": 2}  # nosec B105
         self._auth_combo.set_selected(method_map.get(self._server.auth_method, 0))
         self._auth_combo.connect("notify::selected", self._on_auth_changed)
         self._auth_combo.set_visible(not is_ftp)
@@ -352,7 +352,7 @@ class ServerEditDialog(Adw.Dialog):
         if self._test_client:
             try:
                 self._test_client.close()
-            except Exception:
+            except OSError:
                 pass
             self._test_client = None
 

@@ -5,7 +5,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, Gtk, GObject, Gdk, Pango
+from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Pango
 
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
@@ -1786,7 +1786,7 @@ class FileBrowser(Gtk.Box):
     def _on_launch_finish(self, launcher, result):
         try:
             launcher.launch_finish(result)
-        except Exception:
+        except (OSError, GLib.Error):
             pass
 
     # ──────────────────────────────────────────────────────────────────────

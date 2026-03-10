@@ -353,7 +353,7 @@ class SftpClient:
         channel = transport.open_session()
         try:
             channel.settimeout(timeout)
-            channel.exec_command(command)
+            channel.exec_command(command)  # nosec B601
 
             # Read all output then wait for exit
             stdout_chunks = []

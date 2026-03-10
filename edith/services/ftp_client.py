@@ -4,7 +4,7 @@ import os
 import socket
 import stat as stat_module
 import threading
-from ftplib import FTP, FTP_TLS
+from ftplib import FTP, FTP_TLS  # nosec B402
 from io import BytesIO
 from pathlib import Path
 
@@ -103,7 +103,7 @@ class FtpClient:
         elif encryption in ("explicit_required", "explicit_optional"):
             ftp = FTP_TLS(timeout=timeout)
         else:
-            ftp = FTP(timeout=timeout)
+            ftp = FTP(timeout=timeout)  # nosec B321
 
         ftp.connect(host, port)
 
@@ -139,10 +139,10 @@ class FtpClient:
             if self._ftp:
                 try:
                     self._ftp.quit()
-                except Exception:
+                except OSError:
                     try:
                         self._ftp.close()
-                    except Exception:
+                    except OSError:
                         pass
                 self._ftp = None
 
@@ -343,7 +343,7 @@ class FtpClient:
                 size = self._ftp.size(path)
                 if size is not None:
                     facts["size"] = str(size)
-            except Exception:
+            except OSError:
                 pass
             if self._is_dir_unlocked(path):
                 facts["type"] = "dir"
@@ -436,8 +436,8 @@ class FtpClient:
         if self._is_dir_unlocked(src):
             try:
                 self._ftp.mkd(dst)
-            except Exception:
-                pass
+            except OSError:
+                pass  # directory may already exist
             if self._has_mlsd:
                 entries = list(self._ftp.mlsd(src))
             else:
@@ -469,8 +469,8 @@ class FtpClient:
     def _upload_directory_unlocked(self, local_dir: str, remote_dir: str):
         try:
             self._ftp.mkd(remote_dir)
-        except Exception:
-            pass
+        except OSError:
+            pass  # directory may already exist
         for entry in os.listdir(local_dir):
             local_path = os.path.join(local_dir, entry)
             remote_path = f"{remote_dir.rstrip('/')}/{entry}"
@@ -499,7 +499,7 @@ class FtpClient:
         try:
             self._ftp.size(path)
             return True
-        except Exception:
+        except OSError:
             pass
         return self._is_dir_unlocked(path)
 

@@ -103,4 +103,5 @@ MIT
 
 ## Disclaimer
 
-This project was created with AI assistance. The code has not been thoroughly reviewed. Verify its correctness and suitability before use. 
+This project was developed with AI assistance. The code has been analysed with Codacy and Bandit. Use at your own discretion.  
+[![Codacy Badge](https://app.codacy.com/project/badge/Grade/4012325287f941e5a11cfd0f3888561b)](https://app.codacy.com/gh/mkay/edith/dashboard)
