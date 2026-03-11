@@ -4,7 +4,7 @@ import os
 import socket
 import stat as stat_module
 import threading
-from ftplib import FTP, FTP_TLS  # nosec B402
+from ftplib import FTP, FTP_TLS, error_perm  # nosec B402
 from io import BytesIO
 from pathlib import Path
 
@@ -340,10 +340,11 @@ class FtpClient:
             # Fallback: try SIZE + check if directory
             facts = {"size": "0", "type": "file"}
             try:
+                self._ftp.voidcmd("TYPE I")
                 size = self._ftp.size(path)
                 if size is not None:
                     facts["size"] = str(size)
-            except OSError:
+            except (OSError, error_perm):
                 pass
             if self._is_dir_unlocked(path):
                 facts["type"] = "dir"
@@ -497,14 +498,16 @@ class FtpClient:
 
     def _exists_unlocked(self, path: str) -> bool:
         try:
+            self._ftp.voidcmd("TYPE I")
             self._ftp.size(path)
             return True
-        except OSError:
+        except (OSError, error_perm):
             pass
         return self._is_dir_unlocked(path)
 
     def _size_unlocked(self, path: str) -> int:
         try:
+            self._ftp.voidcmd("TYPE I")
             size = self._ftp.size(path)
             return size if size is not None else 0
         except Exception:
