@@ -321,6 +321,12 @@ class StatusBar(Gtk.Box):
             self._status_icon.set_from_icon_name(
                 system_icons.get(state, "network-offline-symbolic")
             )
+        if state == "connected":
+            self._status_label.remove_css_class("dim-label")
+            self._status_label.add_css_class("success")
+        else:
+            self._status_label.remove_css_class("success")
+            self._status_label.add_css_class("dim-label")
         is_transferring = state in ("downloading", "uploading", "connecting")
         self._spinner.set_visible(is_transferring)
         self._spinner.set_spinning(is_transferring)

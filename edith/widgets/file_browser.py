@@ -556,21 +556,19 @@ class FileBrowser(Gtk.Box):
         section_info.append("Information", "file.information")
         menu.append_section(None, section_info)
 
-        # Delete, Actions submenu, Upload, Rename, etc.
+        # Delete, Actions submenu, Rename, etc.
         actions_submenu = Gio.Menu()
         actions_submenu.append("Move to", "file.move-to")
         actions_submenu.append("Copy to", "file.copy-to")
         actions_submenu.append("Duplicate", "file.duplicate")
-        actions_submenu.append("Download", "file.download")
         actions_submenu.append("Open Locally", "file.open-locally")
 
         section_ops = Gio.Menu()
         section_ops.append("Delete", "file.delete")
         section_ops.append_submenu("Actions", actions_submenu)
-        section_ops.append("Upload", "file.upload-files")
         section_ops.append("Rename", "file.rename")
         section_ops.append("Copy Path", "file.copy-path")
-        section_ops.append("Create Archive", "file.create-archive")
+        section_ops.append("Download", "file.download")
         section_ops.append("Pin", "file.pin")
         menu.append_section(None, section_ops)
 
@@ -629,10 +627,6 @@ class FileBrowser(Gtk.Box):
         self._copy_to_action = Gio.SimpleAction.new("copy-to", None)
         self._copy_to_action.connect("activate", self._on_copy_to)
         group.add_action(self._copy_to_action)
-
-        upload_files_action = Gio.SimpleAction.new("upload-files", None)
-        upload_files_action.connect("activate", lambda *_: self._on_upload_clicked(None))
-        group.add_action(upload_files_action)
 
         self._download_action = Gio.SimpleAction.new("download", None)
         self._download_action.connect("activate", self._on_download)

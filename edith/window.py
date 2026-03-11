@@ -1205,6 +1205,12 @@ class EdithWindow(Adw.ApplicationWindow):
         icon = _app_icons.get(state) or _sys_icons.get(state, "network-offline-symbolic")
         self._sidebar_status_icon.set_from_icon_name(icon)
         self._sidebar_status_label.set_label(message)
+        if state == "connected":
+            self._sidebar_status_label.remove_css_class("dim-label")
+            self._sidebar_status_label.add_css_class("success")
+        else:
+            self._sidebar_status_label.remove_css_class("success")
+            self._sidebar_status_label.add_css_class("dim-label")
 
     def adjust_sidebar_width(self, width: int):
         """Set the sidebar paned position (used by detail-mode toggle)."""
