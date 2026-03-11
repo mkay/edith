@@ -223,6 +223,9 @@ class FileBrowser(Gtk.Box):
         # ── Path bar drop target ─────────────────────────────────────────
         self._setup_pathbar_drop_target()
 
+        # ── Upload drop target (external files from file manager) ────────
+        self._setup_upload_drop_target()
+
         # ── Context menu ─────────────────────────────────────────────────
         self._setup_context_menu()
 
@@ -553,7 +556,7 @@ class FileBrowser(Gtk.Box):
         section_info.append("Information", "file.information")
         menu.append_section(None, section_info)
 
-        # Delete, Actions submenu, Upload submenu, Rename, etc.
+        # Delete, Actions submenu, Upload, Rename, etc.
         actions_submenu = Gio.Menu()
         actions_submenu.append("Move to", "file.move-to")
         actions_submenu.append("Copy to", "file.copy-to")
@@ -561,14 +564,10 @@ class FileBrowser(Gtk.Box):
         actions_submenu.append("Download", "file.download")
         actions_submenu.append("Open Locally", "file.open-locally")
 
-        upload_submenu = Gio.Menu()
-        upload_submenu.append("File", "file.upload-files")
-        upload_submenu.append("Folder", "file.upload-folder")
-
         section_ops = Gio.Menu()
         section_ops.append("Delete", "file.delete")
         section_ops.append_submenu("Actions", actions_submenu)
-        section_ops.append_submenu("Upload", upload_submenu)
+        section_ops.append("Upload", "file.upload-files")
         section_ops.append("Rename", "file.rename")
         section_ops.append("Copy Path", "file.copy-path")
         section_ops.append("Create Archive", "file.create-archive")
@@ -634,10 +633,6 @@ class FileBrowser(Gtk.Box):
         upload_files_action = Gio.SimpleAction.new("upload-files", None)
         upload_files_action.connect("activate", lambda *_: self._on_upload_clicked(None))
         group.add_action(upload_files_action)
-
-        upload_folder_action = Gio.SimpleAction.new("upload-folder", None)
-        upload_folder_action.connect("activate", lambda *_: self._on_upload_folder())
-        group.add_action(upload_folder_action)
 
         self._download_action = Gio.SimpleAction.new("download", None)
         self._download_action.connect("activate", self._on_download)
@@ -1698,23 +1693,6 @@ class FileBrowser(Gtk.Box):
         if paths:
             self._do_upload_paths(paths)
 
-    def _on_upload_folder(self):
-        if not self._window or not self._window.sftp_client:
-            return
-        dialog = Gtk.FileDialog(title="Upload Folder")
-        dialog.select_folder(self.get_root(), None, self._on_upload_folder_selected)
-
-    def _on_upload_folder_selected(self, dialog, result):
-        try:
-            folder = dialog.select_folder_finish(result)
-        except Exception:
-            return
-        if not folder or not self._window or not self._window.sftp_client:
-            return
-        local_path = folder.get_path()
-        if local_path:
-            self._do_upload_paths([local_path])
-
     def _do_upload_paths(self, local_paths):
         dest_dir = self._current_path
         for local_path in local_paths:
@@ -1834,3 +1812,39 @@ class FileBrowser(Gtk.Box):
 
         run_async(lambda: client.rename(src_path, dst_path), on_drag_moved,
                   lambda e: self._show_op_error(str(e)))
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Upload drop target (external files/folders from file manager)
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _setup_upload_drop_target(self):
+        target = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
+        target.connect("drop", self._on_upload_drop)
+        target.connect("enter", self._on_upload_drag_enter)
+        target.connect("leave", self._on_upload_drag_leave)
+        self._stack.add_controller(target)
+
+    def _on_upload_drag_enter(self, target, x, y):
+        if not self._window or not self._window.sftp_client:
+            return 0
+        self._stack.add_css_class("drop-target")
+        return Gdk.DragAction.COPY
+
+    def _on_upload_drag_leave(self, target):
+        self._stack.remove_css_class("drop-target")
+
+    def _on_upload_drop(self, target, value, x, y):
+        self._stack.remove_css_class("drop-target")
+        if not self._window or not self._window.sftp_client:
+            return False
+        files = value.get_files()
+        if not files:
+            return False
+        paths = []
+        for gfile in files:
+            path = gfile.get_path()
+            if path:
+                paths.append(path)
+        if paths:
+            self._do_upload_paths(paths)
+        return True
