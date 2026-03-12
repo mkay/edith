@@ -3,7 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk
+from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Graphene
 
 from edith.models.server import ServerInfo
 from edith.services.config import ConfigService
@@ -179,15 +179,25 @@ class ServerPanel(Gtk.Box):
         self._server_menu_model.remove(3)
         self._server_menu_model.insert_section(3, None, pin_section)
 
-        # Parent the popover to the clicked ListBox so x,y are already correct
+        # Parent the popover to self (ServerPanel) to avoid the ScrolledWindow
+        # scrolling to keep the popover anchor visible.
+        pt = Graphene.Point()
+        pt.x = float(x)
+        pt.y = float(y)
+        ok, out_pt = list_box.compute_point(self, pt)
+        if ok:
+            tx, ty = int(out_pt.x), int(out_pt.y)
+        else:
+            tx, ty = int(x), int(y)
+
         self._server_menu.popdown()
         if self._server_menu.get_parent() is not None:
             self._server_menu.unparent()
-        self._server_menu.set_parent(list_box)
+        self._server_menu.set_parent(self)
 
         rect = Gdk.Rectangle()
-        rect.x = int(x)
-        rect.y = int(y)
+        rect.x = tx
+        rect.y = ty
         rect.width = 1
         rect.height = 1
         self._server_menu.set_pointing_to(rect)

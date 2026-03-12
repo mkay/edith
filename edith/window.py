@@ -59,14 +59,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
         sidebar_header.pack_start(self._new_folder_btn)
 
-        sidebar_menu = Gio.Menu()
-        sidebar_menu.append("Import from FileZilla\u2026", "win.import-filezilla")
-        sidebar_menu_btn = Gtk.MenuButton(
-            icon_name="edith-open-menu-symbolic",
-            menu_model=sidebar_menu,
-            tooltip_text="More Options",
-        )
-        sidebar_header.pack_end(sidebar_menu_btn)
+
 
         self._sidebar_stack = Gtk.Stack(
             transition_type=Gtk.StackTransitionType.CROSSFADE,
@@ -211,6 +204,9 @@ class EdithWindow(Adw.ApplicationWindow):
         window_section = Gio.Menu()
         window_section.append("New Window", "app.new-window")
         menu.append_section(None, window_section)
+        server_section = Gio.Menu()
+        server_section.append("Import from FileZilla\u2026", "win.import-filezilla")
+        menu.append_section(None, server_section)
         prefs_section = Gio.Menu()
         prefs_section.append("Syntax Theme\u2026", "app.syntax-theme")
         prefs_section.append("Syntax Associations\u2026", "app.syntax-associations")
