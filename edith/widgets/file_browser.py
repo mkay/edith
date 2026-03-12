@@ -180,7 +180,7 @@ class FileBrowser(Gtk.Box):
             single_click_activate=False,
             show_row_separators=False,
             show_column_separators=False,
-            css_classes=["data-table"],
+            css_classes=["file-list", "data-table"],
             vexpand=True,
             hexpand=True,
         )
@@ -195,7 +195,7 @@ class FileBrowser(Gtk.Box):
         # No filter initially (= match all); set dynamically in _on_filter_changed
         self._filter_model = Gtk.FilterListModel(model=self._sort_model)
 
-        self._selection = Gtk.SingleSelection(model=self._filter_model, autoselect=False)
+        self._selection = Gtk.MultiSelection(model=self._filter_model)
         self._column_view.set_model(self._selection)
 
         self._setup_columns()
@@ -238,17 +238,23 @@ class FileBrowser(Gtk.Box):
         # ── CSS ──────────────────────────────────────────────────────────
         _css = Gtk.CssProvider()
         _css.load_from_string("""
-            columnview.data-table > listview > row.multi-checked {
+            columnview.file-list > listview > row:selected {
                 background-color: alpha(@accent_bg_color, 0.25);
             }
-            columnview.data-table > listview > row.multi-checked:hover {
+            columnview.file-list > listview > row:selected:hover {
+                background-color: alpha(@accent_bg_color, 0.35);
+            }
+            columnview.file-list > listview > row.multi-checked {
+                background-color: alpha(@accent_bg_color, 0.25);
+            }
+            columnview.file-list > listview > row.multi-checked:hover {
                 background-color: alpha(@accent_bg_color, 0.35);
             }
         """)
         Gtk.StyleContext.add_provider_for_display(
             Gdk.Display.get_default(),
             _css,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+            Gtk.STYLE_PROVIDER_PRIORITY_USER,
         )
 
     # ──────────────────────────────────────────────────────────────────────
@@ -422,19 +428,26 @@ class FileBrowser(Gtk.Box):
         drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
 
         def on_drag_prepare(d, x, y):
-            if item_ref[0]:
-                return Gdk.ContentProvider.new_for_value(
-                    GObject.Value(GObject.TYPE_STRING, item_ref[0].file_info.path)
-                )
-            return None
+            if not item_ref[0] or item_ref[0].file_info.is_parent_dir:
+                return None
+            paths = self._get_selected_paths_for_drag(item_ref[0])
+            return Gdk.ContentProvider.new_for_value(
+                GObject.Value(GObject.TYPE_STRING, "\n".join(paths))
+            )
 
         def on_drag_begin(d, gdk_drag):
-            if item_ref[0]:
+            if not item_ref[0]:
+                return
+            paths = self._get_selected_paths_for_drag(item_ref[0])
+            drag_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+            if len(paths) == 1:
                 fi = item_ref[0].file_info
-                drag_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
                 drag_box.append(Gtk.Image(icon_name=fi.icon_name, pixel_size=16))
                 drag_box.append(Gtk.Label(label=fi.name))
-                Gtk.DragIcon.get_for_drag(gdk_drag).set_child(drag_box)
+            else:
+                drag_box.append(Gtk.Image(icon_name="edith-select-items-symbolic", pixel_size=16))
+                drag_box.append(Gtk.Label(label=f"{len(paths)} items"))
+            Gtk.DragIcon.get_for_drag(gdk_drag).set_child(drag_box)
 
         drag.connect("prepare", on_drag_prepare)
         drag.connect("drag-begin", on_drag_begin)
@@ -457,7 +470,12 @@ class FileBrowser(Gtk.Box):
         def on_drop(d, value, x, y):
             if is_dir_ref[0] and item_ref[0]:
                 box.remove_css_class("drop-target")
-                self._perform_drag_move(value, item_ref[0].file_info.path)
+                fi = item_ref[0].file_info
+                if fi.is_parent_dir:
+                    dest = "/".join(self._current_path.rstrip("/").split("/")[:-1]) or "/"
+                else:
+                    dest = fi.path
+                self._perform_drag_move(value, dest)
                 return True
             return False
 
@@ -475,7 +493,7 @@ class FileBrowser(Gtk.Box):
         item = list_item.get_item()
         fi = item.file_info
         list_item._name_item_ref[0] = item
-        list_item._name_is_dir_ref[0] = fi.is_dir and not fi.is_parent_dir
+        list_item._name_is_dir_ref[0] = fi.is_dir
 
         box = list_item.get_child()
         box._cv_item = item
@@ -665,6 +683,12 @@ class FileBrowser(Gtk.Box):
         key_ctrl.connect("key-pressed", self._on_key_pressed)
         self._column_view.add_controller(key_ctrl)
 
+        # Capture Ctrl+A to select all items except ".."
+        select_all_ctrl = Gtk.EventControllerKey()
+        select_all_ctrl.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+        select_all_ctrl.connect("key-pressed", self._on_select_all_key)
+        self._column_view.add_controller(select_all_ctrl)
+
     def _on_right_click(self, gesture, n_press, x, y):
         # Walk from the deepest picked widget up to find a cell with _cv_item
         widget = self._column_view.pick(x, y, Gtk.PickFlags.DEFAULT)
@@ -720,8 +744,33 @@ class FileBrowser(Gtk.Box):
         self._context_menu.set_pointing_to(rect)
         self._context_menu.popup()
 
+    def _get_selected_paths_for_drag(self, dragged_item):
+        """Return paths to move on drag. If the dragged item is part of the
+        GTK multi-selection, return all selected paths; otherwise just the
+        dragged item's path."""
+        bitset = self._selection.get_selection()
+        paths = []
+        dragged_in_sel = False
+        for i in range(bitset.get_size()):
+            pos = bitset.get_nth(i)
+            item = self._filter_model.get_item(pos)
+            if item and not item.file_info.is_parent_dir:
+                paths.append(item.file_info.path)
+                if item is dragged_item:
+                    dragged_in_sel = True
+        if not dragged_in_sel or not paths:
+            return [dragged_item.file_info.path]
+        return paths
+
+    def _get_focused_item(self):
+        """Return the first item in the GTK selection (highlight), or None."""
+        bitset = self._selection.get_selection()
+        if bitset.get_size() == 0:
+            return None
+        return self._filter_model.get_item(bitset.get_nth(0))
+
     def _on_key_pressed(self, ctrl, keyval, keycode, state):
-        selected = self._selection.get_selected_item()
+        selected = self._get_focused_item()
 
         if keyval == Gdk.KEY_F2:
             if selected:
@@ -748,6 +797,16 @@ class FileBrowser(Gtk.Box):
             self._on_go_up(None)
             return True
 
+        return False
+
+    def _on_select_all_key(self, ctrl, keyval, keycode, state):
+        if keyval == Gdk.KEY_a and state & Gdk.ModifierType.CONTROL_MASK:
+            self._selection.unselect_all()
+            for i in range(self._filter_model.get_n_items()):
+                item = self._filter_model.get_item(i)
+                if item and not item.file_info.is_parent_dir:
+                    self._selection.select_item(i, False)
+            return True
         return False
 
     def _get_context_file_info(self) -> RemoteFileInfo | None:
@@ -1242,7 +1301,7 @@ class FileBrowser(Gtk.Box):
             for i in range(self._filter_model.get_n_items()):
                 item = self._filter_model.get_item(i)
                 if item.file_info.name == target:
-                    self._selection.set_selected(i)
+                    self._selection.select_item(i, True)
                     break
 
     def _show_listing_error(self, message: str):
@@ -1783,29 +1842,47 @@ class FileBrowser(Gtk.Box):
         self._perform_drag_move(value, self._current_path)
         return True
 
-    def _perform_drag_move(self, src_path, dest_dir):
+    def _perform_drag_move(self, value, dest_dir):
         if not self._window or not self._window.sftp_client:
             return
-        name = src_path.rstrip("/").rsplit("/", 1)[-1]
-        dst_path = f"{dest_dir.rstrip('/')}/{name}"
-        src_parent = "/".join(src_path.rstrip("/").split("/")[:-1]) or "/"
-        if src_parent == dest_dir.rstrip("/") or src_parent == dest_dir:
-            return
-        if src_path.rstrip("/") == dest_dir.rstrip("/"):
-            return
-        if dest_dir.rstrip("/").startswith(src_path.rstrip("/") + "/"):
+        src_paths = [p for p in value.split("\n") if p]
+        if not src_paths:
             return
         client = self._window.sftp_client
         from edith.services.async_worker import run_async
-        dest_label = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
+        dest_stripped = dest_dir.rstrip("/")
+        dest_label = dest_stripped.rsplit("/", 1)[-1] or dest_dir
 
-        def on_drag_moved(_):
+        # Filter out no-ops
+        valid = []
+        for sp in src_paths:
+            src_parent = "/".join(sp.rstrip("/").split("/")[:-1]) or "/"
+            if src_parent.rstrip("/") == dest_stripped:
+                continue
+            if sp.rstrip("/") == dest_stripped:
+                continue
+            if dest_stripped.startswith(sp.rstrip("/") + "/"):
+                continue
+            valid.append(sp)
+        if not valid:
+            return
+
+        def do_moves():
+            for sp in valid:
+                name = sp.rstrip("/").rsplit("/", 1)[-1]
+                client.rename(sp, f"{dest_stripped}/{name}")
+
+        n = len(valid)
+        def on_done(_):
             self.load_directory(self._current_path)
             if self._window:
-                self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_label}\u201d", "success")
+                if n == 1:
+                    name = valid[0].rstrip("/").rsplit("/", 1)[-1]
+                    self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_label}\u201d", "success")
+                else:
+                    self._window.show_toast(f"Moved {n} items to \u201c{dest_label}\u201d", "success")
 
-        run_async(lambda: client.rename(src_path, dst_path), on_drag_moved,
-                  lambda e: self._show_op_error(str(e)))
+        run_async(do_moves, on_done, lambda e: self._show_op_error(str(e)))
 
     # ──────────────────────────────────────────────────────────────────────
     # Upload drop target (external files/folders from file manager)
