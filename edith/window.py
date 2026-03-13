@@ -1220,7 +1220,7 @@ class EdithWindow(Adw.ApplicationWindow):
                     new_mtime = client.stat(rpath).st_mtime
                     if new_mtime != old_mtime:
                         changed.append((rpath, new_mtime))
-                except Exception:
+                except OSError:
                     pass
             return changed
 
