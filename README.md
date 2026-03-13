@@ -95,6 +95,10 @@ Or launch from your application menu.
 
 MIT
 
+## Credits
+
+- Edith used [Phosphor Icons](https://phosphoricons.com/) (MIT)
+
 ## Screenshots
 
 ![Welcome screen](assets/edith_welcome.png)

@@ -40,6 +40,7 @@ class FileBrowser(Gtk.Box):
         self._history_pos = -1
         self._show_hidden = False
         self._select_mode = False
+        self._pre_select_sidebar_width = None
         self._updating_select_all = False
         self._items: list[RemoteFileItem] = []
         self._context_item: RemoteFileItem | None = None
@@ -502,9 +503,10 @@ class FileBrowser(Gtk.Box):
         label = icon.get_next_sibling()
 
         if fi.is_parent_dir:
-            icon.set_visible(False)
-            label.set_text("..")
-            box.set_tooltip_text(None)
+            icon.set_visible(True)
+            icon.set_from_icon_name("edith-parent-dir-symbolic")
+            label.set_text("")
+            box.set_tooltip_text("Parent directory")
         else:
             icon.set_visible(True)
             icon.set_from_icon_name(fi.icon_name)
@@ -1378,7 +1380,15 @@ class FileBrowser(Gtk.Box):
             "edith-select-items-active-symbolic" if self._select_mode
             else "edith-select-items-symbolic"
         )
+        btn.set_tooltip_text(
+            "Exit Select Mode" if self._select_mode else "Select Items"
+        )
         if self._select_mode:
+            if self._window:
+                self._pre_select_sidebar_width = self._window._sidebar_width
+                self._window.adjust_sidebar_width(
+                    max(self._window._sidebar_width, 400)
+                )
             self._multi_bar.set_visible(True)
             self._multi_count_label.set_label("No items selected")
             self._multi_delete_btn.set_sensitive(False)
@@ -1389,6 +1399,9 @@ class FileBrowser(Gtk.Box):
             self._clear_checked_rows()
             self._check_column.set_visible(False)
             self._multi_bar.set_visible(False)
+            if self._window and self._pre_select_sidebar_width is not None:
+                self._window.adjust_sidebar_width(self._pre_select_sidebar_width)
+                self._pre_select_sidebar_width = None
 
     def _on_detail_mode_toggled(self, btn):
         show = btn.get_active()
