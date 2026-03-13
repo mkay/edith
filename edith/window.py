@@ -36,6 +36,11 @@ class EdithWindow(Adw.ApplicationWindow):
         self._transfer_queue = None
         self._force_close = False
         self._server_panel_populated = False
+        self._remote_mtimes = {}       # remote_path -> last known mtime
+        self._saving_paths = set()     # paths currently being uploaded (suppress poll)
+        self._poll_timer_id = None
+        self._poll_in_flight = False
+        self._reload_dialog_paths = set()  # paths with an open reload dialog
 
         self._build_ui()
         self._setup_actions()
@@ -811,6 +816,9 @@ class EdithWindow(Adw.ApplicationWindow):
         self._transfer_btn.set_visible(True)
         self._transfer_btn.set_sensitive(False)
 
+        # Start remote file-change polling
+        self._poll_timer_id = GLib.timeout_add_seconds(3, self._poll_remote_mtimes)
+
         # Show connected placeholder until the user opens a file
         self._connected_page.set_title(f"Connected to {server_info.display_name}")
         self._rebuild_recents_child(server_info)
@@ -996,6 +1004,13 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_disconnected(self):
         """Called after disconnection."""
+        if self._poll_timer_id:
+            GLib.source_remove(self._poll_timer_id)
+            self._poll_timer_id = None
+        self._remote_mtimes.clear()
+        self._saving_paths.clear()
+        self._reload_dialog_paths.clear()
+        self._poll_in_flight = False
         self._status_bar.clear_transfer()
         self._set_status("disconnected", "Disconnected")
         self._status_bar.hide_file_info()
@@ -1053,9 +1068,12 @@ class EdithWindow(Adw.ApplicationWindow):
         def do_download(progress_cb):
             local_path = TempManager.get_temp_path(remote_path)
             client.download(remote_path, str(local_path), progress_cb=progress_cb)
-            return local_path
+            mtime = client.stat(remote_path).st_mtime
+            return local_path, mtime
 
-        def on_success(local_path):
+        def on_success(result):
+            local_path, mtime = result
+            self._remote_mtimes[remote_path] = mtime
             self._editor_panel.open_file(remote_path, str(local_path))
             self._content_stack.set_visible_child_name("editor")
             if self._connected_server:
@@ -1147,14 +1165,19 @@ class EdithWindow(Adw.ApplicationWindow):
 
         name = os.path.basename(remote_path)
         client = self._sftp_client
+        self._saving_paths.add(remote_path)
 
         def do_upload(progress_cb):
             client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
+            return client.stat(remote_path).st_mtime
 
-        def on_success(_):
+        def on_success(mtime):
+            self._saving_paths.discard(remote_path)
+            self._remote_mtimes[remote_path] = mtime
             self.show_toast(f"Saved {name}", "success")
 
         def on_error(error):
+            self._saving_paths.discard(remote_path)
             dialog = Adw.AlertDialog(
                 heading="Upload Failed",
                 body=str(error),
@@ -1163,6 +1186,118 @@ class EdithWindow(Adw.ApplicationWindow):
             dialog.present(self)
 
         self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
+
+    # --- Remote file-change polling ---
+
+    def _poll_remote_mtimes(self):
+        """Periodically check remote mtimes for open, unmodified files."""
+        if not self._sftp_client or self._poll_in_flight:
+            return True  # keep timer alive
+
+        # Collect paths to check (skip files being saved)
+        paths_to_check = {}
+        for remote_path, known_mtime in self._remote_mtimes.items():
+            if remote_path in self._saving_paths:
+                continue
+            if remote_path in self._reload_dialog_paths:
+                continue
+            if not self._editor_panel.find_tab(remote_path):
+                continue
+            paths_to_check[remote_path] = known_mtime
+
+        if not paths_to_check:
+            return True
+
+        self._poll_in_flight = True
+        client = self._sftp_client
+
+        from edith.services.async_worker import run_async
+
+        def do_stat():
+            changed = []
+            for rpath, old_mtime in paths_to_check.items():
+                try:
+                    new_mtime = client.stat(rpath).st_mtime
+                    if new_mtime != old_mtime:
+                        changed.append((rpath, new_mtime))
+                except Exception:
+                    pass
+            return changed
+
+        def on_stat_done(changed):
+            self._poll_in_flight = False
+            for rpath, new_mtime in changed:
+                self._remote_mtimes[rpath] = new_mtime
+                editor = self._editor_for_path(rpath)
+                if not editor:
+                    continue
+                if editor.open_file.is_modified:
+                    self._confirm_remote_reload(rpath)
+                else:
+                    self._redownload_and_reload(rpath)
+
+        def on_stat_error(_):
+            self._poll_in_flight = False
+
+        run_async(do_stat, on_stat_done, on_stat_error)
+        return True  # keep timer alive
+
+    def _editor_for_path(self, remote_path):
+        """Return the MonacoEditor widget for a given remote path, or None."""
+        from edith.widgets.monaco_editor import MonacoEditor
+        page = self._editor_panel._tabs.get(remote_path)
+        if page:
+            widget = page.get_child()
+            if isinstance(widget, MonacoEditor):
+                return widget
+        return None
+
+    def _redownload_and_reload(self, remote_path):
+        """Re-download a remote file and reload its editor content."""
+        editor = self._editor_for_path(remote_path)
+        if not editor or not self._sftp_client:
+            return
+
+        client = self._sftp_client
+        local_path = editor.open_file.local_path
+
+        from edith.services.async_worker import run_async
+
+        def do_download():
+            client.download(remote_path, local_path)
+
+        def on_done(_):
+            e = self._editor_for_path(remote_path)
+            if e:
+                e.reload_from_disk()
+
+        run_async(do_download, on_done, lambda _: None)
+
+    def _confirm_remote_reload(self, remote_path):
+        """Ask the user whether to reload a file that changed remotely while
+        the editor has unsaved local edits."""
+        editor = self._editor_for_path(remote_path)
+        if not editor:
+            return
+        filename = editor.open_file.filename
+
+        dialog = Adw.AlertDialog(
+            heading="File Changed on Server",
+            body=f"\u201c{filename}\u201d has been modified on the server.\n"
+                 "Do you want to reload it? Your unsaved changes will be lost.",
+        )
+        dialog.add_response("keep", "Keep Local")
+        dialog.add_response("reload", "Reload")
+        dialog.set_response_appearance("reload", Adw.ResponseAppearance.DESTRUCTIVE)
+
+        self._reload_dialog_paths.add(remote_path)
+        dialog.connect("response", self._on_reload_response, remote_path)
+        dialog.present(self)
+
+    def _on_reload_response(self, dialog, response, remote_path):
+        self._reload_dialog_paths.discard(remote_path)
+        if response == "reload":
+            self._redownload_and_reload(remote_path)
 
     # --- Transfer queue signal handlers ---
 

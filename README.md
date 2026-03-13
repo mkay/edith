@@ -11,26 +11,13 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 
 ## Features
 
-- **SFTP & FTP** — connect via SFTP (SSH), plain FTP, or FTPS with explicit TLS (optional/required) and implicit TLS
-- **Server management** — saved connections with password/key auth, organized into groups; drag-and-drop reordering of groups in the sidebar; two-level navigation with groups in the sidebar and servers in the main pane; double-click to connect
-- **Server search** — Ctrl+F to filter servers by name
-- **File browser** — navigate remote directories; column view with sortable Name, Size, Permissions, and Modified columns; show/hide detail columns with a toggle; alternating row shading; drag-and-drop move, upload, copy, rename, delete; download files and folders; keyboard shortcuts for common actions
-- **Create archive** — create tar.gz, tar.bz2, tar.xz, tar, or zip archives from remote files and folders directly on the server (SFTP only); downloads, compresses locally, and uploads the archive with progress feedback
-- **Multi-select** — toggle selection mode to select multiple files and folders for bulk delete, move, or download
-- **Show hidden files** — toggle to reveal or hide dot-files; button icon reflects the current state
-- **Pin to sidebar** — pin frequently used files and folders to the top of the sidebar for quick access
-- **Path bar** — clickable breadcrumb navigation in the title bar with back/forward history
-- **Monaco editor** — VS Code's editor engine (WebKitGTK), with syntax highlighting for 80+ languages, Emmet support, find/replace, go to line, word wrap, and customizable themes and fonts
-- **Editor settings** — minimap, render whitespace, sticky scroll, font ligatures, format on save, line numbers (on/off/relative)
-- **SVG preview** — toggle a live side-by-side preview panel for SVG files; refreshes after each save
-- **Image viewer** — raster images (PNG, JPEG, GIF, WebP, BMP, ICO, TIFF, AVIF) open in a dedicated read-only tab showing dimensions, DPI, and file size
-- **Syntax selector** — per-file language override in the status bar
-- **Custom syntax associations** — map file extensions to languages (e.g. `.tpl` → HTML)
-- **Secure credentials** — stored in the system keychain (GNOME Keyring or compatible); never written to disk in plain text
-- **Live editing** — files downloaded to temp, edited locally, uploaded on save
-- **Home directory support** — use `~` as initial directory to resolve the server's home path
-- **Resizable sidebar** — drag to adjust; toggle with the button in the headerbar or F9
-- **Safe quit** — warns before closing if there are unsaved edits or active file transfers
+- **SFTP & FTP** — SFTP (SSH), plain FTP, FTPS with explicit or implicit TLS
+- **Server management** — saved connections with password/key auth, organized into drag-and-drop groups
+- **File browser** — sortable columns, drag-and-drop move/upload/copy, multi-select, pinned files, archive creation (SFTP), breadcrumb path bar with history
+- **Monaco editor** — VS Code's engine via WebKitGTK — syntax highlighting for 80+ languages, Emmet, find/replace, go to line, word wrap, customizable themes and fonts
+- **Live editing** — files downloaded to temp, edited locally, uploaded on save; detects external changes on the server and reloads automatically
+- **Image & SVG** — raster images open in a viewer with metadata; SVGs get a live side-by-side preview
+- **Secure credentials** — system keychain (GNOME Keyring or compatible), never plain text on disk
 
 ## Keyboard shortcuts
 
@@ -38,19 +25,22 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 |-----|--------|
 | Ctrl+N | Add server |
 | Ctrl+Shift+N | New window |
-| Ctrl+F | Search servers |
 | Ctrl+D | Disconnect |
 | Ctrl+S | Save file |
-| Ctrl+Z / Ctrl+Shift+Z | Undo / Redo |
+| Ctrl+W | Close tab |
+| Ctrl+Shift+T | Reopen closed tab |
+| Ctrl+F | Find (editor) / Search servers |
 | Ctrl+Shift+F | Find and replace |
 | Ctrl+G | Go to line |
-| Ctrl+W | Close tab |
+| Ctrl+Shift+W | Toggle word wrap |
+| Ctrl+/ | Toggle line comment |
+| Ctrl+Z / Ctrl+Shift+Z | Undo / Redo |
 | Ctrl+Q | Quit |
 | F9 | Toggle sidebar |
-| F2 | Rename selected file |
-| Delete | Delete selected file (or selected files in multi-select mode) |
+| F2 | Rename file |
 | F5 | Refresh directory |
-| Backspace | Go up one directory |
+| Delete | Delete selected file(s) |
+| Backspace | Parent directory |
 
 ## Dependencies
 

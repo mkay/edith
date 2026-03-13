@@ -407,3 +407,14 @@ class MonacoEditor(Gtk.Box):
 
     def get_cursor_position(self) -> tuple[int, int]:
         return self._cursor_line, self._cursor_col
+
+    def reload_from_disk(self):
+        """Re-read the local file and replace editor content."""
+        try:
+            with open(self.open_file.local_path, "r", errors="replace") as f:
+                content = f.read()
+        except Exception:
+            return
+        self._eval_js(
+            "EdithBridge.setContent({})".format(json.dumps(content))
+        )

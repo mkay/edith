@@ -449,7 +449,10 @@
       editor.setValue(content);
       loadingContent = false;
       cleanVersionId = editor.getModel().getAlternativeVersionId();
-      lastModifiedState = false;
+      if (lastModifiedState) {
+        lastModifiedState = false;
+        postMessage("modified-changed", { modified: false });
+      }
     },
 
     getContent: function () {

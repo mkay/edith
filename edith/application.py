@@ -15,9 +15,23 @@ class EdithApplication(Adw.Application):
     def __init__(self):
         super().__init__(
             application_id=APP_ID,
-            flags=Gio.ApplicationFlags.DEFAULT_FLAGS,
+            flags=Gio.ApplicationFlags.HANDLES_COMMAND_LINE,
         )
         self._setup_actions()
+
+    def do_command_line(self, command_line):
+        args = command_line.get_arguments()[1:]  # skip argv[0]
+        if args and not self.props.active_window:
+            from edith.services.config import ConfigService
+            servers_path = args[0]
+            # Resolve relative paths against the caller's cwd
+            if not Path(servers_path).is_absolute():
+                cwd = command_line.get_cwd()
+                if cwd:
+                    servers_path = str(Path(cwd) / servers_path)
+            ConfigService.set_servers_file(servers_path)
+        self.activate()
+        return 0
 
     def do_activate(self):
         win = self.props.active_window

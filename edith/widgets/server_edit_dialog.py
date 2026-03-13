@@ -118,7 +118,7 @@ class ServerEditDialog(Adw.Dialog):
         main_group.add(self._auth_combo)
 
         self._key_entry = Adw.EntryRow(title="Key File Path")
-        self._key_entry.set_text(self._server.key_file)
+        self._key_entry.set_text(self._server.key_file or "")
         self._key_entry.set_visible(
             not is_ftp and self._server.auth_method != "password"
         )

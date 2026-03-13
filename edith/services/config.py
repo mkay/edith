@@ -12,24 +12,37 @@ SERVERS_FILE = CONFIG_DIR / "servers.json"
 class ConfigService:
     """Load and save server/folder configurations to ~/.config/edith/servers.json."""
 
+    _servers_file_override = None  # set via set_servers_file()
+
+    @classmethod
+    def set_servers_file(cls, path: str):
+        """Use a custom servers file instead of the default."""
+        cls._servers_file_override = Path(path)
+
+    @classmethod
+    def _servers_file(cls) -> Path:
+        return cls._servers_file_override or SERVERS_FILE
+
     # --- Internal helpers ---
 
-    @staticmethod
-    def _load_raw() -> dict:
-        if not SERVERS_FILE.exists():
+    @classmethod
+    def _load_raw(cls) -> dict:
+        path = cls._servers_file()
+        if not path.exists():
             return {}
         try:
-            return json.loads(SERVERS_FILE.read_text())
+            return json.loads(path.read_text())
         except (json.JSONDecodeError, KeyError):
             return {}
 
-    @staticmethod
-    def _save(servers: List[ServerInfo], folders: List[FolderInfo]):
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        data = ConfigService._load_raw()
+    @classmethod
+    def _save(cls, servers: List[ServerInfo], folders: List[FolderInfo]):
+        path = cls._servers_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        data = cls._load_raw()
         data["servers"] = [s.to_dict() for s in servers]
         data["folders"] = [f.to_dict() for f in folders]
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        path.write_text(json.dumps(data, indent=2))
 
     # --- Server operations ---
 

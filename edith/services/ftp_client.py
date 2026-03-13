@@ -337,13 +337,20 @@ class FtpClient:
                 for entry_name, facts in self._ftp.mlsd(parent):
                     if entry_name == name:
                         return FtpFileAttr(name, facts)
-            # Fallback: try SIZE + check if directory
+            # Fallback: try SIZE + MDTM + check if directory
             facts = {"size": "0", "type": "file"}
             try:
                 self._ftp.voidcmd("TYPE I")
                 size = self._ftp.size(path)
                 if size is not None:
                     facts["size"] = str(size)
+            except (OSError, error_perm):
+                pass
+            try:
+                mdtm_resp = self._ftp.sendcmd(f"MDTM {path}")
+                # Response: "213 YYYYMMDDHHMMSS"
+                if mdtm_resp.startswith("213 "):
+                    facts["modify"] = mdtm_resp[4:].strip()
             except (OSError, error_perm):
                 pass
             if self._is_dir_unlocked(path):
