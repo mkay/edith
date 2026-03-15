@@ -11,15 +11,6 @@ from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
 
 
-def _path_display(path: str) -> str:
-    """Format path for the sidebar label: last 3 segments, '…' prefix if deeper."""
-    parts = [p for p in path.split("/") if p]
-    if not parts:
-        return "/"
-    if len(parts) <= 3:
-        return "/ " + " / ".join(parts)
-    return "… / " + " / ".join(parts[-3:])
-
 
 class FileBrowser(Gtk.Box):
     """Remote directory tree browser sidebar widget."""
@@ -116,18 +107,27 @@ class FileBrowser(Gtk.Box):
         self._filter_entry.connect("search-changed", self._on_filter_changed)
         self.append(self._filter_entry)
 
-        self._path_label = Gtk.Label(
-            label="/",
-            xalign=0,
-            hexpand=True,
-            ellipsize=3,
-            css_classes=["dim-label", "caption"],
-            margin_start=12,
+        self._path_store = Gtk.StringList()
+        self._path_parts: list[str] = ["/"]
+
+        # Factory for the button: show only the directory name
+        button_factory = Gtk.SignalListItemFactory()
+        button_factory.connect("setup", self._on_path_button_setup)
+        button_factory.connect("bind", self._on_path_button_bind)
+
+        self._path_dropdown = Gtk.DropDown(
+            model=self._path_store,
+            factory=button_factory,
+            margin_start=8,
             margin_end=8,
             margin_bottom=4,
             tooltip_text="/",
         )
-        self.append(self._path_label)
+        self._path_dropdown.add_css_class("path-dropdown")
+        self._path_dropdown_handler = self._path_dropdown.connect(
+            "notify::selected", self._on_path_dropdown_changed,
+        )
+        self.append(self._path_dropdown)
 
         # ── Multi-select action bar ──────────────────────────────────────
         self._multi_bar = Gtk.Box(
@@ -250,6 +250,9 @@ class FileBrowser(Gtk.Box):
             }
             columnview.file-list > listview > row.multi-checked:hover {
                 background-color: alpha(@accent_bg_color, 0.35);
+            }
+            dropdown.path-dropdown > button {
+                border-radius: 12px;
             }
         """)
         Gtk.StyleContext.add_provider_for_display(
@@ -1211,6 +1214,44 @@ class FileBrowser(Gtk.Box):
         self._history_pos = -1
 
     # ──────────────────────────────────────────────────────────────────────
+    # Path dropdown
+    # ──────────────────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _on_path_button_setup(_factory, list_item):
+        label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
+        list_item.set_child(label)
+
+    @staticmethod
+    def _on_path_button_bind(_factory, list_item):
+        label = list_item.get_child()
+        path = list_item.get_item().get_string()
+        name = path.rsplit("/", 1)[-1] or "/"
+        label.set_label(name)
+
+    def _update_path_dropdown(self, path: str):
+        """Rebuild the dropdown with ancestor directories, deepest first."""
+        parts = [p for p in path.split("/") if p]
+        ancestors: list[str] = []
+        for i in range(len(parts), 0, -1):
+            ancestors.append("/" + "/".join(parts[:i]))
+        ancestors.append("/")
+        self._path_parts = ancestors
+
+        self._path_dropdown.handler_block(self._path_dropdown_handler)
+        self._path_store.splice(0, self._path_store.get_n_items(), ancestors)
+        self._path_dropdown.set_selected(0)
+        self._path_dropdown.set_tooltip_text(path)
+        self._path_dropdown.handler_unblock(self._path_dropdown_handler)
+
+    def _on_path_dropdown_changed(self, dropdown, _pspec):
+        idx = dropdown.get_selected()
+        if idx < len(self._path_parts):
+            target = self._path_parts[idx]
+            if target != self._current_path:
+                self.load_directory(target)
+
+    # ──────────────────────────────────────────────────────────────────────
     # Directory loading
     # ──────────────────────────────────────────────────────────────────────
 
@@ -1228,8 +1269,7 @@ class FileBrowser(Gtk.Box):
                 self._history_pos += 1
 
         self._current_path = path
-        self._path_label.set_label(_path_display(path))
-        self._path_label.set_tooltip_text(path)
+        self._update_path_dropdown(path)
         self.emit("path-changed", path)
 
         self._spinner.set_visible(True)
