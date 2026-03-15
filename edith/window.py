@@ -253,13 +253,15 @@ class EdithWindow(Adw.ApplicationWindow):
             vexpand=True,
         )
 
-        self._welcome_view = WelcomeView()
+        self._welcome_view = WelcomeView(
+            on_add_server=lambda: self._on_new_server(None, None),
+        )
         self._content_stack.add_named(self._welcome_view, "welcome")
 
         self._server_panel = ServerPanel()
         self._server_panel.connect("server-activated", self._on_server_activated)
         self._server_panel.connect("selection-changed", self._on_server_selection_changed)
-        self._server_panel.connect("servers-changed", lambda *_: self._server_list.load_servers())
+        self._server_panel.connect("servers-changed", self._on_servers_changed)
         self._content_stack.add_named(self._server_panel, "servers")
 
         self._connected_page = Adw.StatusPage(
@@ -479,6 +481,11 @@ class EdithWindow(Adw.ApplicationWindow):
         self._idle_title.set_title(title)
         if self._content_stack.get_visible_child_name() == "welcome":
             self._content_stack.set_visible_child_name("servers")
+
+    def _on_servers_changed(self, *_args):
+        self._server_list.load_servers()
+        self._server_list.select_group("__all__")
+        self._welcome_view.refresh()
 
     def _on_new_server(self, action, param):
         self._server_panel.show_add_dialog()

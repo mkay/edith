@@ -87,7 +87,7 @@ MIT
 
 ## Credits
 
-- Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT)
+Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT)
 
 ## Screenshots
 

@@ -175,25 +175,8 @@ label.error { color: @error_color; }
             application_name=APP_NAME,
             application_icon="de.singular.edith-symbolic",
             version=VERSION,
-            developer_name="Edith Contributors",
+            developer_name="Kreuder <mk@singular.de>",
             website="https://github.com/mkay/edith",
-            comments=(
-                "GTK4 native SFTP client for live remote file editing.\n\n"
-                "Edith is alpha software.\n\n"
-                "Features\n"
-                "• Server management — saved connections with password/key auth, "
-                "organized into collapsible folder groups; change passwords after initial setup\n"
-                "• Server search — Ctrl+F to filter servers by name\n"
-                "• File browser — navigate remote directories with drag-and-drop move, "
-                "upload, copy, rename, delete\n"
-                "• Path bar — clickable breadcrumb navigation with back/forward history\n"
-                "• Tabbed editor — Monaco-powered editor with syntax highlighting, "
-                "customizable themes and fonts\n"
-                "• Secure credentials — passwords stored via GNOME Keyring / libsecret\n"
-                "• Live editing — files downloaded to temp, edited locally, uploaded on save\n"
-                "• Home directory support — use ~ as initial directory\n"
-                "• Resizable sidebar"
-            ),
             license_type=Gtk.License.MIT_X11,
         )
         about.present(self.props.active_window)

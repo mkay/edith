@@ -1,0 +1,35 @@
+# Local testing PKGBUILD
+# Usage: makepkg -p PKGBUILD.local -sic
+# Maintainer: Kreuder <mk@singular.de>
+pkgname=edith
+pkgver=0.4.8
+pkgrel=1
+pkgdesc="GTK4 native SFTP client for live remote file editing"
+arch=('any')
+license=('MIT')
+depends=(
+  'python'
+  'python-gobject'
+  'gtk4'
+  'libadwaita'
+  'webkitgtk-6.0'
+  'python-paramiko'
+  'python-keyring'
+  'python-defusedxml'
+)
+makedepends=('meson' 'ninja' 'npm')
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir"
+  bash scripts/fetch-monaco.sh
+  arch-meson "$startdir" build
+  meson compile -C build
+}
+
+package() {
+  cd "$startdir"
+  meson install -C build --destdir "$pkgdir"
+  install -Dm644 "$startdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
