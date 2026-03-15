@@ -13,7 +13,7 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 
 - **SFTP & FTP** — SFTP (SSH), plain FTP, FTPS with explicit or implicit TLS
 - **Server management** — saved connections with password/key auth, organized into drag-and-drop groups
-- **File browser** — sortable columns, drag-and-drop move/upload/copy, multi-select, pinned files, archive creation (SFTP), breadcrumb path bar with history
+- **File browser** — sortable columns, drag-and-drop move/upload/copy, multi-select, pinned files, archive creation (SFTP), breadcrumb path bar with history, parent directory dropdown for quick navigation
 - **Monaco editor** — VS Code's engine via WebKitGTK — syntax highlighting for 80+ languages, Emmet, find/replace, go to line, word wrap, customizable themes and fonts
 - **Live editing** — files downloaded to temp, edited locally, uploaded on save; detects external changes on the server and reloads automatically
 - **Image & SVG** — raster images open in a viewer with metadata; SVGs get a live side-by-side preview

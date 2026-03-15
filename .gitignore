@@ -9,3 +9,4 @@ edith/data/monaco/emmet.js
 *.deb
 deb-staging/
 builddir/
+PKGBUILD.local
