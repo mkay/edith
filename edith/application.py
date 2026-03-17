@@ -278,7 +278,6 @@ label.error { color: @error_color; }
         if not win:
             return
 
-        import os
         from edith.services.config import ConfigService
         from edith.widgets.file_browser import DEFAULT_TOOLS_DIR
 

@@ -1504,8 +1504,8 @@ class FileBrowser(Gtk.Box):
                 try:
                     client.stat(remote_path)
                     existing.append(name)
-                except Exception:
-                    pass
+                except OSError:
+                    pass  # file does not exist on remote
             return existing
 
         def on_checked(existing):
