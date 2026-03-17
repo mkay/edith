@@ -30,9 +30,6 @@ class FileBrowser(Gtk.Box):
         self._history = []
         self._history_pos = -1
         self._show_hidden = False
-        self._select_mode = False
-        self._pre_select_sidebar_width = None
-        self._updating_select_all = False
         self._items: list[RemoteFileItem] = []
         self._context_item: RemoteFileItem | None = None
         self._cur_dir_writable: bool = False
@@ -75,14 +72,6 @@ class FileBrowser(Gtk.Box):
         # Spacer to push the following buttons to the right
         spacer = Gtk.Box(hexpand=True)
         _btn_row.append(spacer)
-
-        self._select_btn = Gtk.ToggleButton(
-            icon_name="edith-select-items-symbolic",
-            tooltip_text="Select Items",
-            css_classes=["flat", "circular"],
-        )
-        self._select_btn.connect("toggled", self._on_select_mode_toggled)
-        _btn_row.append(self._select_btn)
 
         self._detail_btn = Gtk.ToggleButton(
             icon_name="edith-file-details-symbolic",
@@ -128,50 +117,6 @@ class FileBrowser(Gtk.Box):
             "notify::selected", self._on_path_dropdown_changed,
         )
         self.append(self._path_dropdown)
-
-        # ── Multi-select action bar ──────────────────────────────────────
-        self._multi_bar = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=4,
-            margin_start=8, margin_end=8, margin_top=4, margin_bottom=4,
-            visible=False,
-        )
-        self._select_all_check = Gtk.CheckButton(
-            tooltip_text="Select All / None",
-            can_focus=False,
-        )
-        self._select_all_check.connect("toggled", self._on_select_all_toggled)
-        self._multi_bar.append(self._select_all_check)
-
-        self._multi_count_label = Gtk.Label(
-            label="", hexpand=True, xalign=0,
-            css_classes=["dim-label", "caption"],
-        )
-        self._multi_bar.append(self._multi_count_label)
-
-        self._multi_archive_btn = Gtk.Button(label="Archive", css_classes=["flat"], sensitive=False)
-        self._multi_archive_btn.connect("clicked", self._on_bulk_archive)
-        self._multi_bar.append(self._multi_archive_btn)
-
-        self._multi_download_btn = Gtk.Button(label="Download", css_classes=["flat"], sensitive=False)
-        self._multi_download_btn.connect("clicked", self._on_bulk_download)
-        self._multi_bar.append(self._multi_download_btn)
-
-        self._multi_copy_btn = Gtk.Button(label="Copy", css_classes=["flat"], sensitive=False)
-        self._multi_copy_btn.connect("clicked", self._on_bulk_copy_to)
-        self._multi_bar.append(self._multi_copy_btn)
-
-        self._multi_move_btn = Gtk.Button(label="Move", css_classes=["flat"], sensitive=False)
-        self._multi_move_btn.connect("clicked", self._on_bulk_move_to)
-        self._multi_bar.append(self._multi_move_btn)
-
-        self._multi_delete_btn = Gtk.Button(
-            label="Delete", css_classes=["flat", "destructive-action"], sensitive=False,
-        )
-        self._multi_delete_btn.connect("clicked", self._on_bulk_delete)
-        self._multi_bar.append(self._multi_delete_btn)
-
-        self.append(self._multi_bar)
 
         # ── Column view model chain ──────────────────────────────────────
         self._store = Gio.ListStore(item_type=RemoteFileItem)
@@ -230,12 +175,6 @@ class FileBrowser(Gtk.Box):
         # ── Context menu ─────────────────────────────────────────────────
         self._setup_context_menu()
 
-        # ── Capture-phase key handler (select-mode shortcuts) ────────────
-        _capture_keys = Gtk.EventControllerKey()
-        _capture_keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
-        _capture_keys.connect("key-pressed", self._on_select_mode_key)
-        self.add_controller(_capture_keys)
-
         # ── CSS ──────────────────────────────────────────────────────────
         _css = Gtk.CssProvider()
         _css.load_from_string("""
@@ -243,12 +182,6 @@ class FileBrowser(Gtk.Box):
                 background-color: alpha(@accent_bg_color, 0.25);
             }
             columnview.file-list > listview > row:selected:hover {
-                background-color: alpha(@accent_bg_color, 0.35);
-            }
-            columnview.file-list > listview > row.multi-checked {
-                background-color: alpha(@accent_bg_color, 0.25);
-            }
-            columnview.file-list > listview > row.multi-checked:hover {
                 background-color: alpha(@accent_bg_color, 0.35);
             }
             dropdown.path-dropdown > button {
@@ -266,16 +199,6 @@ class FileBrowser(Gtk.Box):
     # ──────────────────────────────────────────────────────────────────────
 
     def _setup_columns(self):
-        # Checkbox column — visible only in select mode
-        check_factory = Gtk.SignalListItemFactory()
-        check_factory.connect("setup", self._setup_check_cell)
-        check_factory.connect("bind", self._bind_check_cell)
-        check_factory.connect("unbind", self._unbind_check_cell)
-        self._check_column = Gtk.ColumnViewColumn(title="", factory=check_factory)
-        self._check_column.set_fixed_width(48)
-        self._check_column.set_visible(False)
-        self._column_view.append_column(self._check_column)
-
         # Name column
         name_factory = Gtk.SignalListItemFactory()
         name_factory.connect("setup", self._setup_name_cell)
@@ -344,51 +267,6 @@ class FileBrowser(Gtk.Box):
         ))
         self._column_view.append_column(self._mtime_col)
 
-    # ── Checkbox column factory ──────────────────────────────────────────
-
-    def _setup_check_cell(self, factory, list_item):
-        box = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            halign=Gtk.Align.CENTER,
-            valign=Gtk.Align.CENTER,
-            margin_start=4, margin_end=4,
-        )
-        check = Gtk.CheckButton(can_focus=False)
-        box.append(check)
-        list_item.set_child(box)
-
-    def _bind_check_cell(self, factory, list_item):
-        item = list_item.get_item()
-        box = list_item.get_child()
-        box._cv_item = item
-        check = box.get_first_child()
-
-        if item.file_info.is_parent_dir:
-            check.set_visible(False)
-            return
-
-        check.set_visible(True)
-        binding = item.bind_property(
-            "selected", check, "active",
-            GObject.BindingFlags.SYNC_CREATE | GObject.BindingFlags.BIDIRECTIONAL,
-        )
-        handler = item.connect("notify::selected", lambda *_: self._update_multi_bar())
-        list_item._cv_binding = binding
-        list_item._cv_handler = handler
-        list_item._cv_item = item
-
-    def _unbind_check_cell(self, factory, list_item):
-        if hasattr(list_item, "_cv_binding"):
-            list_item._cv_binding.unbind()
-            del list_item._cv_binding
-        if hasattr(list_item, "_cv_item") and hasattr(list_item, "_cv_handler"):
-            list_item._cv_item.disconnect(list_item._cv_handler)
-            del list_item._cv_handler
-            del list_item._cv_item
-        box = list_item.get_child()
-        if box:
-            box._cv_item = None
-
     # ── Name column factory ──────────────────────────────────────────────
 
     def _setup_name_cell(self, factory, list_item):
@@ -405,28 +283,6 @@ class FileBrowser(Gtk.Box):
 
         item_ref = [None]
         is_dir_ref = [False]
-
-        # Left click: toggle selection in select mode; double-click navigates
-        click = Gtk.GestureClick(button=Gdk.BUTTON_PRIMARY)
-        click.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
-
-        def on_left_press(g, n, x, y):
-            if not self._select_mode or not item_ref[0]:
-                return
-            if item_ref[0].file_info.is_parent_dir:
-                return  # always navigate, never select
-            if n >= 2:
-                fi = item_ref[0].file_info
-                if fi.is_dir:
-                    self.load_directory(fi.path)
-                else:
-                    self.emit("file-activated", fi.path)
-            else:
-                item_ref[0].selected = not item_ref[0].selected
-            g.set_state(Gtk.EventSequenceState.CLAIMED)
-
-        click.connect("pressed", on_left_press)
-        box.add_controller(click)
 
         # Drag source
         drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
@@ -574,29 +430,29 @@ class FileBrowser(Gtk.Box):
         section_new.append("New Folder", "file.new-folder")
         menu.append_section(None, section_new)
 
-        # Information
-        section_info = Gio.Menu()
-        section_info.append("Information", "file.information")
-        menu.append_section(None, section_info)
-
-        # Delete, Actions submenu, Rename, etc.
+        # Actions, Rename, Delete
         actions_submenu = Gio.Menu()
         actions_submenu.append("Move to", "file.move-to")
         actions_submenu.append("Copy to", "file.copy-to")
         actions_submenu.append("Duplicate", "file.duplicate")
-        actions_submenu.append("Open Locally", "file.open-locally")
 
         section_ops = Gio.Menu()
-        section_ops.append("Delete", "file.delete")
         section_ops.append_submenu("Actions", actions_submenu)
         section_ops.append("Rename", "file.rename")
-        section_ops.append("Copy Path", "file.copy-path")
-        section_ops.append("Download", "file.download")
-        section_ops.append("Pin", "file.pin")
+        section_ops.append("Delete", "file.delete")
         menu.append_section(None, section_ops)
 
-        # Refresh
+        # Download, Copy Path, Open Locally
+        section_transfer = Gio.Menu()
+        section_transfer.append("Download", "file.download")
+        section_transfer.append("Copy Path", "file.copy-path")
+        section_transfer.append("Open Locally", "file.open-locally")
+        menu.append_section(None, section_transfer)
+
+        # Pin, Information, Refresh
         section_misc = Gio.Menu()
+        section_misc.append("Pin", "file.pin")
+        section_misc.append("Information", "file.information")
         section_misc.append("Refresh", "file.refresh")
         menu.append_section(None, section_misc)
 
@@ -712,25 +568,38 @@ class FileBrowser(Gtk.Box):
         self._context_item = item
         has_item = item is not None
 
-        self._information_action.set_enabled(has_item)
-        self._rename_action.set_enabled(has_item)
+        # Check if multiple items are selected (right-clicked item in selection)
+        multi = False
+        if has_item:
+            bitset = self._selection.get_selection()
+            if bitset.get_size() > 1:
+                for i in range(bitset.get_size()):
+                    pos = bitset.get_nth(i)
+                    sel_item = self._filter_model.get_item(pos)
+                    if sel_item is item:
+                        multi = True
+                        break
+
+        # Multi-capable actions
         self._delete_action.set_enabled(has_item)
         self._duplicate_action.set_enabled(has_item)
         self._copy_path_action.set_enabled(has_item)
         self._move_to_action.set_enabled(has_item)
         self._copy_to_action.set_enabled(has_item)
-        self._pin_action.set_enabled(has_item)
+        self._download_action.set_enabled(has_item)
 
+        # Single-item-only actions — disabled when multiple selected
         fi = item.file_info if item else None
-        self._download_action.set_enabled(fi is not None)
-        self._open_locally_action.set_enabled(fi is not None and not fi.is_dir)
+        self._information_action.set_enabled(has_item and not multi)
+        self._rename_action.set_enabled(has_item and not multi)
+        self._pin_action.set_enabled(has_item and not multi)
+        self._open_locally_action.set_enabled(
+            has_item and not multi and fi is not None and not fi.is_dir)
 
         # Archive: only for SFTP connections, when item is readable and
-        # current directory is writable.  Directories require exec support
-        # (server-side tar/zip) since SFTP-only download+reupload is not
-        # viable for large trees.
+        # current directory is writable.
         archive_ok = False
-        if has_item and fi and self._window:
+        if has_item and not multi and fi and self._window:
             from edith.services.sftp_client import SftpClient
             client = self._window.sftp_client
             if isinstance(client, SftpClient):
@@ -784,15 +653,10 @@ class FileBrowser(Gtk.Box):
                 return True
 
         elif keyval == Gdk.KEY_Delete:
-            if self._select_mode:
-                if self._get_selected_file_infos():
-                    self._on_bulk_delete()
+            if selected:
+                self._context_item = selected
+                self._on_delete(None, None)
                 return True
-            else:
-                if selected:
-                    self._context_item = selected
-                    self._on_delete(None, None)
-                    return True
 
         elif keyval == Gdk.KEY_F5:
             self.load_directory(self._current_path)
@@ -818,6 +682,33 @@ class FileBrowser(Gtk.Box):
         if self._context_item:
             return self._context_item.file_info
         return None
+
+    def _get_context_file_infos(self) -> list[RemoteFileInfo]:
+        """Return all file infos relevant to the current context action.
+
+        If the GTK multi-selection contains the right-clicked item and has
+        more than one entry, return all GTK-selected items.  Falls back to
+        just the single right-clicked item.
+        """
+        ci = self._context_item
+        if not ci:
+            return []
+
+        bitset = self._selection.get_selection()
+        if bitset.get_size() > 1:
+            gtk_items = []
+            context_in_sel = False
+            for i in range(bitset.get_size()):
+                pos = bitset.get_nth(i)
+                item = self._filter_model.get_item(pos)
+                if item and not item.file_info.is_parent_dir:
+                    gtk_items.append(item.file_info)
+                    if item is ci:
+                        context_in_sel = True
+            if context_in_sel and gtk_items:
+                return gtk_items
+
+        return [ci.file_info]
 
     # ──────────────────────────────────────────────────────────────────────
     # File operation handlers (unchanged logic)
@@ -916,9 +807,22 @@ class FileBrowser(Gtk.Box):
         dialog.present(self.get_root())
 
     def _on_delete(self, action, param):
-        fi = self._get_context_file_info()
-        if not fi:
+        infos = self._get_context_file_infos()
+        if not infos:
             return
+        if len(infos) > 1:
+            n = len(infos)
+            dlg = Adw.AlertDialog(
+                heading=f"Delete {n} items?",
+                body="This will permanently delete the selected files and folders.",
+            )
+            dlg.add_response("cancel", "Cancel")
+            dlg.add_response("delete", f"Delete {n} Items")
+            dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
+            dlg.connect("response", self._do_bulk_delete, infos)
+            dlg.present(self.get_root())
+            return
+        fi = infos[0]
         kind = "folder" if fi.is_dir else "file"
         dlg = Adw.AlertDialog(
             heading=f"Delete {kind}?",
@@ -952,38 +856,55 @@ class FileBrowser(Gtk.Box):
                       lambda e: self._show_op_error(str(e)))
 
     def _on_duplicate(self, action, param):
-        fi = self._get_context_file_info()
-        if not fi or not self._window or not self._window.sftp_client:
+        infos = self._get_context_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
             return
         client = self._window.sftp_client
-        src = fi.path
-        base = fi.name
-        if not fi.is_dir and "." in base:
-            stem, ext = base.rsplit(".", 1)
-            dst_name = f"{stem} (copy).{ext}"
-        else:
-            dst_name = f"{base} (copy)"
-        dst = f"{self._current_path.rstrip('/')}/{dst_name}"
         from edith.services.async_worker import run_async
-        if fi.is_dir:
-            run_async(lambda: client.copy_remote_recursive(src, dst),
-                      lambda _: self.load_directory(self._current_path),
-                      lambda e: self._show_op_error(str(e)))
-        else:
-            run_async(lambda: client.copy_remote(src, dst),
-                      lambda _: self.load_directory(self._current_path),
-                      lambda e: self._show_op_error(str(e)))
+        cur = self._current_path.rstrip("/")
+
+        pairs = []
+        for fi in infos:
+            base = fi.name
+            if not fi.is_dir and "." in base:
+                stem, ext = base.rsplit(".", 1)
+                dst_name = f"{stem} (copy).{ext}"
+            else:
+                dst_name = f"{base} (copy)"
+            pairs.append((fi.path, f"{cur}/{dst_name}", fi.is_dir))
+
+        def do_dups():
+            for src, dst, is_dir in pairs:
+                if is_dir:
+                    client.copy_remote_recursive(src, dst)
+                else:
+                    client.copy_remote(src, dst)
+
+        run_async(do_dups,
+                  lambda _: self.load_directory(self._current_path),
+                  lambda e: self._show_op_error(str(e)))
 
     def _on_copy_path(self, action, param):
-        fi = self._get_context_file_info()
-        if not fi:
+        infos = self._get_context_file_infos()
+        if not infos:
             return
-        self.get_display().get_clipboard().set(fi.path)
+        text = "\n".join(fi.path for fi in infos)
+        self.get_display().get_clipboard().set(text)
 
     def _on_move_to(self, action, param):
-        fi = self._get_context_file_info()
-        if not fi or not self._window or not self._window.sftp_client:
+        infos = self._get_context_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
             return
+        if len(infos) > 1:
+            dialog = DirectoryChooserDialog(
+                self._window.sftp_client,
+                title=f"Move {len(infos)} items to\u2026",
+                start_path=self._current_path,
+            )
+            dialog.connect("chosen", self._do_bulk_move_to, infos)
+            dialog.present(self.get_root())
+            return
+        fi = infos[0]
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
             title=f"Move \u201c{fi.name}\u201d to\u2026",
@@ -1013,9 +934,19 @@ class FileBrowser(Gtk.Box):
                   lambda e: self._show_op_error(str(e)))
 
     def _on_copy_to(self, action, param):
-        fi = self._get_context_file_info()
-        if not fi or not self._window or not self._window.sftp_client:
+        infos = self._get_context_file_infos()
+        if not infos or not self._window or not self._window.sftp_client:
             return
+        if len(infos) > 1:
+            dialog = DirectoryChooserDialog(
+                self._window.sftp_client,
+                title=f"Copy {len(infos)} items to\u2026",
+                start_path=self._current_path,
+            )
+            dialog.connect("chosen", self._do_bulk_copy_to, infos)
+            dialog.present(self.get_root())
+            return
+        fi = infos[0]
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
             title=f"Copy \u201c{fi.name}\u201d to\u2026",
@@ -1259,9 +1190,6 @@ class FileBrowser(Gtk.Box):
         if not self._window or not self._window.sftp_client:
             return
 
-        if self._select_mode:
-            self._exit_select_mode()
-
         if add_to_history:
             if not self._history or path != self._history[self._history_pos]:
                 self._history = self._history[:self._history_pos + 1]
@@ -1394,55 +1322,6 @@ class FileBrowser(Gtk.Box):
             parent = "/"
         self.load_directory(parent)
 
-    # ──────────────────────────────────────────────────────────────────────
-    # Multi-select mode
-    # ──────────────────────────────────────────────────────────────────────
-
-    def _on_select_mode_key(self, ctrl, keyval, keycode, state):
-        if not self._select_mode:
-            return False
-        if keyval == Gdk.KEY_Escape:
-            self._exit_select_mode()
-            return True
-        if keyval == Gdk.KEY_a and state & Gdk.ModifierType.CONTROL_MASK:
-            if not self._filter_entry.has_focus():
-                self._select_all_rows()
-                return True
-        return False
-
-    def _exit_select_mode(self):
-        if self._select_mode:
-            self._select_btn.set_active(False)
-
-    def _on_select_mode_toggled(self, btn):
-        self._select_mode = btn.get_active()
-        btn.set_icon_name(
-            "edith-select-items-active-symbolic" if self._select_mode
-            else "edith-select-items-symbolic"
-        )
-        btn.set_tooltip_text(
-            "Exit Select Mode" if self._select_mode else "Select Items"
-        )
-        if self._select_mode:
-            if self._window:
-                self._pre_select_sidebar_width = self._window._sidebar_width
-                self._window.adjust_sidebar_width(
-                    max(self._window._sidebar_width, 400)
-                )
-            self._multi_bar.set_visible(True)
-            self._multi_count_label.set_label("No items selected")
-            self._multi_delete_btn.set_sensitive(False)
-            self._multi_move_btn.set_sensitive(False)
-            self._multi_download_btn.set_sensitive(False)
-            self._check_column.set_visible(True)
-        else:
-            self._clear_checked_rows()
-            self._check_column.set_visible(False)
-            self._multi_bar.set_visible(False)
-            if self._window and self._pre_select_sidebar_width is not None:
-                self._window.adjust_sidebar_width(self._pre_select_sidebar_width)
-                self._pre_select_sidebar_width = None
-
     def _on_detail_mode_toggled(self, btn):
         show = btn.get_active()
         btn.set_icon_name(
@@ -1454,80 +1333,6 @@ class FileBrowser(Gtk.Box):
         self._mtime_col.set_visible(show)
         if self._window:
             self._window.adjust_sidebar_width(550 if show else 280)
-
-    def _set_checkboxes_visible(self, visible: bool):
-        self._check_column.set_visible(visible)
-
-    def _on_select_all_toggled(self, btn):
-        if self._updating_select_all:
-            return
-        if btn.get_active():
-            self._select_all_rows()
-        else:
-            self._clear_checked_rows()
-
-    def _select_all_rows(self):
-        for item in self._items:
-            item.selected = True
-        self._update_multi_bar()
-
-    def _clear_checked_rows(self):
-        for item in self._items:
-            item.selected = False
-        self._update_multi_bar()
-
-    def _update_multi_bar(self):
-        infos = self._get_selected_file_infos()
-        n = len(infos)
-        total = len([i for i in self._items if not i.file_info.is_parent_dir])
-        if n == 0:
-            self._multi_count_label.set_label("")
-        elif n == 1:
-            self._multi_count_label.set_label("1 selected")
-        else:
-            self._multi_count_label.set_label(f"{n} selected")
-        has_sel = n > 0
-        self._multi_delete_btn.set_sensitive(has_sel)
-        self._multi_move_btn.set_sensitive(has_sel)
-        self._multi_copy_btn.set_sensitive(has_sel)
-        self._multi_download_btn.set_sensitive(has_sel)
-        # Archive: exec handles anything; without exec, only files are viable
-        has_exec = self._window is not None and getattr(
-            self._window.sftp_client, "can_exec", False)
-        all_files = has_sel and not any(fi.is_dir for fi in infos)
-        can_archive = has_sel and (has_exec or all_files)
-        self._multi_archive_btn.set_sensitive(can_archive)
-        self._multi_archive_btn.set_visible(has_exec or all_files)
-
-        # Sync select-all checkbox state
-        self._updating_select_all = True
-        if n == 0:
-            self._select_all_check.set_inconsistent(False)
-            self._select_all_check.set_active(False)
-        elif n >= total and total > 0:
-            self._select_all_check.set_inconsistent(False)
-            self._select_all_check.set_active(True)
-        else:
-            self._select_all_check.set_inconsistent(True)
-        self._updating_select_all = False
-
-    def _get_selected_file_infos(self) -> list:
-        return [item.file_info for item in self._items if item.selected]
-
-    def _on_bulk_delete(self, btn=None):
-        infos = self._get_selected_file_infos()
-        if not infos:
-            return
-        n = len(infos)
-        dlg = Adw.AlertDialog(
-            heading=f"Delete {n} item{'s' if n != 1 else ''}?",
-            body="This will permanently delete the selected files and folders.",
-        )
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("delete", f"Delete {n} Item{'s' if n != 1 else ''}")
-        dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
-        dlg.connect("response", self._do_bulk_delete, infos)
-        dlg.present(self.get_root())
 
     def _do_bulk_delete(self, dialog, response, infos):
         if response != "delete":
@@ -1553,18 +1358,6 @@ class FileBrowser(Gtk.Box):
 
         run_async(do_delete, on_bulk_deleted, lambda e: self._show_op_error(str(e)))
 
-    def _on_bulk_move_to(self, btn=None):
-        infos = self._get_selected_file_infos()
-        if not infos or not self._window or not self._window.sftp_client:
-            return
-        dialog = DirectoryChooserDialog(
-            self._window.sftp_client,
-            title=f"Move {len(infos)} items to\u2026",
-            start_path=self._current_path,
-        )
-        dialog.connect("chosen", self._do_bulk_move_to, infos)
-        dialog.present(self.get_root())
-
     def _do_bulk_move_to(self, dialog, dest_dir, infos):
         if not self._window or not self._window.sftp_client:
             return
@@ -1588,14 +1381,6 @@ class FileBrowser(Gtk.Box):
 
         run_async(do_moves, on_bulk_moved, lambda e: self._show_op_error(str(e)))
 
-    def _on_bulk_download(self, btn=None):
-        infos = self._get_selected_file_infos()
-        if not infos:
-            return
-        dialog = Gtk.FileDialog(title=f"Download {len(infos)} item{'s' if len(infos) != 1 else ''} to\u2026")
-        dialog.select_folder(self.get_root(), None,
-                             lambda d, r: self._on_bulk_download_folder(d, r, infos))
-
     def _on_bulk_download_folder(self, dialog, result, infos):
         try:
             folder = dialog.select_folder_finish(result)
@@ -1607,18 +1392,6 @@ class FileBrowser(Gtk.Box):
         self._window.enqueue_bulk_download(
             [(fi.path, os.path.join(local_dir, fi.name)) for fi in infos]
         )
-
-    def _on_bulk_copy_to(self, btn=None):
-        infos = self._get_selected_file_infos()
-        if not infos or not self._window or not self._window.sftp_client:
-            return
-        dialog = DirectoryChooserDialog(
-            self._window.sftp_client,
-            title=f"Copy {len(infos)} items",
-            start_path=self._current_path,
-        )
-        dialog.connect("chosen", self._do_bulk_copy_to, infos)
-        dialog.present(self.get_root())
 
     def _do_bulk_copy_to(self, dialog, dest_dir, infos):
         if not self._window or not self._window.sftp_client:
@@ -1645,133 +1418,6 @@ class FileBrowser(Gtk.Box):
                 )
 
         run_async(do_copies, on_bulk_copied, lambda e: self._show_op_error(str(e)))
-
-    def _on_bulk_archive(self, btn=None):
-        infos = self._get_selected_file_infos()
-        if not infos or not self._window or not self._window.sftp_client:
-            return
-        dialog = ArchiveDialog("archive")
-        dialog.connect("submitted", self._do_bulk_archive, infos)
-        dialog.present(self.get_root())
-
-    def _do_bulk_archive(self, dialog, archive_name, infos):
-        if not self._window or not self._window.sftp_client:
-            return
-        client = self._window.sftp_client
-        import shlex
-
-        cur_dir = self._current_path
-
-        # Normalize archive name / format
-        if archive_name.endswith(".zip"):
-            archive_fmt = "zip"
-            archive_mode = "zip"
-        elif archive_name.endswith((".tar.gz", ".tgz")):
-            archive_fmt = "tar.gz"
-            archive_mode = "w:gz"
-        elif archive_name.endswith((".tar.bz2", ".tbz2")):
-            archive_fmt = "tar.bz2"
-            archive_mode = "w:bz2"
-        elif archive_name.endswith((".tar.xz", ".txz")):
-            archive_fmt = "tar.xz"
-            archive_mode = "w:xz"
-        elif archive_name.endswith(".tar"):
-            archive_fmt = "tar"
-            archive_mode = "w:"
-        else:
-            archive_fmt = "tar.gz"
-            archive_mode = "w:gz"
-            archive_name += ".tar.gz"
-
-        remote_archive = f"{cur_dir.rstrip('/')}/{archive_name}"
-        final_name = archive_name
-
-        queue = self._window._transfer_queue
-        if not queue:
-            return
-
-        def _exec_archive(progress_cb):
-            parent_dir = shlex.quote(cur_dir)
-            dst = shlex.quote(remote_archive)
-            src_names = " ".join(shlex.quote(fi.name) for fi in infos)
-
-            if archive_fmt == "zip":
-                cmd = f"cd {parent_dir} && zip -qr {dst} {src_names}"
-            else:
-                tar_flags = {
-                    "tar.gz": "czf", "tar.bz2": "cjf",
-                    "tar.xz": "cJf", "tar": "cf",
-                }
-                cmd = f"tar {tar_flags[archive_fmt]} {dst} -C {parent_dir} {src_names}"
-
-            exit_code, _stdout, stderr = client.exec_command(cmd, timeout=600)
-            if exit_code != 0:
-                raise RuntimeError(stderr.strip() or f"exit code {exit_code}")
-            return final_name
-
-        def _fallback_files(progress_cb):
-            """Download files, compress locally, upload back."""
-            import tarfile
-            import zipfile
-            import tempfile
-            import shutil
-
-            tmp_dir = tempfile.mkdtemp(prefix="edith-archive-")
-            try:
-                for fi in infos:
-                    local_path = os.path.join(tmp_dir, fi.name)
-                    client.download(fi.path, local_path,
-                                    progress_cb=lambda d, t: progress_cb(0, 0))
-
-                archive_local = os.path.join(tmp_dir, final_name)
-                if archive_mode == "zip":
-                    with zipfile.ZipFile(archive_local, "w", zipfile.ZIP_DEFLATED) as zf:
-                        for fi in infos:
-                            zf.write(os.path.join(tmp_dir, fi.name), fi.name)
-                else:
-                    with tarfile.open(archive_local, archive_mode) as tf:
-                        for fi in infos:
-                            tf.add(os.path.join(tmp_dir, fi.name), arcname=fi.name)
-
-                archive_size = os.path.getsize(archive_local)
-                client.upload(archive_local, remote_archive, overwrite=False,
-                              progress_cb=lambda done, _t: progress_cb(done, archive_size))
-
-                return final_name
-            finally:
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-
-        def do_archive(progress_cb):
-            # Check if archive already exists
-            try:
-                client.stat(remote_archive)
-                raise FileExistsError(f"'{final_name}' already exists on the server")
-            except FileNotFoundError:
-                pass
-
-            # Try exec first, fall back to local for files-only
-            try:
-                return _exec_archive(progress_cb)
-            except Exception:
-                try:
-                    client.stat(remote_archive)
-                    client.remove(remote_archive)
-                except (FileNotFoundError, OSError):
-                    pass
-
-            return _fallback_files(progress_cb)
-
-        def on_success(name):
-            self.load_directory(cur_dir)
-            if self._window:
-                self._window.show_toast(f"Created \u201c{name}\u201d", "success")
-
-        queue.enqueue(
-            f"Archive {len(infos)} items",
-            do_archive,
-            on_success,
-            lambda e: self._show_op_error(str(e)),
-        )
 
     # ──────────────────────────────────────────────────────────────────────
     # Upload
@@ -1875,9 +1521,15 @@ class FileBrowser(Gtk.Box):
             )
 
     def _on_download(self, action, param):
-        info = self._get_context_file_info()
-        if not info:
+        infos = self._get_context_file_infos()
+        if not infos:
             return
+        if len(infos) > 1:
+            dialog = Gtk.FileDialog(title=f"Download {len(infos)} items to\u2026")
+            dialog.select_folder(self.get_root(), None,
+                                 lambda d, r: self._on_bulk_download_folder(d, r, infos))
+            return
+        info = infos[0]
         if info.is_dir:
             dialog = Gtk.FileDialog(title=f"Download \u201c{info.name}\u201d to")
             dialog.select_folder(self.get_root(), None, self._on_download_folder_chosen)
