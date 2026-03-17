@@ -465,11 +465,11 @@ class FtpClient:
                 raise RuntimeError("Not connected")
             self._ftp.storbinary(f"STOR {path}", BytesIO(b""))
 
-    def upload_directory(self, local_dir: str, remote_dir: str):
+    def upload_directory(self, local_dir: str, remote_dir: str, overwrite=False):
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
-            if self._exists_unlocked(remote_dir):
+            if not overwrite and self._exists_unlocked(remote_dir):
                 name = remote_dir.rsplit("/", 1)[-1]
                 raise FileExistsError(f"'{name}' already exists on the server")
             self._upload_directory_unlocked(local_dir, remote_dir)

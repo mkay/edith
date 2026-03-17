@@ -1800,14 +1800,78 @@ class FileBrowser(Gtk.Box):
             self._do_upload_paths(paths)
 
     def _do_upload_paths(self, local_paths):
+        if not self._window or not self._window.sftp_client:
+            return
         dest_dir = self._current_path
-        for local_path in local_paths:
+        client = self._window.sftp_client
+        from edith.services.async_worker import run_async
+
+        def check_conflicts():
+            existing = []
+            for local_path in local_paths:
+                name = os.path.basename(local_path)
+                remote_path = f"{dest_dir.rstrip('/')}/{name}"
+                try:
+                    client.stat(remote_path)
+                    existing.append(name)
+                except Exception:
+                    pass
+            return existing
+
+        def on_checked(existing):
+            new_paths = [p for p in local_paths
+                         if os.path.basename(p) not in existing]
+            conflict_paths = [p for p in local_paths
+                              if os.path.basename(p) in existing]
+
+            # Enqueue non-conflicting uploads immediately
+            for local_path in new_paths:
+                name = os.path.basename(local_path)
+                remote_path = f"{dest_dir.rstrip('/')}/{name}"
+                self._window.enqueue_upload(
+                    local_path, remote_path,
+                    on_done=lambda _: self.load_directory(dest_dir),
+                )
+
+            # Ask about conflicts
+            if conflict_paths:
+                self._ask_overwrite(conflict_paths, existing, dest_dir)
+
+        run_async(check_conflicts, on_checked, lambda e: self._show_op_error(str(e)))
+
+    def _ask_overwrite(self, conflict_paths, existing_names, dest_dir):
+        n = len(existing_names)
+        if n == 1:
+            is_dir = os.path.isdir(conflict_paths[0])
+            kind = "Folder" if is_dir else "File"
+            heading = f"{kind} already exists"
+            body = f"\u201c{existing_names[0]}\u201d already exists in the current directory. Do you want to replace it?"
+        else:
+            listing = ", ".join(f"\u201c{name}\u201d" for name in existing_names[:5])
+            if n > 5:
+                listing += f" and {n - 5} more"
+            heading = f"{n} items already exist"
+            body = f"{listing} already exist in the current directory. Do you want to replace them?"
+
+        dlg = Adw.AlertDialog(heading=heading, body=body)
+        dlg.add_response("cancel", "Cancel")
+        dlg.add_response("replace", "Replace")
+        dlg.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
+        dlg.set_default_response("cancel")
+        dlg.set_close_response("cancel")
+        dlg.connect("response", self._on_overwrite_response, conflict_paths, dest_dir)
+        dlg.present(self.get_root())
+
+    def _on_overwrite_response(self, dlg, response, conflict_paths, dest_dir):
+        if response != "replace":
+            return
+        for local_path in conflict_paths:
             name = os.path.basename(local_path)
             remote_path = f"{dest_dir.rstrip('/')}/{name}"
             self._window.enqueue_upload(
-                local_path,
-                remote_path,
+                local_path, remote_path,
                 on_done=lambda _: self.load_directory(dest_dir),
+                overwrite=True,
             )
 
     def _on_download(self, action, param):

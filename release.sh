@@ -24,11 +24,21 @@ if [[ -z "$PROJECT_NAME" ]]; then
     exit 1
 fi
 
+# Cleanup handler for temp directories
+AUR_DIR=""
+DEB_STAGING="$(pwd)/deb-staging"
+cleanup() {
+    [[ -n "$AUR_DIR" && -d "$AUR_DIR" ]] && rm -rf "$AUR_DIR"
+    [[ -d "$DEB_STAGING" ]] && rm -rf "$DEB_STAGING"
+}
+trap cleanup EXIT
+
 echo "==> Releasing $PROJECT_NAME $TAG"
 
-# 1. Update version in meson.build and PKGBUILD
+# 1. Update version in meson.build, PKGBUILD, and Python package
 sed -i "0,/version: '[^']*'/{s/version: '[^']*'/version: '$VERSION'/}" meson.build
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
+sed -i "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" "$PROJECT_NAME/__init__.py"
 
 # 2. Generate release notes before tagging
 PREV_TAG=$(git tag --sort=-version:refname | head -1)
@@ -41,7 +51,7 @@ echo "==> Release notes:"
 echo "$RELEASE_NOTES"
 
 # 3. Commit (if there are changes) and tag
-git add meson.build PKGBUILD
+git add meson.build PKGBUILD "$PROJECT_NAME/__init__.py"
 if ! git diff --cached --quiet; then
     git commit -m "Release $TAG"
 else
@@ -55,18 +65,35 @@ for remote in $(git remote); do
     git push "$remote" HEAD "$TAG"
 done
 
-# 4. Build Arch package
+# 5. Build Arch package
+echo "==> Updating checksums"
+# GitHub may need a moment to generate the tarball after the tag push
+for _attempt in 1 2 3; do
+    if updpkgsums 2>/dev/null; then
+        break
+    fi
+    echo "==> Tarball not ready yet, retrying in 5s..."
+    sleep 5
+done
 echo "==> Building Arch package"
 makepkg -sf --noconfirm
 ARCH_PKG=$(ls -t ./*.pkg.tar.zst 2>/dev/null | grep -v debug | head -1)
 
-# 5. Build .deb package via meson install + nfpm
+# Push updated checksums back to repos
+if ! git diff --quiet PKGBUILD; then
+    git add PKGBUILD
+    git commit -m "Update PKGBUILD checksums for $TAG"
+    for remote in $(git remote); do
+        git push "$remote" HEAD
+    done
+fi
+
+# 6. Build .deb package via meson install + nfpm
 echo "==> Building .deb package"
 PKGDESC=$(grep -oP "^pkgdesc=\"\K[^\"]+" PKGBUILD || echo "$PROJECT_NAME")
 PKGLICENSE=$(grep -oP "^license=\('\K[^']+" PKGBUILD || echo "MIT")
 
 # Install into a staging directory to capture all files
-DEB_STAGING="$(pwd)/deb-staging"
 rm -rf "$DEB_STAGING"
 meson setup builddir --prefix=/usr --wipe
 meson compile -C builddir
@@ -104,7 +131,7 @@ VERSION="$VERSION" nfpm package -p deb -f /tmp/nfpm-release.yaml
 rm -rf "$DEB_STAGING"
 DEB_PKG=$(ls -t "${PROJECT_NAME}"*.deb 2>/dev/null | head -1)
 
-# 6. Create releases
+# 7. Create releases
 RELEASE_ASSETS=()
 [[ -n "${ARCH_PKG:-}" ]] && RELEASE_ASSETS+=("$ARCH_PKG")
 [[ -n "${DEB_PKG:-}" ]] && RELEASE_ASSETS+=("$DEB_PKG")
@@ -127,19 +154,23 @@ if [[ -n "$GITHUB_REMOTE" ]] && command -v gh &>/dev/null; then
     echo "==> GitHub release created"
 fi
 
-# Forgejo release via API
-REMOTE_URL=$(git remote get-url origin 2>/dev/null || true)
-# Parse hostname and repo path from both ssh:// and scp-style URLs
-if [[ "$REMOTE_URL" =~ ^ssh://[^@]+@([^/]+)/(.+)$ ]]; then
-    FORGEJO_URL="${BASH_REMATCH[1]}"
-    REPO_PATH="${BASH_REMATCH[2]%.git}"
-elif [[ "$REMOTE_URL" =~ ^[^@]+@([^:]+):(.+)$ ]]; then
-    FORGEJO_URL="${BASH_REMATCH[1]}"
-    REPO_PATH="${BASH_REMATCH[2]%.git}"
-else
-    FORGEJO_URL=""
-    REPO_PATH=""
-fi
+# Forgejo release via API — find the first non-GitHub remote
+FORGEJO_URL=""
+REPO_PATH=""
+for remote in $(git remote); do
+    url=$(git remote get-url "$remote" 2>/dev/null || true)
+    # Skip GitHub remotes
+    echo "$url" | grep -q github.com && continue
+    if [[ "$url" =~ ^ssh://[^@]+@([^/:]+)[:/](.+)$ ]]; then
+        FORGEJO_URL="${BASH_REMATCH[1]}"
+        REPO_PATH="${BASH_REMATCH[2]%.git}"
+        break
+    elif [[ "$url" =~ ^[^@]+@([^:]+):(.+)$ ]]; then
+        FORGEJO_URL="${BASH_REMATCH[1]}"
+        REPO_PATH="${BASH_REMATCH[2]%.git}"
+        break
+    fi
+done
 if [[ -n "$FORGEJO_URL" && -n "${FORGEJO_TOKEN:-}" ]]; then
     echo "==> Creating Forgejo release on $FORGEJO_URL ($REPO_PATH)"
 
@@ -176,6 +207,22 @@ if [[ -n "$FORGEJO_URL" && -n "${FORGEJO_TOKEN:-}" ]]; then
         echo "$RELEASE_JSON"
     fi
 fi
+
+# 8. Push to AUR
+echo "==> Pushing to AUR"
+makepkg --printsrcinfo > .SRCINFO
+AUR_DIR=$(mktemp -d)
+git clone ssh://aur@aur.archlinux.org/"$PROJECT_NAME".git "$AUR_DIR"
+cp PKGBUILD .SRCINFO "$AUR_DIR"/
+cd "$AUR_DIR"
+git checkout master 2>/dev/null || git checkout -b master
+git add PKGBUILD .SRCINFO
+git commit -m "Update to $VERSION"
+git push origin master
+cd - >/dev/null
+rm -rf "$AUR_DIR"
+AUR_DIR=""
+echo "==> AUR updated"
 
 echo ""
 echo "==> Done! Released $PROJECT_NAME $TAG"

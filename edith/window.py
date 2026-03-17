@@ -1149,7 +1149,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._transfer_queue.enqueue(label, do_download, on_success, on_error)
 
-    def enqueue_upload(self, local_path, remote_path, on_done=None):
+    def enqueue_upload(self, local_path, remote_path, on_done=None, overwrite=False):
         """Queue an upload of any local file/directory to a remote path."""
         if not self._sftp_client or not self._transfer_queue:
             return
@@ -1159,9 +1159,9 @@ class EdithWindow(Adw.ApplicationWindow):
 
         def do_upload(progress_cb):
             if os.path.isdir(local_path):
-                client.upload_directory(local_path, remote_path)
+                client.upload_directory(local_path, remote_path, overwrite=overwrite)
             else:
-                client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
+                client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=overwrite)
 
         self._transfer_queue.enqueue(name, do_upload, on_done, None)
 

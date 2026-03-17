@@ -307,12 +307,12 @@ class SftpClient:
             f = self._sftp.open(path, "w")
             f.close()
 
-    def upload_directory(self, local_dir: str, remote_dir: str):
+    def upload_directory(self, local_dir: str, remote_dir: str, overwrite=False):
         """Recursively upload a local directory to a remote path."""
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            if self._exists_unlocked(remote_dir):
+            if not overwrite and self._exists_unlocked(remote_dir):
                 name = remote_dir.rsplit("/", 1)[-1]
                 raise FileExistsError(f"'{name}' already exists on the server")
             self._upload_directory_unlocked(local_dir, remote_dir)
