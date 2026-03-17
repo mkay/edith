@@ -66,7 +66,7 @@ class ServerPanel(Gtk.Box):
         # Empty state
         self._empty_page = Adw.StatusPage(
             title="No Servers",
-            icon_name="edith-server-symbolic",
+            icon_name="edith-status-no-servers-symbolic",
             description="Add a server using the button in the toolbar.",
             vexpand=True,
             visible=False,

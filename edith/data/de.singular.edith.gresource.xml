@@ -27,6 +27,8 @@
     <file alias="edith-upload-symbolic.svg">data/icons/hicolor/scalable/actions/edith-upload-symbolic.svg</file>
     <file alias="edith-refresh-symbolic.svg">data/icons/hicolor/scalable/actions/edith-refresh-symbolic.svg</file>
     <file alias="edith-transfers-symbolic.svg">data/icons/hicolor/scalable/actions/edith-transfers-symbolic.svg</file>
+    <file alias="edith-status-connected-symbolic.svg">data/icons/hicolor/scalable/actions/edith-status-connected-symbolic.svg</file>
+    <file alias="edith-status-no-servers-symbolic.svg">data/icons/hicolor/scalable/actions/edith-status-no-servers-symbolic.svg</file>
   </gresource>
   <gresource prefix="/de/singular/edith/icons/hicolor/scalable/mimetypes">
     <file alias="edith-file-unknown.svg">data/icons/hicolor/scalable/mimetypes/edith-file-unknown.svg</file>

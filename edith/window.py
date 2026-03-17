@@ -101,21 +101,8 @@ class EdithWindow(Adw.ApplicationWindow):
         )
         self._pins_lb.connect("row-activated", self._on_pin_activated)
 
-        pins_menu = Gio.Menu()
-        pins_menu.append("Unpin", "pins.unpin")
-        self._pins_popover = Gtk.PopoverMenu(menu_model=pins_menu, has_arrow=False)
-        self._pins_popover.set_parent(self._pins_lb)
         self._pins_context_path = None
 
-        pins_group = Gio.SimpleActionGroup()
-        unpin_action = Gio.SimpleAction.new("unpin", None)
-        unpin_action.connect("activate", self._on_pin_remove)
-        pins_group.add_action(unpin_action)
-        self._pins_lb.insert_action_group("pins", pins_group)
-
-        pins_gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
-        pins_gesture.connect("pressed", self._on_pins_right_click)
-        self._pins_lb.add_controller(pins_gesture)
 
         self._pins_section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, visible=False)
         pins_header = Gtk.Label(
@@ -268,7 +255,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._content_stack.add_named(self._server_panel, "servers")
 
         self._connected_page = Adw.StatusPage(
-            icon_name="edith-connect-symbolic",
+            icon_name="edith-status-connected-symbolic",
             title="",
             description="Open a file from the sidebar to start editing.",
             vexpand=True,
@@ -850,28 +837,29 @@ class EdithWindow(Adw.ApplicationWindow):
             css_classes=["boxed-list"],
             selection_mode=Gtk.SelectionMode.NONE,
         )
+
+        self._recents_context_path = None
+
         for path in recents:
             row = Adw.ActionRow(title=os.path.basename(path), subtitle=path, activatable=True)
             row._recent_path = path
             row.connect("activated", self._on_recent_activated)
+
+            row_menu = Gio.Menu()
+            row_menu.append("Remove from List", "recents.remove")
+            row_popover = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False)
+            row_popover.set_parent(row)
+
+            row_group = Gio.SimpleActionGroup()
+            remove_action = Gio.SimpleAction.new("remove", None)
+            remove_action.connect("activate", self._on_recent_remove)
+            row_group.add_action(remove_action)
+            row.insert_action_group("recents", row_group)
+
+            gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+            gesture.connect("pressed", self._on_row_right_click, row, row_popover)
+            row.add_controller(gesture)
             lb.append(row)
-
-        # Right-click context menu
-        menu = Gio.Menu()
-        menu.append("Remove from List", "recents.remove")
-        popover = Gtk.PopoverMenu(menu_model=menu, has_arrow=False)
-        popover.set_parent(lb)
-        self._recents_context_path = None
-
-        group = Gio.SimpleActionGroup()
-        remove_action = Gio.SimpleAction.new("remove", None)
-        remove_action.connect("activate", self._on_recent_remove)
-        group.add_action(remove_action)
-        lb.insert_action_group("recents", group)
-
-        gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
-        gesture.connect("pressed", self._on_recents_right_click, lb, popover)
-        lb.add_controller(gesture)
 
         clamp = Adw.Clamp(maximum_size=480, margin_top=4, margin_bottom=4)
         clamp.set_child(lb)
@@ -880,10 +868,8 @@ class EdithWindow(Adw.ApplicationWindow):
     def _on_recent_activated(self, row):
         self.open_remote_file(row._recent_path)
 
-    def _on_recents_right_click(self, gesture, n_press, x, y, lb, popover):
-        row = lb.get_row_at_y(int(y))
-        if row is None or not hasattr(row, "_recent_path"):
-            return
+    def _on_row_right_click(self, gesture, n_press, x, y, row, popover):
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
         self._recents_context_path = row._recent_path
         rect = Gdk.Rectangle()
         rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
@@ -934,6 +920,21 @@ class EdithWindow(Adw.ApplicationWindow):
             row = Gtk.ListBoxRow(activatable=True)
             row._pin_entry = entry
             row.set_child(box)
+
+            pin_menu = Gio.Menu()
+            pin_menu.append("Unpin", "pins.unpin")
+            row_popover = Gtk.PopoverMenu(menu_model=pin_menu, has_arrow=False)
+            row_popover.set_parent(row)
+
+            row_group = Gio.SimpleActionGroup()
+            unpin_action = Gio.SimpleAction.new("unpin", None)
+            unpin_action.connect("activate", self._on_pin_remove)
+            row_group.add_action(unpin_action)
+            row.insert_action_group("pins", row_group)
+
+            gesture = Gtk.GestureClick(button=Gdk.BUTTON_SECONDARY)
+            gesture.connect("pressed", self._on_pin_row_right_click, row, row_popover)
+            row.add_controller(gesture)
             self._pins_lb.append(row)
 
         self._pins_section.set_visible(True)
@@ -946,15 +947,13 @@ class EdithWindow(Adw.ApplicationWindow):
         else:
             self.open_remote_file(entry["path"])
 
-    def _on_pins_right_click(self, gesture, n_press, x, y):
-        row = self._pins_lb.get_row_at_y(int(y))
-        if row is None or not hasattr(row, "_pin_entry"):
-            return
+    def _on_pin_row_right_click(self, gesture, n_press, x, y, row, popover):
+        gesture.set_state(Gtk.EventSequenceState.CLAIMED)
         self._pins_context_path = row._pin_entry["path"]
         rect = Gdk.Rectangle()
         rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
-        self._pins_popover.set_pointing_to(rect)
-        self._pins_popover.popup()
+        popover.set_pointing_to(rect)
+        popover.popup()
 
     def _on_pin_remove(self, action, param):
         if self._pins_context_path and self._connected_server:

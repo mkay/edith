@@ -57,12 +57,14 @@ class WelcomeView(Adw.Bin):
     def _update_state(self):
         has = self._has_servers()
         if has:
+            self._status.set_icon_name("de.singular.edith-symbolic")
             self._status.set_description(
                 f"A code editor that talks (S)FTP\nVersion {VERSION}"
             )
             self._add_server_btn.set_visible(False)
             self._hint_label.set_visible(True)
         else:
+            self._status.set_icon_name("de.singular.edith-symbolic")
             self._status.set_description(
                 f"A code editor that talks (S)FTP\nVersion {VERSION}\n\n"
                 "No servers configured yet.\n"
