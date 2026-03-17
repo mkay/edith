@@ -170,6 +170,10 @@ label.error { color: @error_color; }
         self.add_action(new_window_action)
         self.set_accels_for_action("app.new-window", ["<Control><Shift>n"])
 
+        tools_folder_action = Gio.SimpleAction.new("tools-folder", None)
+        tools_folder_action.connect("activate", self._on_tools_folder)
+        self.add_action(tools_folder_action)
+
     def _on_about(self, action, param):
         about = Adw.AboutDialog(
             application_name=APP_NAME,
@@ -264,6 +268,72 @@ label.error { color: @error_color; }
             h = int(height_row.get_value())
             ConfigService.set_preference("window_width", w)
             ConfigService.set_preference("window_height", h)
+            dialog.close()
+
+        save_btn.connect("clicked", on_save)
+        dialog.present(win)
+
+    def _on_tools_folder(self, action, param):
+        win = self.props.active_window
+        if not win:
+            return
+
+        import os
+        from edith.services.config import ConfigService
+        from edith.widgets.file_browser import DEFAULT_TOOLS_DIR
+
+        current = ConfigService.get_preference("tools_folder", "")
+
+        dialog = Adw.Dialog(title="Tools Folder", content_width=420, content_height=200)
+
+        toolbar_view = Adw.ToolbarView()
+        header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
+
+        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn.connect("clicked", lambda _: dialog.close())
+        header.pack_start(cancel_btn)
+
+        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        header.pack_end(save_btn)
+        toolbar_view.add_top_bar(header)
+
+        clamp = Adw.Clamp(maximum_size=420, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
+        group = Adw.PreferencesGroup(
+            description=f"Default: {DEFAULT_TOOLS_DIR}",
+        )
+
+        entry_row = Adw.EntryRow(title="Custom path", text=current)
+
+        browse_btn = Gtk.Button(icon_name="folder-open-symbolic", valign=Gtk.Align.CENTER,
+                                css_classes=["flat"])
+
+        def on_browse(_btn):
+            fd = Gtk.FileDialog(title="Choose Tools Folder")
+            fd.select_folder(win, None, _on_folder_chosen)
+
+        def _on_folder_chosen(fd, result):
+            try:
+                folder = fd.select_folder_finish(result)
+            except Exception:
+                return
+            path = folder.get_path()
+            if path:
+                entry_row.set_text(path)
+
+        browse_btn.connect("clicked", on_browse)
+        entry_row.add_suffix(browse_btn)
+        group.add(entry_row)
+
+        clamp.set_child(group)
+        toolbar_view.set_content(clamp)
+        dialog.set_child(toolbar_view)
+
+        def on_save(_):
+            path = entry_row.get_text().strip()
+            if path:
+                ConfigService.set_preference("tools_folder", path)
+            else:
+                ConfigService.set_preference("tools_folder", "")
             dialog.close()
 
         save_btn.connect("clicked", on_save)

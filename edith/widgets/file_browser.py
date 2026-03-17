@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import gi
 
@@ -9,6 +10,16 @@ from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Pango
 
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
+
+DEFAULT_TOOLS_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "edith" / "tools"
+
+
+def _get_tools_dir() -> Path:
+    from edith.services.config import ConfigService
+    custom = ConfigService.get_preference("tools_folder")
+    if custom:
+        return Path(custom)
+    return DEFAULT_TOOLS_DIR
 
 
 
@@ -430,14 +441,17 @@ class FileBrowser(Gtk.Box):
         section_new.append("New Folder", "file.new-folder")
         menu.append_section(None, section_new)
 
-        # Actions, Rename, Delete
+        # Actions, Upload Tool, Rename, Delete
         actions_submenu = Gio.Menu()
         actions_submenu.append("Move to", "file.move-to")
         actions_submenu.append("Copy to", "file.copy-to")
         actions_submenu.append("Duplicate", "file.duplicate")
 
+        self._tools_submenu = Gio.Menu()
+
         section_ops = Gio.Menu()
         section_ops.append_submenu("Actions", actions_submenu)
+        section_ops.append_submenu("Upload Tool", self._tools_submenu)
         section_ops.append("Rename", "file.rename")
         section_ops.append("Delete", "file.delete")
         menu.append_section(None, section_ops)
@@ -531,6 +545,10 @@ class FileBrowser(Gtk.Box):
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
 
+        upload_tool_action = Gio.SimpleAction.new("upload-tool", GLib.VariantType.new("s"))
+        upload_tool_action.connect("activate", self._on_upload_tool)
+        group.add_action(upload_tool_action)
+
         self.insert_action_group("file", group)
 
         # Right-click: CAPTURE-phase on the column view so we always intercept
@@ -609,6 +627,22 @@ class FileBrowser(Gtk.Box):
                 if fi.is_dir and not getattr(client, "can_exec", False):
                     archive_ok = False
         self._archive_action.set_enabled(archive_ok)
+
+        # Populate Upload Tool submenu
+        self._tools_submenu.remove_all()
+        tools_dir = _get_tools_dir()
+        tools = sorted(tools_dir.iterdir()) if tools_dir.is_dir() else []
+        tools = [t for t in tools if t.is_file()]
+        if tools:
+            for tool_path in tools:
+                item_menu = Gio.MenuItem.new(tool_path.name, None)
+                item_menu.set_action_and_target_value(
+                    "file.upload-tool", GLib.Variant.new_string(str(tool_path)))
+                self._tools_submenu.append_item(item_menu)
+        else:
+            empty = Gio.MenuItem.new("(empty)", None)
+            empty.set_action_and_target_value("file.upload-tool", GLib.Variant.new_string(""))
+            self._tools_submenu.append_item(empty)
 
         rect = Gdk.Rectangle()
         rect.x = int(x)
@@ -1418,6 +1452,16 @@ class FileBrowser(Gtk.Box):
                 )
 
         run_async(do_copies, on_bulk_copied, lambda e: self._show_op_error(str(e)))
+
+    # ──────────────────────────────────────────────────────────────────────
+    # Upload Tool
+    # ──────────────────────────────────────────────────────────────────────
+
+    def _on_upload_tool(self, action, param):
+        path = param.get_string()
+        if not path:
+            return
+        self._do_upload_paths([path])
 
     # ──────────────────────────────────────────────────────────────────────
     # Upload
