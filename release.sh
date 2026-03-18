@@ -38,7 +38,6 @@ echo "==> Releasing $PROJECT_NAME $TAG"
 # 1. Update version in meson.build, PKGBUILD, and Python package
 sed -i "0,/version: '[^']*'/{s/version: '[^']*'/version: '$VERSION'/}" meson.build
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
-sed -i "s/^VERSION = \".*\"/VERSION = \"$VERSION\"/" "$PROJECT_NAME/__init__.py"
 
 # 2. Generate release notes before tagging
 PREV_TAG=$(git tag --sort=-version:refname | head -1)
@@ -51,7 +50,7 @@ echo "==> Release notes:"
 echo "$RELEASE_NOTES"
 
 # 3. Commit (if there are changes) and tag
-git add meson.build PKGBUILD "$PROJECT_NAME/__init__.py"
+git add meson.build PKGBUILD
 if ! git diff --cached --quiet; then
     git commit -m "Release $TAG"
 else

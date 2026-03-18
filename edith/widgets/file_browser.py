@@ -897,14 +897,17 @@ class FileBrowser(Gtk.Box):
         from edith.services.async_worker import run_async
         cur = self._current_path.rstrip("/")
 
+        from datetime import datetime
+        stamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+
         pairs = []
         for fi in infos:
             base = fi.name
             if not fi.is_dir and "." in base:
                 stem, ext = base.rsplit(".", 1)
-                dst_name = f"{stem} (copy).{ext}"
+                dst_name = f"{stem}_{stamp}.{ext}"
             else:
-                dst_name = f"{base} (copy)"
+                dst_name = f"{base}_{stamp}"
             pairs.append((fi.path, f"{cur}/{dst_name}", fi.is_dir))
 
         def do_dups():
