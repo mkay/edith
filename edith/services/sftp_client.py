@@ -106,14 +106,15 @@ class SftpClient:
                 raise RuntimeError("Not connected")
             return self._sftp.listdir_attr(path)
 
+    _DL_CHUNK = 1 << 18  # 256 KiB read buffer
+
     def download(self, remote_path: str, local_path: str, progress_cb=None):
         """Download a remote file to a local path.
 
         Uses a dedicated SFTP channel so the main channel stays free for
-        concurrent operations (directory listings etc.).  The manual read loop
-        avoids paramiko's prefetch buffering, so cancellation via a
-        TransferAborted exception from progress_cb stops the transfer
-        immediately.
+        concurrent operations (directory listings etc.).  Calls prefetch()
+        to pipeline read-ahead requests over the SSH channel, matching
+        the throughput of clients like FileZilla.
         """
         Path(local_path).parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
@@ -129,10 +130,11 @@ class SftpClient:
                 file_size = 0
 
             with dl_sftp.open(remote_path, "rb") as fr:
+                fr.prefetch(file_size)
                 with open(local_path, "wb") as fl:
                     received = 0
                     while True:
-                        chunk = fr.read(32768)
+                        chunk = fr.read(self._DL_CHUNK)
                         if not chunk:
                             break
                         fl.write(chunk)
@@ -170,10 +172,11 @@ class SftpClient:
             else:
                 file_size = attr.st_size or 0
                 with dl_sftp.open(child_remote, "rb") as fr:
+                    fr.prefetch(file_size)
                     with open(child_local, "wb") as fl:
                         received = 0
                         while True:
-                            chunk = fr.read(32768)
+                            chunk = fr.read(self._DL_CHUNK)
                             if not chunk:
                                 break
                             fl.write(chunk)
