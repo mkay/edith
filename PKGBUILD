@@ -1,6 +1,6 @@
 # Maintainer: Kreuder <mk@singular.de>
 pkgname=edith
-pkgver=0.4.11
+pkgver=0.4.12
 pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
