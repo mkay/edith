@@ -47,6 +47,7 @@ class TransferQueue(GObject.Object):
         self._next_id = 0
         self._active_job_id = None
         self._cancel_event = threading.Event()
+        self._active_channel = None  # SFTP channel to force-close on cancel
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -87,6 +88,13 @@ class TransferQueue(GObject.Object):
         with self._lock:
             if self._active_job_id == job_id:
                 self._cancel_event.set()
+                # Force-close the SFTP channel to interrupt blocking reads
+                chan = self._active_channel
+                if chan is not None:
+                    try:
+                        chan.close()
+                    except Exception:
+                        pass
                 return True
             before = len(self._queue)
             self._queue = deque(
@@ -107,18 +115,20 @@ class TransferQueue(GObject.Object):
                 if not self._queue:
                     self._worker_running = False
                     self._active_job_id = None
+                    self._active_channel = None
                     GLib.idle_add(self._cb_idle)
                     return
                 job_id, label, task, on_success, on_error = self._queue.popleft()
                 pending = len(self._queue)
                 self._active_job_id = job_id
+                self._active_channel = None
                 self._cancel_event.clear()
 
             GLib.idle_add(self._cb_started, label, job_id, pending)
             progress_cb = self._make_progress_cb(label, pending)
 
             try:
-                result = task(progress_cb)
+                result = task(progress_cb, self._cancel_event, self._set_channel)
                 GLib.idle_add(self._cb_done, label)
                 if on_success:
                     GLib.idle_add(on_success, result)
@@ -127,10 +137,24 @@ class TransferQueue(GObject.Object):
                 if on_error:
                     GLib.idle_add(on_error, TransferAborted())
             except Exception as exc:
-                traceback.print_exc()
-                GLib.idle_add(self._cb_failed, label, str(exc))
-                if on_error:
-                    GLib.idle_add(on_error, exc)
+                if self._cancel_event.is_set():
+                    # Channel was force-closed — treat as abort, not error
+                    GLib.idle_add(self._cb_failed, label, "Aborted")
+                    if on_error:
+                        GLib.idle_add(on_error, TransferAborted())
+                else:
+                    traceback.print_exc()
+                    GLib.idle_add(self._cb_failed, label, str(exc))
+                    if on_error:
+                        GLib.idle_add(on_error, exc)
+            finally:
+                with self._lock:
+                    self._active_channel = None
+
+    def _set_channel(self, channel):
+        """Register the active SFTP client so cancel() can force-close it."""
+        with self._lock:
+            self._active_channel = channel
 
     def _make_progress_cb(self, label: str, pending: int):
         """Return a progress callback that checks for cancellation and throttles."""
@@ -146,7 +170,8 @@ class TransferQueue(GObject.Object):
             if pct == last_pct[0]:
                 return
             last_pct[0] = pct
-            GLib.idle_add(self._cb_progress, label, done / total, pending)
+            fraction = min(done / total, 1.0)
+            GLib.idle_add(self._cb_progress, label, fraction, pending)
 
         return cb
 

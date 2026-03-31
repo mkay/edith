@@ -1074,9 +1074,10 @@ class EdithWindow(Adw.ApplicationWindow):
         name = os.path.basename(remote_path)
         client = self._sftp_client
 
-        def do_download(progress_cb):
+        def do_download(progress_cb, cancel_event, set_channel):
             local_path = TempManager.get_temp_path(remote_path)
-            client.download(remote_path, str(local_path), progress_cb=progress_cb)
+            client.download(remote_path, str(local_path), progress_cb=progress_cb,
+                            cancel_event=cancel_event, set_channel=set_channel)
             mtime = client.stat(remote_path).st_mtime
             return local_path, mtime
 
@@ -1106,8 +1107,9 @@ class EdithWindow(Adw.ApplicationWindow):
         name = os.path.basename(remote_path)
         client = self._sftp_client
 
-        def do_download(progress_cb):
-            client.download_recursive(remote_path, local_path, progress_cb=progress_cb)
+        def do_download(progress_cb, cancel_event, set_channel):
+            client.download_recursive(remote_path, local_path, progress_cb=progress_cb,
+                                      cancel_event=cancel_event, set_channel=set_channel)
 
         def on_success(_):
             if on_done:
@@ -1135,9 +1137,10 @@ class EdithWindow(Adw.ApplicationWindow):
         label = f"{n} file{'s' if n != 1 else ''}"
         client = self._sftp_client
 
-        def do_download(progress_cb):
+        def do_download(progress_cb, cancel_event, set_channel):
             for remote_path, local_path in items:
-                client.download_recursive(remote_path, local_path, progress_cb=progress_cb)
+                client.download_recursive(remote_path, local_path, progress_cb=progress_cb,
+                                          cancel_event=cancel_event, set_channel=set_channel)
 
         def on_success(_):
             if on_done:
@@ -1159,7 +1162,7 @@ class EdithWindow(Adw.ApplicationWindow):
         name = os.path.basename(remote_path)
         client = self._sftp_client
 
-        def do_upload(progress_cb):
+        def do_upload(progress_cb, cancel_event, set_channel):
             if os.path.isdir(local_path):
                 client.upload_directory(local_path, remote_path, overwrite=overwrite)
             else:
@@ -1176,7 +1179,7 @@ class EdithWindow(Adw.ApplicationWindow):
         client = self._sftp_client
         self._saving_paths.add(remote_path)
 
-        def do_upload(progress_cb):
+        def do_upload(progress_cb, cancel_event, set_channel):
             client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
             return client.stat(remote_path).st_mtime
 
@@ -1320,10 +1323,10 @@ class EdithWindow(Adw.ApplicationWindow):
         self._status_bar.show_transfer(label, fraction, pending)
 
     def _on_xfer_done(self, queue, label):
-        pass  # _on_xfer_idle restores the status bar once the queue drains
+        self._status_bar.clear_transfer()
 
     def _on_xfer_failed(self, queue, label, msg):
-        pass  # on_error callback already shows a dialog
+        self._status_bar.clear_transfer()
 
     def _on_xfer_idle(self, queue):
         """All transfers finished — restore normal connected status."""

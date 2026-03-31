@@ -106,83 +106,126 @@ class SftpClient:
                 raise RuntimeError("Not connected")
             return self._sftp.listdir_attr(path)
 
-    _DL_CHUNK = 1 << 18  # 256 KiB read buffer
+    _DL_CHUNK = 1 << 20  # 1 MiB — matches MAX_REQUEST_SIZE for aligned prefetch reads
+    _DL_WINDOW = 1 << 25  # 32 MiB SSH channel window (vs paramiko's 2 MiB default)
+    _DL_MAX_PKT = 1 << 17  # 128 KiB max packet size (vs paramiko's 32 KiB default)
+    _DL_REQ_SIZE = 1 << 20  # 1 MiB per SSH_FXP_READ request (vs paramiko's 32 KiB default)
 
-    def download(self, remote_path: str, local_path: str, progress_cb=None):
+    def _open_dl_sftp(self):
+        """Open a dedicated SFTP channel with large window for fast transfers."""
+        chan = self._transport.open_session(
+            window_size=self._DL_WINDOW,
+            max_packet_size=self._DL_MAX_PKT,
+        )
+        chan.invoke_subsystem("sftp")
+        return paramiko.SFTPClient(chan)
+
+    def _fast_read_file(self, dl_sftp, remote_path, local_path, file_size, progress_cb):
+        """Download a single file using tuned prefetch settings."""
+        Path(local_path).parent.mkdir(parents=True, exist_ok=True)
+        with dl_sftp.open(remote_path, "rb") as fr:
+            fr.MAX_REQUEST_SIZE = self._DL_REQ_SIZE
+            fr.prefetch(file_size)
+            with open(local_path, "wb", buffering=self._DL_CHUNK) as fl:
+                received = 0
+                while True:
+                    chunk = fr.read(self._DL_CHUNK)
+                    if not chunk:
+                        break
+                    fl.write(chunk)
+                    received += len(chunk)
+                    if progress_cb:
+                        progress_cb(received, file_size)
+
+    def download(self, remote_path: str, local_path: str, progress_cb=None,
+                 cancel_event=None, set_channel=None):
         """Download a remote file to a local path.
 
-        Uses a dedicated SFTP channel so the main channel stays free for
-        concurrent operations (directory listings etc.).  Calls prefetch()
-        to pipeline read-ahead requests over the SSH channel, matching
-        the throughput of clients like FileZilla.
+        cancel_event: threading.Event checked between chunks; when set the
+            SFTP channel is force-closed by the caller to interrupt reads.
+        set_channel: callback to register the SFTP client for force-close.
         """
         Path(local_path).parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            transport = self._transport
 
-        dl_sftp = paramiko.SFTPClient.from_transport(transport)
+        dl_sftp = self._open_dl_sftp()
+        if set_channel:
+            set_channel(dl_sftp)
         try:
             try:
                 file_size = dl_sftp.stat(remote_path).st_size
             except OSError:
                 file_size = 0
-
-            with dl_sftp.open(remote_path, "rb") as fr:
-                fr.prefetch(file_size)
-                with open(local_path, "wb") as fl:
-                    received = 0
-                    while True:
-                        chunk = fr.read(self._DL_CHUNK)
-                        if not chunk:
-                            break
-                        fl.write(chunk)
-                        received += len(chunk)
-                        if progress_cb:
-                            progress_cb(received, file_size)
+            self._fast_read_file(dl_sftp, remote_path, local_path, file_size, progress_cb)
         finally:
-            dl_sftp.close()
+            try:
+                dl_sftp.close()
+            except Exception:
+                pass
 
-    def download_recursive(self, remote_path: str, local_path: str, progress_cb=None):
+    def download_recursive(self, remote_path: str, local_path: str, progress_cb=None,
+                           cancel_event=None, set_channel=None):
         """Download a remote file or directory tree to a local path."""
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            transport = self._transport
             remote_stat = self._sftp.stat(remote_path)
 
         if stat.S_ISDIR(remote_stat.st_mode):
             Path(local_path).mkdir(parents=True, exist_ok=True)
-            dl_sftp = paramiko.SFTPClient.from_transport(transport)
+            dl_sftp = self._open_dl_sftp()
+            if set_channel:
+                set_channel(dl_sftp)
             try:
-                self._download_dir_unlocked(dl_sftp, remote_path, local_path, progress_cb)
-            finally:
-                dl_sftp.close()
-        else:
-            self.download(remote_path, local_path, progress_cb=progress_cb)
+                total_size = self._calc_dir_size(dl_sftp, remote_path)
+                accum = [0]
+                prev = [0]
 
-    def _download_dir_unlocked(self, dl_sftp, remote_path: str, local_path: str, progress_cb=None):
+                def dir_progress_cb(file_received, _file_total):
+                    delta = file_received - prev[0]
+                    prev[0] = file_received
+                    accum[0] += delta
+                    if progress_cb:
+                        progress_cb(accum[0], total_size)
+
+                self._download_dir_unlocked(dl_sftp, remote_path, local_path,
+                                            dir_progress_cb, prev)
+            finally:
+                try:
+                    dl_sftp.close()
+                except Exception:
+                    pass
+        else:
+            self.download(remote_path, local_path, progress_cb=progress_cb,
+                          cancel_event=cancel_event, set_channel=set_channel)
+
+    def _calc_dir_size(self, dl_sftp, remote_path: str) -> int:
+        """Calculate total size of all files in a remote directory tree."""
+        total = 0
+        for attr in dl_sftp.listdir_attr(remote_path):
+            if stat.S_ISDIR(attr.st_mode):
+                child = f"{remote_path.rstrip('/')}/{attr.filename}"
+                total += self._calc_dir_size(dl_sftp, child)
+            else:
+                total += attr.st_size or 0
+        return total
+
+    def _download_dir_unlocked(self, dl_sftp, remote_path, local_path, progress_cb, prev):
+        """Download all files in a remote directory tree."""
         Path(local_path).mkdir(parents=True, exist_ok=True)
         for attr in dl_sftp.listdir_attr(remote_path):
             child_remote = f"{remote_path.rstrip('/')}/{attr.filename}"
             child_local = os.path.join(local_path, attr.filename)
             if stat.S_ISDIR(attr.st_mode):
-                self._download_dir_unlocked(dl_sftp, child_remote, child_local, progress_cb)
+                self._download_dir_unlocked(dl_sftp, child_remote, child_local,
+                                            progress_cb, prev)
             else:
+                prev[0] = 0  # reset per-file tracker before each file
                 file_size = attr.st_size or 0
-                with dl_sftp.open(child_remote, "rb") as fr:
-                    fr.prefetch(file_size)
-                    with open(child_local, "wb") as fl:
-                        received = 0
-                        while True:
-                            chunk = fr.read(self._DL_CHUNK)
-                            if not chunk:
-                                break
-                            fl.write(chunk)
-                            received += len(chunk)
-                            if progress_cb:
-                                progress_cb(received, file_size)
+                self._fast_read_file(dl_sftp, child_remote, child_local,
+                                     file_size, progress_cb)
 
     def upload(self, local_path: str, remote_path: str, progress_cb=None, overwrite=False):
         """Upload a local file to a remote path."""
