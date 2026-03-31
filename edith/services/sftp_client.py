@@ -162,7 +162,7 @@ class SftpClient:
         finally:
             try:
                 dl_sftp.close()
-            except Exception:
+            except OSError:
                 pass
 
     def download_recursive(self, remote_path: str, local_path: str, progress_cb=None,
@@ -195,7 +195,7 @@ class SftpClient:
             finally:
                 try:
                     dl_sftp.close()
-                except Exception:
+                except OSError:
                     pass
         else:
             self.download(remote_path, local_path, progress_cb=progress_cb,

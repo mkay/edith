@@ -93,7 +93,7 @@ class TransferQueue(GObject.Object):
                 if chan is not None:
                     try:
                         chan.close()
-                    except Exception:
+                    except OSError:
                         pass
                 return True
             before = len(self._queue)
