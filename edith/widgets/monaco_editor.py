@@ -54,12 +54,14 @@ class MonacoEditor(Gtk.Box):
         settings.set_allow_file_access_from_file_urls(True)
         settings.set_allow_universal_access_from_file_urls(True)
         settings.set_javascript_can_access_clipboard(True)
-        # Disable GPU compositing to avoid a WebKit/Skia bug where GrResourceCache
-        # corrupts GPU texture state, causing SIGILL crashes via ud2 traps.
-        # (GrResourceCache::notifyARefCntReachedZero / refAndMakeResourceMRU)
-        settings.set_hardware_acceleration_policy(
-            WebKit.HardwareAccelerationPolicy.NEVER
-        )
+        # Some GPU driver / WebKit combinations trigger a Skia bug where
+        # GrResourceCache corrupts texture state → SIGILL crash.  Default to
+        # hardware-accelerated rendering (much faster); users who hit the crash
+        # can set editor_hardware_acceleration to false in config.
+        if not ConfigService.get_preference("editor_hardware_acceleration", True):
+            settings.set_hardware_acceleration_policy(
+                WebKit.HardwareAccelerationPolicy.NEVER
+            )
 
         ucm = self._webview.get_user_content_manager()
         ucm.register_script_message_handler("edith")

@@ -342,12 +342,17 @@
       "editorTextFocus && !editorHasSelection && !suggestWidgetVisible"
     );
 
-    // Report cursor position changes to Python
+    // Report cursor position changes to Python (debounced to reduce IPC chatter)
+    var cursorTimer = null;
     editor.onDidChangeCursorPosition(function (e) {
-      postMessage("cursor-changed", {
-        line: e.position.lineNumber,
-        column: e.position.column,
-      });
+      if (cursorTimer) clearTimeout(cursorTimer);
+      cursorTimer = setTimeout(function () {
+        cursorTimer = null;
+        postMessage("cursor-changed", {
+          line: e.position.lineNumber,
+          column: e.position.column,
+        });
+      }, 16);
     });
 
     // Track modification state
