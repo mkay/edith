@@ -18,7 +18,7 @@ depends=(
 )
 makedepends=('meson' 'npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/mkay/edith/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('48c5bbe9697b521e85d8c8f3dc4d5807dc157ce8b3509e43ac9c1a32b81bcc93')
+sha256sums=('4201c45d676d2d0060eedb20b15fe3f801189d5f7afdadbca3c25d7edb035374')
 
 build() {
   cd "$pkgname-$pkgver"
