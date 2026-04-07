@@ -337,13 +337,16 @@ class FtpClient:
                 for entry_name, facts in self._ftp.mlsd(parent):
                     if entry_name == name:
                         return FtpFileAttr(name, facts)
+                raise FileNotFoundError(f"No such file or directory: '{path}'")
             # Fallback: try SIZE + MDTM + check if directory
+            found = False
             facts = {"size": "0", "type": "file"}
             try:
                 self._ftp.voidcmd("TYPE I")
                 size = self._ftp.size(path)
                 if size is not None:
                     facts["size"] = str(size)
+                found = True
             except (OSError, error_perm):
                 pass
             try:
@@ -351,10 +354,14 @@ class FtpClient:
                 # Response: "213 YYYYMMDDHHMMSS"
                 if mdtm_resp.startswith("213 "):
                     facts["modify"] = mdtm_resp[4:].strip()
+                    found = True
             except (OSError, error_perm):
                 pass
             if self._is_dir_unlocked(path):
                 facts["type"] = "dir"
+                found = True
+            if not found:
+                raise FileNotFoundError(f"No such file or directory: '{path}'")
             return FtpFileAttr(path.rsplit("/", 1)[-1], facts)
 
     def mkdir(self, path: str):
