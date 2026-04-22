@@ -131,9 +131,32 @@ class MonacoEditor(Gtk.Box):
     #  JS communication                                                    #
     # ------------------------------------------------------------------ #
 
+    # Ctrl+<key> combos to forward straight to Monaco.  GTK's IM context
+    # can intermittently swallow these before they reach the WebView, so
+    # we intercept in the CAPTURE phase and inject via JS.
+    # Mapping: Gdk keyval → (JS Monaco trigger action, needs_shift_variant)
+    _CTRL_FORWARD = None  # built lazily to avoid import-time Gdk
+
+    @classmethod
+    def _ensure_ctrl_forward(cls):
+        if cls._CTRL_FORWARD is not None:
+            return
+        from gi.repository import Gdk
+        # Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y are handled by window-level
+        # win.undo / win.redo actions so they keep working even when the
+        # WebView has lost keyboard focus.
+        cls._CTRL_FORWARD = {
+            Gdk.KEY_a: ("editor.action.selectAll", None),
+            Gdk.KEY_d: ("editor.action.addSelectionToNextFindMatch", None),
+            Gdk.KEY_l: ("expandLineSelection", None),
+            Gdk.KEY_u: ("cursorUndo", None),
+            Gdk.KEY_p: ("editor.action.quickCommand", None),
+        }
+
     def _on_webview_key_capture(self, ctrl, keyval, keycode, state):
         from gi.repository import Gdk
         ctrl_held = bool(state & Gdk.ModifierType.CONTROL_MASK)
+        shift_held = bool(state & Gdk.ModifierType.SHIFT_MASK)
         no_alt_super = not (state & (Gdk.ModifierType.ALT_MASK | Gdk.ModifierType.SUPER_MASK))
 
         # Grave/dead_grave: commonly treated as a dead key by GTK's IM.
@@ -148,6 +171,18 @@ class MonacoEditor(Gtk.Box):
         if keyval == Gdk.KEY_slash and ctrl_held and no_alt_super:
             self._eval_js("EdithBridge.toggleLineComment()")
             return True
+
+        # Forward common Ctrl+<key> combos directly to Monaco so GTK's IM
+        # context cannot swallow them.
+        if ctrl_held and no_alt_super:
+            self._ensure_ctrl_forward()
+            entry = self._CTRL_FORWARD.get(keyval)
+            if entry:
+                action = entry[1] if (shift_held and entry[1]) else entry[0]
+                self._eval_js(
+                    f"EdithBridge.triggerAction({json.dumps(action)})"
+                )
+                return True
 
         return False
 
@@ -394,6 +429,9 @@ class MonacoEditor(Gtk.Box):
 
     def apply_custom_options(self, opts: dict):
         self._eval_js(f"EdithBridge.setCustomOptions({json.dumps(opts)})")
+
+    def trigger_action(self, action_id: str):
+        self._eval_js(f"EdithBridge.triggerAction({json.dumps(action_id)})")
 
     def get_language_name(self) -> str:
         return get_language_name(self._language_id or "plaintext")

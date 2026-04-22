@@ -169,7 +169,15 @@ class EditorSettingsDialog(Adw.PreferencesDialog):
                 '  // "wordWrap": "on",\n'
                 '  // "scrollBeyondLastLine": false,\n'
                 '  // "cursorBlinking": "expand",\n'
-                '  // "smoothScrolling": true\n'
+                '  // "smoothScrolling": true,\n'
+                '\n'
+                '  // Language-service (formatter) options are also supported\n'
+                '  // for html / css / scss / less / json. Either dotted keys:\n'
+                '  // "html.format.wrapLineLength": 0,\n'
+                '  // "html.format.wrapAttributes": "auto",\n'
+                '  // "html.format.preserveNewLines": true,\n'
+                '  // or a nested object:\n'
+                '  // "html": { "format": { "wrapLineLength": 0 } }\n'
                 '}'
             )
         else:

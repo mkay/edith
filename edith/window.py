@@ -389,6 +389,19 @@ class EdithWindow(Adw.ApplicationWindow):
         self.add_action(toggle_wrap)
         app.set_accels_for_action("win.toggle-wrap", ["<Control><Shift>w"])
 
+        # Undo / Redo — promoted to window actions so Ctrl+Z / Ctrl+Shift+Z /
+        # Ctrl+Y keep working even when keyboard focus has drifted outside the
+        # Monaco WebView (e.g. after closing a dialog or clicking the tab bar).
+        undo = Gio.SimpleAction.new("undo", None)
+        undo.connect("activate", self._on_undo)
+        self.add_action(undo)
+        app.set_accels_for_action("win.undo", ["<Control>z"])
+
+        redo = Gio.SimpleAction.new("redo", None)
+        redo.connect("activate", self._on_redo)
+        self.add_action(redo)
+        app.set_accels_for_action("win.redo", ["<Control><Shift>z", "<Control>y"])
+
     # --- Signal handlers ---
 
     def _on_close_request(self, window):
@@ -575,6 +588,16 @@ class EdithWindow(Adw.ApplicationWindow):
         editor = self._editor_panel.get_current_editor()
         if editor:
             editor.toggle_wrap()
+
+    def _on_undo(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.trigger_action("undo")
+
+    def _on_redo(self, action, param):
+        editor = self._editor_panel.get_current_editor()
+        if editor:
+            editor.trigger_action("redo")
 
     def _on_goto_line(self, action, param):
         editor = self._editor_panel.get_current_editor()

@@ -4,11 +4,105 @@
   "use strict";
 
   var editor = null;
+  var monacoRef = null;
   var cleanVersionId = null;
   var lastModifiedState = false;
   var pendingCalls = [];
   var ready = false;
   var loadingContent = false;  // suppress dirty tracking during setValue
+
+  // ── Custom options splitter ───────────────────────────────────────────
+  // User-provided overrides may mix Monaco editor options with language
+  // service options (HTML/CSS/JSON formatter settings). The editor options
+  // go to editor.updateOptions(); the service options go to the relevant
+  // language defaults. Accepts two forms:
+  //   flat dotted keys:   "html.format.wrapLineLength": 0
+  //   nested objects:     { "html": { "format": { "wrapLineLength": 0 } } }
+  var SERVICE_DEFAULTS = {
+    html:  ["languages", "html", "htmlDefaults"],
+    css:   ["languages", "css",  "cssDefaults"],
+    scss:  ["languages", "css",  "scssDefaults"],
+    less:  ["languages", "css",  "lessDefaults"],
+    json:  ["languages", "json", "jsonDefaults"],
+  };
+  function resolveDefaults(name) {
+    if (!monacoRef) return null;
+    var path = SERVICE_DEFAULTS[name];
+    if (!path) return null;
+    var node = monacoRef;
+    for (var i = 0; i < path.length; i++) {
+      node = node && node[path[i]];
+      if (!node) return null;
+    }
+    return node;
+  }
+  function splitCustomOptions(customOptions) {
+    var editorOpts = {};
+    var serviceOpts = {};  // { html: { format: {...} }, ... }
+    function stash(lang, section, key, val) {
+      if (!serviceOpts[lang]) serviceOpts[lang] = {};
+      if (section) {
+        if (!serviceOpts[lang][section]) serviceOpts[lang][section] = {};
+        serviceOpts[lang][section][key] = val;
+      } else {
+        serviceOpts[lang][key] = val;
+      }
+    }
+    for (var key in customOptions) {
+      if (!Object.prototype.hasOwnProperty.call(customOptions, key)) continue;
+      var val = customOptions[key];
+      var dotted = key.match(/^([a-z]+)\.([a-z]+)\.(.+)$/i);
+      if (dotted && SERVICE_DEFAULTS[dotted[1]]) {
+        stash(dotted[1], dotted[2], dotted[3], val);
+        continue;
+      }
+      if (SERVICE_DEFAULTS[key] && val && typeof val === "object") {
+        for (var section in val) {
+          if (!Object.prototype.hasOwnProperty.call(val, section)) continue;
+          var sv = val[section];
+          if (sv && typeof sv === "object") {
+            for (var sk in sv) {
+              if (Object.prototype.hasOwnProperty.call(sv, sk)) stash(key, section, sk, sv[sk]);
+            }
+          } else {
+            stash(key, null, section, sv);
+          }
+        }
+        continue;
+      }
+      editorOpts[key] = val;
+    }
+    return { editor: editorOpts, services: serviceOpts };
+  }
+  function applyServiceOptions(serviceOpts) {
+    for (var lang in serviceOpts) {
+      if (!Object.prototype.hasOwnProperty.call(serviceOpts, lang)) continue;
+      var defaults = resolveDefaults(lang);
+      if (!defaults || typeof defaults.setOptions !== "function") continue;
+      var incoming = serviceOpts[lang];
+      var existing = (defaults.options && typeof defaults.options === "object") ? defaults.options : {};
+      var merged = {};
+      for (var k in existing) if (Object.prototype.hasOwnProperty.call(existing, k)) merged[k] = existing[k];
+      for (var k2 in incoming) {
+        if (!Object.prototype.hasOwnProperty.call(incoming, k2)) continue;
+        var iv = incoming[k2];
+        var ev = existing[k2];
+        if (iv && typeof iv === "object" && ev && typeof ev === "object") {
+          var sub = {};
+          for (var ek in ev) if (Object.prototype.hasOwnProperty.call(ev, ek)) sub[ek] = ev[ek];
+          for (var ik in iv) if (Object.prototype.hasOwnProperty.call(iv, ik)) sub[ik] = iv[ik];
+          merged[k2] = sub;
+        } else {
+          merged[k2] = iv;
+        }
+      }
+      try {
+        defaults.setOptions(merged);
+      } catch (e) {
+        console.warn("Edith: failed to apply " + lang + " language options:", e);
+      }
+    }
+  }
 
   // ── Post a message to Python ──────────────────────────────────────────
   function postMessage(type, data) {
@@ -249,6 +343,7 @@
   require.config({ baseUrl: monacoBaseUrl, paths: { vs: monacoBaseUrl + "vs" } });
 
   require(["vs/editor/editor.main"], function (monaco) {
+    monacoRef = monaco;
     defineCustomThemes(monaco);
 
     editor = monaco.editor.create(document.getElementById("editor"), {
@@ -431,11 +526,15 @@
           if (s.fontLigatures !== undefined) opts.fontLigatures = s.fontLigatures;
           if (s.lineNumbers) opts.lineNumbers = s.lineNumbers;
         }
-        // Merge user custom overrides (raw Monaco options) on top
+        // Merge user custom overrides (raw Monaco options) on top.
+        // Split off language-service options (html/css/json format, etc.)
+        // which must be set on the language defaults rather than the editor.
         if (customOptions && typeof customOptions === "object") {
-          for (var key in customOptions) {
-            if (Object.prototype.hasOwnProperty.call(customOptions, key)) opts[key] = customOptions[key];
+          var split = splitCustomOptions(customOptions);
+          for (var key in split.editor) {
+            if (Object.prototype.hasOwnProperty.call(split.editor, key)) opts[key] = split.editor[key];
           }
+          applyServiceOptions(split.services);
         }
         editor.updateOptions(opts);
         // Report detected line ending to Python
@@ -545,7 +644,9 @@
 
     setCustomOptions: function (opts) {
       if (!editor || !opts || typeof opts !== "object") return;
-      editor.updateOptions(opts);
+      var split = splitCustomOptions(opts);
+      applyServiceOptions(split.services);
+      editor.updateOptions(split.editor);
     },
 
     typeText: function (text) {
@@ -601,6 +702,11 @@
     toggleLineComment: function () {
       if (!editor) return;
       editor.getAction("editor.action.commentLine").run();
+    },
+
+    triggerAction: function (actionId) {
+      if (!editor) return;
+      editor.trigger("keyboard", actionId);
     },
   };
 })();
