@@ -8,6 +8,8 @@ from ftplib import FTP, FTP_TLS, error_perm  # nosec B402
 from io import BytesIO
 from pathlib import Path
 
+from edith.services.transfer_queue import TransferAborted
+
 
 class _ImplicitFTP_TLS(FTP_TLS):
     """FTP_TLS subclass for implicit FTPS (TLS on connect, port 990)."""
@@ -230,28 +232,43 @@ class FtpClient:
                 mode |= bit
         return mode
 
-    def download(self, remote_path: str, local_path: str, progress_cb=None):
+    def download(self, remote_path: str, local_path: str, progress_cb=None,
+                 cancel_event=None, set_channel=None):
+        """Download a remote file to a local path.
+
+        cancel_event/set_channel mirror SftpClient.download(): the cancel
+        event is checked between chunks and the connection is registered for
+        force-close so a stalled transfer can be interrupted.
+        """
         Path(local_path).parent.mkdir(parents=True, exist_ok=True)
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
+            if set_channel:
+                set_channel(self._ftp)
             file_size = self._size_unlocked(remote_path)
             received = 0
             with open(local_path, "wb") as f:
                 def callback(chunk):
                     nonlocal received
+                    if cancel_event is not None and cancel_event.is_set():
+                        raise TransferAborted()
                     f.write(chunk)
                     received += len(chunk)
                     if progress_cb:
                         progress_cb(received, file_size)
                 self._ftp.retrbinary(f"RETR {remote_path}", callback)
 
-    def download_recursive(self, remote_path: str, local_path: str, progress_cb=None):
+    def download_recursive(self, remote_path: str, local_path: str, progress_cb=None,
+                           cancel_event=None, set_channel=None):
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
+            if set_channel:
+                set_channel(self._ftp)
             if self._is_dir_unlocked(remote_path):
-                self._download_dir_unlocked(remote_path, local_path, progress_cb)
+                self._download_dir_unlocked(remote_path, local_path, progress_cb,
+                                            cancel_event)
             else:
                 file_size = self._size_unlocked(remote_path)
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
@@ -259,13 +276,16 @@ class FtpClient:
                 with open(local_path, "wb") as f:
                     def callback(chunk):
                         nonlocal received
+                        if cancel_event is not None and cancel_event.is_set():
+                            raise TransferAborted()
                         f.write(chunk)
                         received += len(chunk)
                         if progress_cb:
                             progress_cb(received, file_size)
                     self._ftp.retrbinary(f"RETR {remote_path}", callback)
 
-    def _download_dir_unlocked(self, remote_path: str, local_path: str, progress_cb=None):
+    def _download_dir_unlocked(self, remote_path: str, local_path: str, progress_cb=None,
+                               cancel_event=None):
         Path(local_path).mkdir(parents=True, exist_ok=True)
         if self._has_mlsd:
             entries = list(self._ftp.mlsd(remote_path))
@@ -279,13 +299,16 @@ class FtpClient:
             child_local = os.path.join(local_path, name)
             entry_type = facts.get("type", "file").lower()
             if entry_type in ("dir", "cdir", "pdir"):
-                self._download_dir_unlocked(child_remote, child_local, progress_cb)
+                self._download_dir_unlocked(child_remote, child_local, progress_cb,
+                                            cancel_event)
             else:
                 file_size = int(facts.get("size", 0))
                 received = [0]
                 with open(child_local, "wb") as f:
                     def make_callback(r, s):
                         def callback(chunk):
+                            if cancel_event is not None and cancel_event.is_set():
+                                raise TransferAborted()
                             f.write(chunk)
                             r[0] += len(chunk)
                             if progress_cb:
