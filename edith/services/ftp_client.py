@@ -79,10 +79,15 @@ class FtpFileAttr:
 class FtpClient:
     """Thread-safe FTP client matching the SftpClient interface."""
 
+    # Seconds between keep-alive NOOPs on an idle control connection.
+    _KEEPALIVE_INTERVAL = 30
+
     def __init__(self):
         self._ftp = None
         self._lock = threading.Lock()
         self._use_tls = False
+        self._keepalive_thread = None
+        self._keepalive_stop = None
 
     def connect(
         self,
@@ -128,6 +133,47 @@ class FtpClient:
         with self._lock:
             self._ftp = ftp
 
+        self._start_keepalive()
+
+    def _start_keepalive(self):
+        """Start a background thread that sends NOOP on an idle connection.
+
+        Unlike paramiko's transport (which has set_keepalive), ftplib has no
+        built-in keep-alive, so an idle control connection gets dropped by the
+        server's idle timeout. This thread sends a periodic NOOP to keep it
+        alive, mirroring SftpClient's transport.set_keepalive(30).
+        """
+        self._keepalive_stop = threading.Event()
+        self._keepalive_thread = threading.Thread(
+            target=self._keepalive_loop,
+            args=(self._keepalive_stop,),
+            daemon=True,
+        )
+        self._keepalive_thread.start()
+
+    def _keepalive_loop(self, stop: threading.Event):
+        while not stop.wait(self._KEEPALIVE_INTERVAL):
+            # Try the lock without blocking: if a transfer or command is in
+            # flight, traffic is already flowing and no NOOP is needed.
+            if not self._lock.acquire(blocking=False):
+                continue
+            try:
+                if self._ftp is None:
+                    return
+                try:
+                    self._ftp.voidcmd("NOOP")
+                except Exception:
+                    # Connection is gone or unhealthy; stop pinging it.
+                    return
+            finally:
+                self._lock.release()
+
+    def _stop_keepalive(self):
+        if self._keepalive_stop:
+            self._keepalive_stop.set()
+        self._keepalive_thread = None
+        self._keepalive_stop = None
+
     @staticmethod
     def _check_mlsd(ftp):
         try:
@@ -137,6 +183,7 @@ class FtpClient:
             return False
 
     def close(self):
+        self._stop_keepalive()
         with self._lock:
             if self._ftp:
                 try:
