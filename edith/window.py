@@ -920,6 +920,10 @@ class EdithWindow(Adw.ApplicationWindow):
             ConfigService.add_pin(self._connected_server.id, path, is_dir)
             self._rebuild_pins_bar(self._connected_server)
 
+    def pin_path(self, path, is_dir=False):
+        """Pin a path (used by the editor tab context menu)."""
+        self._on_pin_requested(None, path, is_dir)
+
     def _rebuild_pins_bar(self, server_info):
         from edith.models.remote_file import RemoteFileInfo
         while (row := self._pins_lb.get_row_at_index(0)) is not None:

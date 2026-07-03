@@ -45,6 +45,7 @@ class EditorPanel(Gtk.Box):
 
         section1 = Gio.Menu()
         section1.append("Show in Sidebar", "tab.show-in-sidebar")
+        section1.append("Pin", "tab.pin")
         section1.append("Copy Path", "tab.copy-path")
         menu.append_section(None, section1)
 
@@ -61,6 +62,10 @@ class EditorPanel(Gtk.Box):
         show_action = Gio.SimpleAction.new("show-in-sidebar", None)
         show_action.connect("activate", self._on_show_in_sidebar)
         group.add_action(show_action)
+
+        pin_action = Gio.SimpleAction.new("pin", None)
+        pin_action.connect("activate", self._on_pin)
+        group.add_action(pin_action)
 
         copy_path_action = Gio.SimpleAction.new("copy-path", None)
         copy_path_action.connect("activate", self._on_copy_path)
@@ -95,6 +100,16 @@ class EditorPanel(Gtk.Box):
         if open_file:
             clipboard = Gdk.Display.get_default().get_clipboard()
             clipboard.set(open_file.remote_path)
+
+    def _on_pin(self, action, param):
+        page = self._menu_page
+        if not page:
+            return
+
+        widget = page.get_child()
+        open_file = getattr(widget, "open_file", None)
+        if open_file and self._window:
+            self._window.pin_path(open_file.remote_path, is_dir=False)
 
     def _on_show_in_sidebar(self, action, param):
         page = self._menu_page
