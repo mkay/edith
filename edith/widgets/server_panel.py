@@ -3,6 +3,8 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
+from dataclasses import replace
+
 from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Graphene
 
 from edith.models.server import ServerInfo
@@ -120,6 +122,7 @@ class ServerPanel(Gtk.Box):
         self._move_submenu = Gio.Menu()
         other_section = Gio.Menu()
         other_section.append_submenu("Move to Group", self._move_submenu)
+        other_section.append("Duplicate Server", "server.duplicate")
         other_section.append("Delete", "server.delete")
         self._server_menu_model.append_section(None, other_section)
 
@@ -138,6 +141,10 @@ class ServerPanel(Gtk.Box):
         delete_action = Gio.SimpleAction.new("delete", None)
         delete_action.connect("activate", self._on_context_delete)
         server_group.add_action(delete_action)
+
+        duplicate_action = Gio.SimpleAction.new("duplicate", None)
+        duplicate_action.connect("activate", self._on_context_duplicate)
+        server_group.add_action(duplicate_action)
 
         move_to_group_action = Gio.SimpleAction.new("move-to-group", GLib.VariantType.new("s"))
         move_to_group_action.connect("activate", self._on_context_move_to_group)
@@ -224,6 +231,24 @@ class ServerPanel(Gtk.Box):
             child = self._context_row.get_child()
             if isinstance(child, ServerRow):
                 self._confirm_delete(child.server_info)
+
+    def _on_context_duplicate(self, action, param):
+        if not self._context_row:
+            return
+        child = self._context_row.get_child()
+        if not isinstance(child, ServerRow):
+            return
+        original = child.server_info
+        # Empty id triggers a fresh uuid in ServerInfo.__post_init__.
+        base_name = original.name or original.display_name
+        clone = replace(original, id="", name=f"{base_name} Copy")
+        ConfigService.add_server(clone)
+        # Carry over the stored secret so the copy can connect immediately.
+        secret = credential_store.get_password(original.id)
+        if secret is not None:
+            credential_store.store_password(clone.id, secret)
+        self.reload()
+        self.emit("servers-changed")
 
     def _populate_move_submenu(self, current_folder_id: str):
         """Rebuild the 'Move to Group' submenu with all folders except the current one."""
