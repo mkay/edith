@@ -261,6 +261,40 @@ class FileBrowser(Gtk.Box):
         ))
         self._column_view.append_column(self._perm_col)
 
+        # Owner column
+        owner_factory = Gtk.SignalListItemFactory()
+        owner_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
+        owner_factory.connect("bind", self._bind_owner_cell)
+        owner_factory.connect("unbind", self._unbind_text_cell)
+        self._owner_col = Gtk.ColumnViewColumn(title="Owner", factory=owner_factory, resizable=True)
+        self._owner_col.set_fixed_width(100)
+        self._owner_col.set_visible(False)
+        self._owner_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.owner.lower() > b.file_info.owner.lower()) - (a.file_info.owner.lower() < b.file_info.owner.lower())
+            )
+        ))
+        self._column_view.append_column(self._owner_col)
+
+        # Group column
+        group_factory = Gtk.SignalListItemFactory()
+        group_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
+        group_factory.connect("bind", self._bind_group_cell)
+        group_factory.connect("unbind", self._unbind_text_cell)
+        self._group_col = Gtk.ColumnViewColumn(title="Group", factory=group_factory, resizable=True)
+        self._group_col.set_fixed_width(100)
+        self._group_col.set_visible(False)
+        self._group_col.set_sorter(Gtk.CustomSorter.new(
+            lambda a, b, _: (
+                (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
+                or (0 if a.file_info.is_dir == b.file_info.is_dir else (-1 if a.file_info.is_dir else 1))
+                or (a.file_info.group.lower() > b.file_info.group.lower()) - (a.file_info.group.lower() < b.file_info.group.lower())
+            )
+        ))
+        self._column_view.append_column(self._group_col)
+
         # Modified column
         mtime_factory = Gtk.SignalListItemFactory()
         mtime_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
@@ -416,6 +450,18 @@ class FileBrowser(Gtk.Box):
         label = list_item.get_child()
         label._cv_item = item
         label.set_text(item.file_info.permissions_str())
+
+    def _bind_owner_cell(self, factory, list_item):
+        item = list_item.get_item()
+        label = list_item.get_child()
+        label._cv_item = item
+        label.set_text(item.file_info.owner_str())
+
+    def _bind_group_cell(self, factory, list_item):
+        item = list_item.get_item()
+        label = list_item.get_child()
+        label._cv_item = item
+        label.set_text(item.file_info.group_str())
 
     def _bind_mtime_cell(self, factory, list_item):
         item = list_item.get_item()
@@ -1367,9 +1413,18 @@ class FileBrowser(Gtk.Box):
         )
         self._size_col.set_visible(show)
         self._perm_col.set_visible(show)
+        self._owner_col.set_visible(show)
+        self._group_col.set_visible(show)
         self._mtime_col.set_visible(show)
         if self._window:
-            self._window.adjust_sidebar_width(550 if show else 280)
+            self._window.adjust_sidebar_width(750 if show else 280)
+
+    def reset_detail_mode(self):
+        """Leave extended view (e.g. on disconnect) so the sidebar returns
+        to its default width. Toggling the button drives column visibility
+        and the width reset via _on_detail_mode_toggled."""
+        if self._detail_btn.get_active():
+            self._detail_btn.set_active(False)
 
     def _do_bulk_delete(self, dialog, response, infos):
         if response != "delete":

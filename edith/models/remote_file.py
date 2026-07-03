@@ -17,6 +17,8 @@ class RemoteFileInfo:
     is_dir: bool = False
     permissions: int = 0
     mtime: int = 0  # Unix timestamp
+    owner: str = ""
+    group: str = ""
     is_parent_dir: bool = False
 
     @classmethod
@@ -28,6 +30,7 @@ class RemoteFileInfo:
             path = f"{parent_path}/{name}"
 
         is_dir = stat.S_ISDIR(attr.st_mode) if attr.st_mode else False
+        owner, group = cls._owner_group(attr)
 
         return cls(
             name=name,
@@ -36,7 +39,42 @@ class RemoteFileInfo:
             is_dir=is_dir,
             permissions=attr.st_mode or 0,
             mtime=int(attr.st_mtime or 0),
+            owner=owner,
+            group=group,
         )
+
+    @staticmethod
+    def _owner_group(attr) -> tuple[str, str]:
+        """Resolve textual owner/group, falling back to numeric uid/gid.
+
+        Precedence:
+          1. Explicit textual names (FTP LIST fields / MLSD *name facts).
+          2. SFTP `ls -l` style `longname` (fields 3 and 4).
+          3. Numeric st_uid/st_gid, when the server actually provided them.
+        A missing value stays empty and renders as an em dash.
+        """
+        owner = getattr(attr, "ownername", "") or ""
+        group = getattr(attr, "groupname", "") or ""
+        if not owner or not group:
+            longname = getattr(attr, "longname", None)
+            if longname:
+                parts = longname.split()
+                if len(parts) >= 4:
+                    owner = owner or parts[2]
+                    group = group or parts[3]
+        if not owner:
+            uid = getattr(attr, "st_uid", None)
+            owner = str(uid) if uid is not None else ""
+        if not group:
+            gid = getattr(attr, "st_gid", None)
+            group = str(gid) if gid is not None else ""
+        return owner, group
+
+    def owner_str(self) -> str:
+        return self.owner or "—"
+
+    def group_str(self) -> str:
+        return self.group or "—"
 
     def permissions_str(self) -> str:
         if not self.permissions:

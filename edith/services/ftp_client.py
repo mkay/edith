@@ -37,7 +37,7 @@ class _ImplicitFTP_TLS(FTP_TLS):
 class FtpFileAttr:
     """Mimics paramiko SFTPAttributes for FTP directory entries."""
 
-    def __init__(self, filename, facts):
+    def __init__(self, filename, facts, owner="", group=""):
         self.filename = filename
         self.st_size = int(facts.get("size", 0))
         self.st_mode = 0
@@ -71,8 +71,13 @@ class FtpFileAttr:
             except ValueError:
                 pass
 
-        self.st_uid = int(facts.get("unix.uid", 0))
-        self.st_gid = int(facts.get("unix.gid", 0))
+        # Textual names: explicit (parsed from LIST) or MLSD *name facts.
+        self.ownername = owner or facts.get("unix.ownername", "") or facts.get("unix.owner", "")
+        self.groupname = group or facts.get("unix.groupname", "") or facts.get("unix.group", "")
+        # Numeric ids only when the server actually sent them; otherwise leave
+        # unset (None) so ownership renders as "unknown" rather than root (0).
+        self.st_uid = int(facts["unix.uid"]) if "unix.uid" in facts else None
+        self.st_gid = int(facts["unix.gid"]) if "unix.gid" in facts else None
         self.st_atime = self.st_mtime
 
 
@@ -250,6 +255,8 @@ class FtpClient:
             if name in (".", ".."):
                 continue
             perms = parts[0]
+            owner = parts[2]
+            group = parts[3]
             size = int(parts[4]) if parts[4].isdigit() else 0
             facts = {"size": str(size)}
             if perms.startswith("d"):
@@ -260,7 +267,7 @@ class FtpClient:
             mode = self._parse_permission_string(perms[1:10]) if len(perms) >= 10 else 0
             if mode:
                 facts["unix.mode"] = oct(mode)[2:]
-            results.append(FtpFileAttr(name, facts))
+            results.append(FtpFileAttr(name, facts, owner=owner, group=group))
         return results
 
     @staticmethod

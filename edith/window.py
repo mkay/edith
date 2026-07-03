@@ -1062,6 +1062,8 @@ class EdithWindow(Adw.ApplicationWindow):
         self._back_btn.set_sensitive(False)
         self._forward_btn.set_sensitive(False)
         self._file_browser.reset_history()
+        # Leave extended view so the sidebar returns to its default width.
+        self._file_browser.reset_detail_mode()
         self.lookup_action("disconnect").set_enabled(False)
         self._connect_btn.set_icon_name("edith-connect-symbolic")
         self._connect_btn.set_tooltip_text("Connect")
