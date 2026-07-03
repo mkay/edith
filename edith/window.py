@@ -120,19 +120,12 @@ class EdithWindow(Adw.ApplicationWindow):
         self._pins_separator = Gtk.Separator(visible=False)
         sidebar_bottom.append(self._pins_separator)
 
-        # Connection status row
-        sidebar_status_bar = Gtk.Box(
-            orientation=Gtk.Orientation.HORIZONTAL,
-            spacing=6,
-            margin_start=12,
-            margin_end=12,
-            margin_top=6,
-            margin_bottom=6,
-        )
-        sidebar_status_bar.add_css_class("toolbar")
+        # Connection status row — a flat MenuButton that reveals connection
+        # details in a popover while connected.
+        status_content = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         self._sidebar_status_icon = Gtk.Image.new_from_icon_name("edith-disconnected-symbolic")
         self._sidebar_status_icon.set_pixel_size(16)
-        sidebar_status_bar.append(self._sidebar_status_icon)
+        status_content.append(self._sidebar_status_icon)
         self._sidebar_status_label = Gtk.Label(
             label="Disconnected",
             xalign=0,
@@ -140,8 +133,22 @@ class EdithWindow(Adw.ApplicationWindow):
             ellipsize=3,
             css_classes=["dim-label", "caption"],
         )
-        sidebar_status_bar.append(self._sidebar_status_label)
-        sidebar_bottom.append(sidebar_status_bar)
+        status_content.append(self._sidebar_status_label)
+
+        self._sidebar_status_popover = Gtk.Popover(has_arrow=True)
+        self._sidebar_status_popover.add_css_class("menu")
+
+        self._sidebar_status_btn = Gtk.MenuButton(
+            css_classes=["flat"],
+            margin_start=6,
+            margin_end=6,
+            margin_top=3,
+            margin_bottom=3,
+            sensitive=False,
+        )
+        self._sidebar_status_btn.set_child(status_content)
+        self._sidebar_status_btn.set_popover(self._sidebar_status_popover)
+        sidebar_bottom.append(self._sidebar_status_btn)
 
         self._sidebar_toolbar.add_bottom_bar(sidebar_bottom)
 
@@ -1373,10 +1380,76 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sidebar_status_label.set_label(message)
         if state == "connected":
             self._sidebar_status_label.remove_css_class("dim-label")
-            self._sidebar_status_label.add_css_class("success")
+            self._sidebar_status_label.remove_css_class("success")
         else:
             self._sidebar_status_label.remove_css_class("success")
             self._sidebar_status_label.add_css_class("dim-label")
+
+        # The details popover is only meaningful while connected.
+        connected = state == "connected"
+        self._sidebar_status_btn.set_sensitive(connected)
+        if connected and self._connected_server:
+            self._populate_connection_popover(self._connected_server)
+        else:
+            self._sidebar_status_popover.set_child(None)
+
+    def _populate_connection_popover(self, server_info):
+        """Fill the sidebar status popover with connection details."""
+        if server_info.protocol == "ftp":
+            _enc = {
+                "none":               "FTP",
+                "explicit_optional":  "FTP (FTPS, explicit)",
+                "explicit_required":  "FTP (FTPS, explicit, required)",
+                "implicit":           "FTP (FTPS, implicit)",
+            }
+            protocol_text = _enc.get(server_info.ftp_encryption, "FTP")
+        else:
+            protocol_text = "SFTP"
+
+        auth_text = {
+            "password":        "Password",
+            "key":             "SSH key",
+            "key+passphrase":  "SSH key + passphrase",
+        }.get(server_info.auth_method, server_info.auth_method)
+
+        rows = [
+            ("Host", server_info.host),
+            ("Username", server_info.username),
+            ("Port", str(server_info.port)),
+            ("Protocol", protocol_text),
+            ("Auth", auth_text),
+            ("Path", server_info.initial_directory or "/"),
+        ]
+
+        grid = Gtk.Grid(
+            row_spacing=4,
+            column_spacing=16,
+            margin_top=8,
+            margin_bottom=8,
+            margin_start=10,
+            margin_end=10,
+        )
+        title = Gtk.Label(
+            label=server_info.display_name,
+            xalign=0,
+            ellipsize=3,
+            css_classes=["heading"],
+        )
+        grid.attach(title, 0, 0, 2, 1)
+
+        for i, (key, value) in enumerate(rows, start=1):
+            key_lbl = Gtk.Label(label=key, xalign=0, css_classes=["dim-label", "caption"])
+            val_lbl = Gtk.Label(
+                label=value or "—",
+                xalign=0,
+                selectable=True,
+                ellipsize=3,
+                max_width_chars=32,
+            )
+            grid.attach(key_lbl, 0, i, 1, 1)
+            grid.attach(val_lbl, 1, i, 1, 1)
+
+        self._sidebar_status_popover.set_child(grid)
 
     def adjust_sidebar_width(self, width: int):
         """Set the sidebar paned position (used by detail-mode toggle)."""
