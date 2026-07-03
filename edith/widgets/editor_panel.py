@@ -383,3 +383,14 @@ class EditorPanel(Gtk.Box):
     @property
     def has_tabs(self) -> bool:
         return self._tab_view.get_n_pages() > 0
+
+    @property
+    def has_selected_page(self) -> bool:
+        """True while any tab is selected.
+
+        Reliable even mid-close: AdwTabView clears the selection *before*
+        it removes the last page from the model, so this reads False on the
+        `notify::selected-page` that fires when the final tab is closed,
+        whereas `has_tabs` (n_pages) still counts the closing page.
+        """
+        return self._tab_view.get_selected_page() is not None

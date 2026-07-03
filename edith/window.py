@@ -1009,7 +1009,7 @@ class EdithWindow(Adw.ApplicationWindow):
                 editor._window_signals_connected = True
         else:
             self._status_bar.hide_file_info()
-            if not self._editor_panel.has_tabs and self._connected_server:
+            if not self._editor_panel.has_selected_page and self._connected_server:
                 self._rebuild_recents_child(self._connected_server)
                 self._content_stack.set_visible_child_name("connected")
 
