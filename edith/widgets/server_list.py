@@ -365,6 +365,10 @@ class ServerList(Gtk.Box):
             return self._row_keys.get(row)
         return None
 
+    def get_selected_key(self) -> str | None:
+        """Public accessor for the currently selected group key."""
+        return self._get_selected_key()
+
     def select_group(self, key: str):
         """Programmatically select a group row by key and emit group-selected."""
         for lbr, k in self._row_keys.items():

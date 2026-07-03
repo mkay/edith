@@ -493,8 +493,11 @@ class EdithWindow(Adw.ApplicationWindow):
             self._content_stack.set_visible_child_name("servers")
 
     def _on_servers_changed(self, *_args):
+        # Preserve the currently selected group across add/edit/duplicate/delete
+        # (load_servers() rebuilds the list and clears the selection).
+        current_key = self._server_list.get_selected_key()
         self._server_list.load_servers()
-        self._server_list.select_group("__all__")
+        self._server_list.select_group(current_key or "__all__")
         self._welcome_view.refresh()
 
     def _on_new_server(self, action, param):
