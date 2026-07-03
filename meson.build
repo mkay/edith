@@ -1,5 +1,5 @@
 project('edith',
-  version: '0.4.18',
+  version: '0.4.19',
   meson_version: '>= 0.62.0',
   default_options: ['warning_level=2'],
 )
