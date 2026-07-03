@@ -30,6 +30,8 @@ DEB_STAGING="$(pwd)/deb-staging"
 cleanup() {
     [[ -n "$AUR_DIR" && -d "$AUR_DIR" ]] && rm -rf "$AUR_DIR"
     [[ -d "$DEB_STAGING" ]] && rm -rf "$DEB_STAGING"
+    # Never let a false test in the EXIT trap mask a successful run.
+    return 0
 }
 trap cleanup EXIT
 
@@ -78,9 +80,12 @@ echo "==> Building Arch package"
 makepkg -sf --noconfirm
 ARCH_PKG=$(ls -t ./*.pkg.tar.zst 2>/dev/null | grep -v debug | head -1)
 
-# Push updated checksums back to repos
-if ! git diff --quiet PKGBUILD; then
-    git add PKGBUILD
+# Refresh .SRCINFO now that checksums are settled, and push both back to repos
+# so the main repo tree isn't left dirty (the AUR push below only commits into
+# the AUR clone).
+makepkg --printsrcinfo > .SRCINFO
+if ! git diff --quiet PKGBUILD .SRCINFO; then
+    git add PKGBUILD .SRCINFO
     git commit -m "Update PKGBUILD checksums for $TAG"
     for remote in $(git remote); do
         git push "$remote" HEAD

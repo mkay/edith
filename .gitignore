@@ -2,6 +2,7 @@ build/
 pkg/
 src/
 *.pkg.tar.zst
+*.tar.gz
 __pycache__/
 edith/data/monaco/vs/
 edith/data/monaco/emmet.js
