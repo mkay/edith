@@ -330,16 +330,31 @@ class FileBrowser(Gtk.Box):
         item_ref = [None]
         is_dir_ref = [False]
 
-        # Drag source
-        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE)
+        # Drag source. MOVE is used for drags within Edith; COPY lets other
+        # applications accept the drop as a download.
+        drag = Gtk.DragSource(actions=Gdk.DragAction.MOVE | Gdk.DragAction.COPY)
 
         def on_drag_prepare(d, x, y):
             if not item_ref[0] or item_ref[0].file_info.is_parent_dir:
                 return None
             paths = self._get_selected_paths_for_drag(item_ref[0])
-            return Gdk.ContentProvider.new_for_value(
+            internal = Gdk.ContentProvider.new_for_value(
                 GObject.Value(GObject.TYPE_STRING, "\n".join(paths))
             )
+
+            # Offer text/uri-list too, so file managers can receive the drop.
+            client = self._window.sftp_client if self._window else None
+            if client is None:
+                return internal
+
+            from edith.services.drag_export import RemoteFilesProvider
+
+            external = RemoteFilesProvider(
+                client,
+                self._get_selected_infos_for_drag(item_ref[0]),
+                on_status=self._show_drag_status,
+            )
+            return Gdk.ContentProvider.new_union([internal, external])
 
         def on_drag_begin(d, gdk_drag):
             if not item_ref[0]:
@@ -725,6 +740,28 @@ class FileBrowser(Gtk.Box):
         if not dragged_in_sel or not paths:
             return [dragged_item.file_info.path]
         return paths
+
+    def _show_drag_status(self, message, kind):
+        """Surface drag-download progress; called from the provider's thread."""
+        if self._window:
+            self._window.show_toast(message, kind)
+        return GLib.SOURCE_REMOVE
+
+    def _get_selected_infos_for_drag(self, dragged_item):
+        """Like `_get_selected_paths_for_drag`, but returns RemoteFileInfos."""
+        bitset = self._selection.get_selection()
+        infos = []
+        dragged_in_sel = False
+        for i in range(bitset.get_size()):
+            pos = bitset.get_nth(i)
+            item = self._filter_model.get_item(pos)
+            if item and not item.file_info.is_parent_dir:
+                infos.append(item.file_info)
+                if item is dragged_item:
+                    dragged_in_sel = True
+        if not dragged_in_sel or not infos:
+            return [dragged_item.file_info]
+        return infos
 
     def _get_focused_item(self):
         """Return the first item in the GTK selection (highlight), or None."""

@@ -3,6 +3,7 @@ services_sources = [
   'async_worker.py',
   'config.py',
   'credential_store.py',
+  'drag_export.py',
   'external_edit.py',
   'file_associations.py',
   'filezilla_import.py',
