@@ -414,11 +414,17 @@ class ServerPanel(Gtk.Box):
         self._list_boxes.clear()
         self._active_list_box = None
 
+    def apply_navigation_settings(self):
+        """Re-read the single/double click preference and apply it live."""
+        single = ConfigService.get_preference("single_click_open", False)
+        for lb in self._list_boxes:
+            lb.set_activate_on_single_click(single)
+
     def _make_list_box(self) -> Gtk.ListBox:
         """Create a per-group ListBox with boxed-list style."""
         lb = Gtk.ListBox(
             selection_mode=Gtk.SelectionMode.SINGLE,
-            activate_on_single_click=False,
+            activate_on_single_click=ConfigService.get_preference("single_click_open", False),
             css_classes=["boxed-list"],
         )
         lb.connect("row-activated", self._on_row_activated)

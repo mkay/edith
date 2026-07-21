@@ -145,34 +145,15 @@ label.error { color: @error_color; }
         shortcuts_action.connect("activate", self._on_shortcuts)
         self.add_action(shortcuts_action)
 
-        theme_action = Gio.SimpleAction.new("syntax-theme", None)
-        theme_action.connect("activate", self._on_syntax_theme)
-        self.add_action(theme_action)
-
-        font_action = Gio.SimpleAction.new("editor-font", None)
-        font_action.connect("activate", self._on_editor_font)
-        self.add_action(font_action)
-
-        window_size_action = Gio.SimpleAction.new("window-size", None)
-        window_size_action.connect("activate", self._on_window_size)
-        self.add_action(window_size_action)
-
-        syntax_assoc_action = Gio.SimpleAction.new("syntax-associations", None)
-        syntax_assoc_action.connect("activate", self._on_syntax_associations)
-        self.add_action(syntax_assoc_action)
-
-        editor_settings_action = Gio.SimpleAction.new("editor-settings", None)
-        editor_settings_action.connect("activate", self._on_editor_settings)
-        self.add_action(editor_settings_action)
+        prefs_action = Gio.SimpleAction.new("preferences", None)
+        prefs_action.connect("activate", self._on_preferences)
+        self.add_action(prefs_action)
+        self.set_accels_for_action("app.preferences", ["<Control>comma"])
 
         new_window_action = Gio.SimpleAction.new("new-window", None)
         new_window_action.connect("activate", self._on_new_window)
         self.add_action(new_window_action)
         self.set_accels_for_action("app.new-window", ["<Control><Shift>n"])
-
-        tools_folder_action = Gio.SimpleAction.new("tools-folder", None)
-        tools_folder_action.connect("activate", self._on_tools_folder)
-        self.add_action(tools_folder_action)
 
     def _on_about(self, action, param):
         about = Adw.AboutDialog(
@@ -189,176 +170,12 @@ label.error { color: @error_color; }
         win = EdithWindow(application=self)
         win.present()
 
-    def _on_syntax_theme(self, action, param):
+    def _on_preferences(self, action, param):
         win = self.props.active_window
         if not win:
             return
-        from edith.widgets.theme_chooser_dialog import ThemeChooserDialog
-        dialog = ThemeChooserDialog()
-        dialog.connect("scheme-changed", self._on_scheme_changed)
-        dialog.present(win)
-
-    def _on_scheme_changed(self, dialog, scheme_id):
-        """Apply new scheme to all open editor pages."""
-        win = self.props.active_window
-        if not win:
-            return
-        win.apply_syntax_scheme(scheme_id)
-
-    def _on_editor_font(self, action, param):
-        win = self.props.active_window
-        if not win:
-            return
-        from edith.widgets.font_chooser_dialog import FontChooserDialog
-        dialog = FontChooserDialog()
-        dialog.connect("font-changed", self._on_font_changed)
-        dialog.present(win)
-
-    def _on_font_changed(self, dialog, font_family, font_size):
-        """Apply new font to all open editor pages."""
-        win = self.props.active_window
-        if not win:
-            return
-        win.apply_editor_font(font_family, font_size)
-
-    def _on_window_size(self, action, param):
-        win = self.props.active_window
-        if not win:
-            return
-
-        from edith.services.config import ConfigService
-
-        current_w = ConfigService.get_preference("window_width", 1100)
-        current_h = ConfigService.get_preference("window_height", 700)
-
-        dialog = Adw.Dialog(title="Window Size", content_width=320, content_height=220)
-
-        toolbar_view = Adw.ToolbarView()
-        header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
-
-        cancel_btn = Gtk.Button(label="Cancel")
-        cancel_btn.connect("clicked", lambda _: dialog.close())
-        header.pack_start(cancel_btn)
-
-        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
-        header.pack_end(save_btn)
-        toolbar_view.add_top_bar(header)
-
-        clamp = Adw.Clamp(maximum_size=320, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
-        group = Adw.PreferencesGroup()
-
-        width_row = Adw.SpinRow(
-            title="Width",
-            adjustment=Gtk.Adjustment(value=current_w, lower=800, upper=3840, step_increment=10),
-        )
-        group.add(width_row)
-
-        height_row = Adw.SpinRow(
-            title="Height",
-            adjustment=Gtk.Adjustment(value=current_h, lower=600, upper=2160, step_increment=10),
-        )
-        group.add(height_row)
-
-        clamp.set_child(group)
-        toolbar_view.set_content(clamp)
-        dialog.set_child(toolbar_view)
-
-        def on_save(_):
-            w = int(width_row.get_value())
-            h = int(height_row.get_value())
-            ConfigService.set_preference("window_width", w)
-            ConfigService.set_preference("window_height", h)
-            dialog.close()
-
-        save_btn.connect("clicked", on_save)
-        dialog.present(win)
-
-    def _on_tools_folder(self, action, param):
-        win = self.props.active_window
-        if not win:
-            return
-
-        from edith.services.config import ConfigService
-        from edith.widgets.file_browser import DEFAULT_TOOLS_DIR
-
-        current = ConfigService.get_preference("tools_folder", "")
-
-        dialog = Adw.Dialog(title="Tools Folder", content_width=420, content_height=200)
-
-        toolbar_view = Adw.ToolbarView()
-        header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
-
-        cancel_btn = Gtk.Button(label="Cancel")
-        cancel_btn.connect("clicked", lambda _: dialog.close())
-        header.pack_start(cancel_btn)
-
-        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
-        header.pack_end(save_btn)
-        toolbar_view.add_top_bar(header)
-
-        clamp = Adw.Clamp(maximum_size=420, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
-        group = Adw.PreferencesGroup(
-            description=f"Default: {DEFAULT_TOOLS_DIR}",
-        )
-
-        entry_row = Adw.EntryRow(title="Custom path", text=current)
-
-        browse_btn = Gtk.Button(icon_name="folder-open-symbolic", valign=Gtk.Align.CENTER,
-                                css_classes=["flat"])
-
-        def on_browse(_btn):
-            fd = Gtk.FileDialog(title="Choose Tools Folder")
-            fd.select_folder(win, None, _on_folder_chosen)
-
-        def _on_folder_chosen(fd, result):
-            try:
-                folder = fd.select_folder_finish(result)
-            except Exception:
-                return
-            path = folder.get_path()
-            if path:
-                entry_row.set_text(path)
-
-        browse_btn.connect("clicked", on_browse)
-        entry_row.add_suffix(browse_btn)
-        group.add(entry_row)
-
-        clamp.set_child(group)
-        toolbar_view.set_content(clamp)
-        dialog.set_child(toolbar_view)
-
-        def on_save(_):
-            path = entry_row.get_text().strip()
-            if path:
-                ConfigService.set_preference("tools_folder", path)
-            else:
-                ConfigService.set_preference("tools_folder", "")
-            dialog.close()
-
-        save_btn.connect("clicked", on_save)
-        dialog.present(win)
-
-    def _on_syntax_associations(self, action, param):
-        win = self.props.active_window
-        if not win:
-            return
-        from edith.widgets.syntax_associations_dialog import SyntaxAssociationsDialog
-        dialog = SyntaxAssociationsDialog()
-        dialog.present(win)
-
-    def _on_editor_settings(self, action, param):
-        win = self.props.active_window
-        if not win:
-            return
-        from edith.widgets.editor_settings_dialog import EditorSettingsDialog
-        dialog = EditorSettingsDialog()
-        dialog.connect("settings-changed", self._on_editor_settings_changed)
-        dialog.present(win)
-
-    def _on_editor_settings_changed(self, dialog):
-        win = self.props.active_window
-        if win:
-            win.apply_editor_settings()
+        from edith.widgets.preferences_dialog import PreferencesDialog
+        PreferencesDialog(win).present(win)
 
     def _on_shortcuts(self, action, param):
         win = self.props.active_window
@@ -370,6 +187,7 @@ label.error { color: @error_color; }
             ("General", [
                 ("<Control>q", "Quit"),
                 ("<Control><Shift>n", "New Window"),
+                ("<Control>comma", "Preferences"),
                 ("F9", "Toggle sidebar"),
                 ("<Control>n", "New server"),
             ]),

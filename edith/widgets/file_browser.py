@@ -9,6 +9,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Pango
 
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
+from edith.services.config import ConfigService
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
 
 DEFAULT_TOOLS_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "edith" / "tools"
@@ -134,7 +135,7 @@ class FileBrowser(Gtk.Box):
 
         # Column view — created before its sorter is retrieved
         self._column_view = Gtk.ColumnView(
-            single_click_activate=False,
+            single_click_activate=ConfigService.get_preference("single_click_open", False),
             show_row_separators=False,
             show_column_separators=False,
             css_classes=["file-list", "data-table"],
@@ -502,11 +503,13 @@ class FileBrowser(Gtk.Box):
         section_ops.append("Delete", "file.delete")
         menu.append_section(None, section_ops)
 
-        # Download, Copy Path, Open Locally
+        # Download, Copy Path, Open with…
         section_transfer = Gio.Menu()
         section_transfer.append("Download", "file.download")
         section_transfer.append("Copy Path", "file.copy-path")
-        section_transfer.append("Open Locally", "file.open-locally")
+        # Rebuilt on each right-click so the label can name the resolved app.
+        self._open_with_section = Gio.Menu()
+        section_transfer.append_section(None, self._open_with_section)
         menu.append_section(None, section_transfer)
 
         # Pin, Information, Refresh
@@ -591,6 +594,10 @@ class FileBrowser(Gtk.Box):
         refresh_action.connect("activate", lambda *_: self.load_directory(self._current_path))
         group.add_action(refresh_action)
 
+        open_with_action = Gio.SimpleAction.new("open-with", GLib.VariantType.new("s"))
+        open_with_action.connect("activate", self._on_open_with)
+        group.add_action(open_with_action)
+
         upload_tool_action = Gio.SimpleAction.new("upload-tool", GLib.VariantType.new("s"))
         upload_tool_action.connect("activate", self._on_upload_tool)
         group.add_action(upload_tool_action)
@@ -673,6 +680,9 @@ class FileBrowser(Gtk.Box):
                 if fi.is_dir and not getattr(client, "can_exec", False):
                     archive_ok = False
         self._archive_action.set_enabled(archive_ok)
+
+        # Populate the "Open with <app>" entry for this file
+        self._rebuild_open_with_menu(fi if (has_item and not multi) else None)
 
         # Populate Upload Tool submenu
         self._tools_submenu.remove_all()
@@ -1370,6 +1380,17 @@ class FileBrowser(Gtk.Box):
         else:
             self._show_listing_error(message)
 
+    def refresh_path(self, path: str):
+        """Reload the listing if `path` is the directory currently shown."""
+        if path and path == self._current_path:
+            self.load_directory(self._current_path, add_to_history=False)
+
+    def apply_navigation_settings(self):
+        """Re-read the single/double click preference and apply it live."""
+        self._column_view.set_single_click_activate(
+            ConfigService.get_preference("single_click_open", False)
+        )
+
     def _on_cv_activated(self, column_view, position):
         item = self._filter_model.get_item(position)
         if item is None:
@@ -1666,20 +1687,78 @@ class FileBrowser(Gtk.Box):
             return
         self._window.enqueue_download(info.path, local_path)
 
+    def _rebuild_open_with_menu(self, fi):
+        """Rebuild the open-with entries so they name the resolved application."""
+        from edith.services import file_associations as fa
+
+        self._open_with_section.remove_all()
+
+        if fi is None or fi.is_dir:
+            self._open_with_section.append("Open Locally", "file.open-locally")
+            return
+
+        app, _is_custom = fa.resolve(fi.name)
+        label = f"Open with {app.get_display_name()}" if app else "Open Locally"
+        self._open_with_section.append(label, "file.open-locally")
+
+        # Alternatives for this file type, minus the one already offered above.
+        default_id = app.get_id() if app else None
+        others = [a for a in fa.candidates_for(fi.name) if a.get_id() != default_id]
+        if others:
+            submenu = Gio.Menu()
+            for other in others:
+                menu_item = Gio.MenuItem.new(other.get_display_name(), None)
+                menu_item.set_action_and_target_value(
+                    "file.open-with", GLib.Variant.new_string(other.get_id() or "")
+                )
+                submenu.append_item(menu_item)
+            self._open_with_section.append_submenu("Open With", submenu)
+
+    def _on_open_with(self, action, param):
+        """Open the file once with a specific application."""
+        from edith.services import file_associations as fa
+
+        app = fa.app_for_desktop_id(param.get_string())
+        if app is not None:
+            self._open_locally_with(app)
+
     def _on_open_locally(self, action, param):
-        import tempfile
+        from edith.services import file_associations as fa
+
+        fi = self._get_context_file_info()
+        app = None
+        if fi and not fi.is_dir:
+            app, _is_custom = fa.resolve(fi.name)
+        self._open_locally_with(app)
+
+    def _open_locally_with(self, app_info):
+        """Download the selected file and hand it to `app_info`.
+
+        A None `app_info` falls back to the desktop's default handler.
+        """
         fi = self._get_context_file_info()
         if not fi or not self._window or not self._window.sftp_client:
             return
         client = self._window.sftp_client
-        tmp_dir = tempfile.mkdtemp(prefix="edith-")
-        local_path = os.path.join(tmp_dir, fi.name)
+        remote_path = fi.path
+
+        from edith.services import file_associations as fa
         from edith.services.async_worker import run_async
+        from edith.services.temp_manager import TempManager
+
+        local_path = str(TempManager.get_temp_path(remote_path))
 
         def do_download():
-            client.download_recursive(fi.path, local_path)
+            client.download_recursive(remote_path, local_path)
 
         def on_done(_):
+            # Watch the local copy so edits made in the external app are
+            # uploaded back. Directories aren't round-tripped.
+            if not fi.is_dir:
+                self._window.watch_external_edit(remote_path, local_path)
+            if app_info is not None and fa.launch(app_info, local_path):
+                return
+            # No association, or the launch failed — let the desktop decide.
             launcher = Gtk.FileLauncher.new(Gio.File.new_for_path(local_path))
             launcher.launch(self.get_root(), None, self._on_launch_finish)
 

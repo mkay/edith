@@ -1,7 +1,6 @@
 widgets_sources = [
   '__init__.py',
   'connect_dialog.py',
-  'editor_settings_dialog.py',
   'editor_panel.py',
   'file_browser.py',
   'file_dialogs.py',
@@ -10,6 +9,7 @@ widgets_sources = [
   'image_viewer.py',
   'monaco_editor.py',
   'path_bar.py',
+  'preferences_dialog.py',
   'server_edit_dialog.py',
   'server_list.py',
   'server_panel.py',

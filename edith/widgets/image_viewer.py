@@ -36,15 +36,29 @@ class ImageViewer(Gtk.Box):
         self.open_file = open_file
         self.open_file.is_modified = False
 
-        picture = Gtk.Picture.new_for_filename(open_file.local_path)
-        picture.set_content_fit(Gtk.ContentFit.CONTAIN)
-        picture.set_can_shrink(True)
-        picture.set_vexpand(True)
-        picture.set_hexpand(True)
-        self.append(picture)
+        self._picture = Gtk.Picture.new_for_filename(open_file.local_path)
+        self._picture.set_content_fit(Gtk.ContentFit.CONTAIN)
+        self._picture.set_can_shrink(True)
+        self._picture.set_vexpand(True)
+        self._picture.set_hexpand(True)
+        self.append(self._picture)
 
         self.append(Gtk.Separator())
-        self.append(self._build_info_bar(open_file.local_path))
+        self._info_bar = self._build_info_bar(open_file.local_path)
+        self.append(self._info_bar)
+
+    def reload_from_disk(self):
+        """Re-read the local file after it changed on disk."""
+        local_path = self.open_file.local_path
+        # Clearing first forces a reload: GtkPicture ignores set_filename()
+        # when the file it already holds compares equal.
+        self._picture.set_filename(None)
+        self._picture.set_filename(local_path)
+
+        new_bar = self._build_info_bar(local_path)
+        self.insert_child_after(new_bar, self._info_bar)
+        self.remove(self._info_bar)
+        self._info_bar = new_bar
 
     def _build_info_bar(self, local_path: str) -> Gtk.Box:
         bar = Gtk.Box(

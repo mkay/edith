@@ -42,6 +42,9 @@ class EdithWindow(Adw.ApplicationWindow):
         self._poll_in_flight = False
         self._reload_dialog_paths = set()  # paths with an open reload dialog
 
+        from edith.services.external_edit import ExternalEditManager
+        self._external_edits = ExternalEditManager()
+
         self._build_ui()
         self._setup_actions()
 
@@ -206,15 +209,8 @@ class EdithWindow(Adw.ApplicationWindow):
         server_section = Gio.Menu()
         server_section.append("Import from FileZilla\u2026", "win.import-filezilla")
         menu.append_section(None, server_section)
-        prefs_submenu = Gio.Menu()
-        prefs_submenu.append("Syntax Theme\u2026", "app.syntax-theme")
-        prefs_submenu.append("Syntax Associations\u2026", "app.syntax-associations")
-        prefs_submenu.append("Editor Font\u2026", "app.editor-font")
-        prefs_submenu.append("Editor Settings\u2026", "app.editor-settings")
-        prefs_submenu.append("Window Size\u2026", "app.window-size")
-        prefs_submenu.append("Tools Folder\u2026", "app.tools-folder")
         prefs_section = Gio.Menu()
-        prefs_section.append_submenu("Preferences", prefs_submenu)
+        prefs_section.append("Preferences\u2026", "app.preferences")
         prefs_section.append("Keyboard Shortcuts", "app.shortcuts")
         prefs_section.append("About Edith", "app.about")
         menu.append_section(None, prefs_section)
@@ -1053,6 +1049,7 @@ class EdithWindow(Adw.ApplicationWindow):
         if self._poll_timer_id:
             GLib.source_remove(self._poll_timer_id)
             self._poll_timer_id = None
+        self._external_edits.stop_all()
         self._remote_mtimes.clear()
         self._saving_paths.clear()
         self._reload_dialog_paths.clear()
@@ -1209,6 +1206,42 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._transfer_queue.enqueue(name, do_upload, on_done, None)
 
+    def watch_external_edit(self, remote_path, local_path):
+        """Track a file opened in an external app and upload it when it's saved."""
+        self._external_edits.watch(remote_path, local_path, self._on_external_edit_saved)
+
+    def _on_external_edit_saved(self, remote_path, local_path):
+        """A locally-opened file was written by its external app — upload it."""
+        if not self._sftp_client or not self._transfer_queue:
+            return
+
+        name = os.path.basename(remote_path)
+        client = self._sftp_client
+        # Suppress the mtime poller so our own upload doesn't look like a
+        # remote change if the file is also open in an editor tab.
+        self._saving_paths.add(remote_path)
+
+        def do_upload(progress_cb, cancel_event, set_channel):
+            client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
+            return client.stat(remote_path).st_mtime
+
+        def on_success(mtime):
+            self._saving_paths.discard(remote_path)
+            if remote_path in self._remote_mtimes:
+                self._remote_mtimes[remote_path] = mtime
+            self.show_toast(f"Uploaded {name}", "success")
+            self._file_browser.refresh_path(os.path.dirname(remote_path))
+            # Keep an editor tab on the same file in sync with the external edit.
+            viewer = self._viewer_for_path(remote_path)
+            if viewer and not viewer.open_file.is_modified:
+                self._redownload_and_reload(remote_path)
+
+        def on_error(error):
+            self._saving_paths.discard(remote_path)
+            self.show_toast(f"Failed to upload {name}: {error}", "error")
+
+        self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
+
     def save_remote_file(self, remote_path, local_path):
         """Queue an upload of a saved local file back to the server."""
         if not self._sftp_client or not self._transfer_queue:
@@ -1279,10 +1312,10 @@ class EdithWindow(Adw.ApplicationWindow):
             self._poll_in_flight = False
             for rpath, new_mtime in changed:
                 self._remote_mtimes[rpath] = new_mtime
-                editor = self._editor_for_path(rpath)
-                if not editor:
+                viewer = self._viewer_for_path(rpath)
+                if not viewer:
                     continue
-                if editor.open_file.is_modified:
+                if viewer.open_file.is_modified:
                     self._confirm_remote_reload(rpath)
                 else:
                     self._redownload_and_reload(rpath)
@@ -1303,14 +1336,23 @@ class EdithWindow(Adw.ApplicationWindow):
                 return widget
         return None
 
+    def _viewer_for_path(self, remote_path):
+        """Return the tab widget for a path — editor or image viewer."""
+        page = self._editor_panel._tabs.get(remote_path)
+        if page:
+            widget = page.get_child()
+            if hasattr(widget, "reload_from_disk"):
+                return widget
+        return None
+
     def _redownload_and_reload(self, remote_path):
-        """Re-download a remote file and reload its editor content."""
-        editor = self._editor_for_path(remote_path)
-        if not editor or not self._sftp_client:
+        """Re-download a remote file and reload its tab content."""
+        viewer = self._viewer_for_path(remote_path)
+        if not viewer or not self._sftp_client:
             return
 
         client = self._sftp_client
-        local_path = editor.open_file.local_path
+        local_path = viewer.open_file.local_path
 
         from edith.services.async_worker import run_async
 
@@ -1318,9 +1360,9 @@ class EdithWindow(Adw.ApplicationWindow):
             client.download(remote_path, local_path)
 
         def on_done(_):
-            e = self._editor_for_path(remote_path)
-            if e:
-                e.reload_from_disk()
+            v = self._viewer_for_path(remote_path)
+            if v:
+                v.reload_from_disk()
 
         run_async(do_download, on_done, lambda _: None)
 
@@ -1482,6 +1524,11 @@ class EdithWindow(Adw.ApplicationWindow):
     def apply_editor_font(self, font_family: str, font_size: int):
         """Apply a font to all open editor tabs."""
         self._editor_panel.apply_font(font_family, font_size)
+
+    def apply_navigation_settings(self):
+        """Re-read the single/double click behaviour from config."""
+        self._file_browser.apply_navigation_settings()
+        self._server_panel.apply_navigation_settings()
 
     def apply_editor_settings(self):
         """Re-read global editor settings from config and push to all open tabs."""
