@@ -7,6 +7,7 @@ gi.require_version("GdkPixbuf", "2.0")
 from gi.repository import Gtk, GdkPixbuf
 
 from edith.models.open_file import OpenFile
+from edith.i18n import _
 
 
 IMAGE_EXTENSIONS = frozenset([

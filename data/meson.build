@@ -1,7 +1,16 @@
-desktop_file = configure_file(
-  input: 'de.singular.edith.desktop.in',
-  output: 'de.singular.edith.desktop',
+# Two stages: configure_file resolves @BIN@, then merge_file folds in the
+# translations for Name / Comment / Keywords from po/.
+desktop_in = configure_file(
+  input: 'de.singular.edith.desktop.in.in',
+  output: 'de.singular.edith.desktop.in',
   configuration: conf,
+)
+
+desktop_file = i18n.merge_file(
+  input: desktop_in,
+  output: 'de.singular.edith.desktop',
+  type: 'desktop',
+  po_dir: meson.project_source_root() / 'po',
   install: true,
   install_dir: datadir / 'applications',
 )

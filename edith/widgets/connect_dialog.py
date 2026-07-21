@@ -6,6 +6,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk, GObject
 
 from edith.models.server import ServerInfo
+from edith.i18n import _
 
 
 class ConnectDialog(Adw.Dialog):
@@ -17,7 +18,7 @@ class ConnectDialog(Adw.Dialog):
 
     def __init__(self, server_info: ServerInfo):
         super().__init__(
-            title=f"Connect to {server_info.display_name}",
+            title=_("Connect to {server}").format(server=server_info.display_name),
             content_width=360,
             content_height=240,
         )
@@ -30,12 +31,12 @@ class ConnectDialog(Adw.Dialog):
 
         header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self.close())
         header.pack_start(cancel_btn)
 
         connect_btn = Gtk.Button(
-            label="Connect",
+            label=_("Connect"),
             css_classes=["suggested-action"],
         )
         connect_btn.connect("clicked", self._on_connect)
@@ -55,22 +56,23 @@ class ConnectDialog(Adw.Dialog):
         self._passphrase_row = None
 
         if needs_password:
-            self._password_row = Adw.PasswordEntryRow(title="Password")
+            self._password_row = Adw.PasswordEntryRow(title=_("Password"))
             self._password_row.connect("entry-activated", lambda _: self._on_connect(None))
             group.add(self._password_row)
 
         if needs_passphrase:
-            self._passphrase_row = Adw.PasswordEntryRow(title="Key Passphrase")
+            self._passphrase_row = Adw.PasswordEntryRow(title=_("Key Passphrase"))
             self._passphrase_row.connect("entry-activated", lambda _: self._on_connect(None))
             group.add(self._passphrase_row)
 
-        self._remember_check = Gtk.CheckButton(label="Remember credential", active=False)
+        self._remember_check = Gtk.CheckButton(label=_("Remember credential"), active=False)
         group.add(self._remember_check)
 
         box.append(group)
 
         info_label = Gtk.Label(
-            label=f"Connecting as {self._server.username}@{self._server.host}:{self._server.port}",
+            label=_("Connecting as {user}@{host}:{port}").format(
+                user=self._server.username, host=self._server.host, port=self._server.port),
             css_classes=["dim-label", "caption"],
             xalign=0,
         )

@@ -6,6 +6,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk, GObject, PangoCairo
 
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 PREVIEW_TEXT = 'The quick brown fox jumps over the lazy dog\n0123456789 (){}[] !@#$%^&* += <> :; "\' `~ ,./?\\|'
@@ -20,7 +21,7 @@ class FontChooserDialog(Adw.Dialog):
 
     def __init__(self):
         super().__init__(
-            title="Editor Font",
+            title=_("Editor Font"),
             content_width=480,
             content_height=520,
         )
@@ -32,7 +33,7 @@ class FontChooserDialog(Adw.Dialog):
         header = Adw.HeaderBar(
             show_start_title_buttons=False, show_end_title_buttons=False,
         )
-        close_btn = Gtk.Button(label="Close")
+        close_btn = Gtk.Button(label=_("Close"))
         close_btn.connect("clicked", lambda _: self.close())
         header.pack_end(close_btn)
         toolbar_view.add_top_bar(header)
@@ -42,9 +43,9 @@ class FontChooserDialog(Adw.Dialog):
 
         # --- Size spinner ---
         saved_size = ConfigService.get_preference("editor_font_size", 11)
-        size_group = Adw.PreferencesGroup(title="Size")
+        size_group = Adw.PreferencesGroup(title=_("Size"))
         self._size_adj = Gtk.Adjustment(value=saved_size, lower=6, upper=72, step_increment=1)
-        self._size_row = Adw.SpinRow(title="Font size (pt)", adjustment=self._size_adj)
+        self._size_row = Adw.SpinRow(title=_("Font size (pt)"), adjustment=self._size_adj)
         self._size_row.connect("notify::value", self._on_changed)
         size_group.add(self._size_row)
         content.append(size_group)
@@ -52,12 +53,12 @@ class FontChooserDialog(Adw.Dialog):
         # --- Font list ---
         saved_font = ConfigService.get_preference("editor_font", "")
 
-        font_group = Adw.PreferencesGroup(title="Font Family")
+        font_group = Adw.PreferencesGroup(title=_("Font Family"))
         content.append(font_group)
 
         # Search entry
         self._search_entry = Gtk.SearchEntry(
-            placeholder_text="Search fonts\u2026",
+            placeholder_text=_("Search fonts\u2026"),
             hexpand=True,
         )
         self._search_entry.connect("search-changed", self._on_search_changed)
@@ -78,7 +79,7 @@ class FontChooserDialog(Adw.Dialog):
         content.append(sw)
 
         # --- Preview ---
-        preview_group = Adw.PreferencesGroup(title="Preview")
+        preview_group = Adw.PreferencesGroup(title=_("Preview"))
         self._preview_label = Gtk.Label(
             label=PREVIEW_TEXT,
             xalign=0,

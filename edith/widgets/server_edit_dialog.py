@@ -7,6 +7,7 @@ from gi.repository import Adw, Gtk, GObject
 
 from edith.models.server import ServerInfo
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 class ServerEditDialog(Adw.Dialog):
@@ -18,7 +19,7 @@ class ServerEditDialog(Adw.Dialog):
 
     def __init__(self, server_info: ServerInfo | None = None, folder_id: str = ""):
         super().__init__(
-            title="Add Server" if server_info is None else "Edit Server",
+            title=_("Add Server") if server_info is None else "Edit Server",
             content_width=420,
             content_height=500,
         )
@@ -34,12 +35,12 @@ class ServerEditDialog(Adw.Dialog):
 
         header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", self._on_cancel)
         header.pack_start(cancel_btn)
 
         save_btn = Gtk.Button(
-            label="Save" if self._is_edit else "Add",
+            label=_("Save") if self._is_edit else "Add",
             css_classes=["suggested-action"],
         )
         save_btn.connect("clicked", self._on_save)
@@ -59,25 +60,20 @@ class ServerEditDialog(Adw.Dialog):
         # Main group — connection, auth, everything
         main_group = Adw.PreferencesGroup()
 
-        self._name_entry = Adw.EntryRow(title="Name (optional)")
+        self._name_entry = Adw.EntryRow(title=_("Name (optional)"))
         self._name_entry.set_text(self._server.name)
         main_group.add(self._name_entry)
 
-        self._protocol_combo = Adw.ComboRow(title="Protocol")
-        protocol_model = Gtk.StringList.new(["SFTP", "FTP"])
+        self._protocol_combo = Adw.ComboRow(title=_("Protocol"))
+        protocol_model = Gtk.StringList.new([_("SFTP"), _("FTP")])
         self._protocol_combo.set_model(protocol_model)
         protocol_map = {"sftp": 0, "ftp": 1}
         self._protocol_combo.set_selected(protocol_map.get(self._server.protocol, 0))
         self._protocol_combo.connect("notify::selected", self._on_protocol_changed)
         main_group.add(self._protocol_combo)
 
-        self._encryption_combo = Adw.ComboRow(title="Encryption")
-        encryption_model = Gtk.StringList.new([
-            "None (insecure)",
-            "Explicit TLS (if available)",
-            "Explicit TLS (required)",
-            "Implicit TLS",
-        ])
+        self._encryption_combo = Adw.ComboRow(title=_("Encryption"))
+        encryption_model = Gtk.StringList.new([_("None (insecure)"), _("Explicit TLS (if available)"), _("Explicit TLS (required)"), _("Implicit TLS")])
         self._encryption_combo.set_model(encryption_model)
         encryption_map = {"none": 0, "explicit_optional": 1, "explicit_required": 2, "implicit": 3}
         ftp_enc = getattr(self._server, "ftp_encryption", "none")
@@ -89,7 +85,7 @@ class ServerEditDialog(Adw.Dialog):
         self._encryption_combo.connect("notify::selected", self._on_encryption_changed)
         main_group.add(self._encryption_combo)
 
-        self._host_entry = Adw.EntryRow(title="Host")
+        self._host_entry = Adw.EntryRow(title=_("Host"))
         self._host_entry.set_text(self._server.host)
         main_group.add(self._host_entry)
 
@@ -99,17 +95,17 @@ class ServerEditDialog(Adw.Dialog):
             value=port_value, lower=1, upper=65535, step_increment=1
         )
         self._port_row = Adw.SpinRow(
-            title="Port",
+            title=_("Port"),
             adjustment=self._port_adj,
         )
         main_group.add(self._port_row)
 
-        self._user_entry = Adw.EntryRow(title="Username")
+        self._user_entry = Adw.EntryRow(title=_("Username"))
         self._user_entry.set_text(self._server.username)
         main_group.add(self._user_entry)
 
-        self._auth_combo = Adw.ComboRow(title="Authentication")
-        auth_model = Gtk.StringList.new(["Password", "SSH Key", "SSH Key + Passphrase"])
+        self._auth_combo = Adw.ComboRow(title=_("Authentication"))
+        auth_model = Gtk.StringList.new([_("Password"), _("SSH Key"), _("SSH Key + Passphrase")])
         self._auth_combo.set_model(auth_model)
         method_map = {"password": 0, "key": 1, "key+passphrase": 2}  # nosec B105
         self._auth_combo.set_selected(method_map.get(self._server.auth_method, 0))
@@ -117,7 +113,7 @@ class ServerEditDialog(Adw.Dialog):
         self._auth_combo.set_visible(not is_ftp)
         main_group.add(self._auth_combo)
 
-        self._key_entry = Adw.EntryRow(title="Key File Path")
+        self._key_entry = Adw.EntryRow(title=_("Key File Path"))
         self._key_entry.set_text(self._server.key_file or "")
         self._key_entry.set_visible(
             not is_ftp and self._server.auth_method != "password"
@@ -135,7 +131,7 @@ class ServerEditDialog(Adw.Dialog):
         main_group.add(self._pw_entry)
 
         self._ftp_note = Gtk.Label(
-            label="FTP uses passive mode (PASV).",
+            label=_("FTP uses passive mode (PASV)."),
             xalign=0,
             css_classes=["dim-label", "caption"],
             margin_start=12,
@@ -147,14 +143,14 @@ class ServerEditDialog(Adw.Dialog):
         box.append(main_group)
 
         # Options group
-        opts_group = Adw.PreferencesGroup(title="Options")
-        self._dir_entry = Adw.EntryRow(title="Initial Directory")
+        opts_group = Adw.PreferencesGroup(title=_("Options"))
+        self._dir_entry = Adw.EntryRow(title=_("Initial Directory"))
         self._dir_entry.set_text(self._server.initial_directory)
         opts_group.add(self._dir_entry)
 
         self._folders = ConfigService.load_folders()
         folder_names = ["None"] + [f.name for f in self._folders]
-        self._folder_combo = Adw.ComboRow(title="Group")
+        self._folder_combo = Adw.ComboRow(title=_("Group"))
         self._folder_combo.set_model(Gtk.StringList.new(folder_names))
 
         selected_idx = 0
@@ -180,7 +176,7 @@ class ServerEditDialog(Adw.Dialog):
         test_group.add(self._test_status)
 
         self._test_btn = Gtk.Button(
-            label="Test Connection",
+            label=_("Test Connection"),
             css_classes=["flat"],
             halign=Gtk.Align.CENTER,
         )
@@ -272,7 +268,7 @@ class ServerEditDialog(Adw.Dialog):
             return
 
         self._test_btn.set_sensitive(False)
-        self._test_btn.set_label("Connecting\u2026")
+        self._test_btn.set_label(_("Connecting\u2026"))
         self._test_status.set_visible(False)
 
         from edith.services.async_worker import run_async
@@ -313,7 +309,7 @@ class ServerEditDialog(Adw.Dialog):
         def on_success(client):
             self._show_test_status("Connection successful.", error=False)
             self._test_btn.set_sensitive(True)
-            self._test_btn.set_label("Test Connection")
+            self._test_btn.set_label(_("Test Connection"))
             # Store password on successful test so it survives into save
             if password:
                 from edith.services import credential_store
@@ -328,7 +324,7 @@ class ServerEditDialog(Adw.Dialog):
         def on_error(err):
             self._show_test_status(str(err), error=True)
             self._test_btn.set_sensitive(True)
-            self._test_btn.set_label("Test Connection")
+            self._test_btn.set_label(_("Test Connection"))
             self._test_client = None
 
         run_async(do_test, on_success, on_error)
@@ -362,10 +358,10 @@ class ServerEditDialog(Adw.Dialog):
 
         if not host or not username:
             dialog = Adw.AlertDialog(
-                heading="Missing Fields",
-                body="Host and Username are required.",
+                heading=_("Missing Fields"),
+                body=_("Host and Username are required."),
             )
-            dialog.add_response("ok", "OK")
+            dialog.add_response("ok", _("OK"))
             dialog.present(self)
             return
 

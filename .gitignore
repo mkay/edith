@@ -11,3 +11,4 @@ edith/data/monaco/emmet.js
 deb-staging/
 builddir/
 PKGBUILD.local
+edith/__init__.py

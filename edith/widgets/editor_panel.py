@@ -9,6 +9,7 @@ from gi.repository import Adw, Gdk, Gio, Gtk, GObject
 from edith.models.open_file import OpenFile
 from edith.widgets.image_viewer import ImageViewer, is_image_file
 from edith.widgets.monaco_editor import MonacoEditor
+from edith.i18n import _
 
 
 class EditorPanel(Gtk.Box):
@@ -44,14 +45,14 @@ class EditorPanel(Gtk.Box):
         menu = Gio.Menu()
 
         section1 = Gio.Menu()
-        section1.append("Show in Sidebar", "tab.show-in-sidebar")
-        section1.append("Pin", "tab.pin")
-        section1.append("Copy Path", "tab.copy-path")
+        section1.append(_("Show in Sidebar"), "tab.show-in-sidebar")
+        section1.append(_("Pin"), "tab.pin")
+        section1.append(_("Copy Path"), "tab.copy-path")
         menu.append_section(None, section1)
 
         section2 = Gio.Menu()
-        section2.append("Close Others", "tab.close-others")
-        section2.append("Close to Right", "tab.close-to-right")
+        section2.append(_("Close Others"), "tab.close-others")
+        section2.append(_("Close to Right"), "tab.close-to-right")
         menu.append_section(None, section2)
 
         self._tab_view.set_menu_model(menu)
@@ -260,12 +261,12 @@ class EditorPanel(Gtk.Box):
         win = self.get_root()
 
         dialog = Adw.AlertDialog(
-            heading="Save Changes?",
-            body=f"\u201c{editor.open_file.filename}\u201d has unsaved changes.",
+            heading=_("Save Changes?"),
+            body=_("\u201c{name}\u201d has unsaved changes.").format(name=editor.open_file.filename),
         )
-        dialog.add_response("discard", "Discard")
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("save", "Save")
+        dialog.add_response("discard", _("Discard"))
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("save", _("Save"))
         dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_response_appearance("save", Adw.ResponseAppearance.SUGGESTED)
 
@@ -300,7 +301,7 @@ class EditorPanel(Gtk.Box):
         if page:
             filename = os.path.basename(remote_path)
             if modified:
-                page.set_title(f"• {filename}")
+                page.set_title("• {}".format(filename))
             else:
                 page.set_title(filename)
 

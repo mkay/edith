@@ -11,6 +11,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, Gtk, GObject
 
 from edith.models.remote_file import RemoteFileInfo
+from edith.i18n import _
 
 
 class NameDialog(Adw.Dialog):
@@ -32,11 +33,11 @@ class NameDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False
         )
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self.close())
         header.pack_start(cancel_btn)
 
-        apply_btn = Gtk.Button(label="Apply", css_classes=["suggested-action"])
+        apply_btn = Gtk.Button(label=_("Apply"), css_classes=["suggested-action"])
         apply_btn.connect("clicked", self._on_apply)
         header.pack_end(apply_btn)
         self._apply_btn = apply_btn
@@ -87,7 +88,7 @@ class ArchiveDialog(Adw.Dialog):
     }
 
     def __init__(self, item_name: str):
-        super().__init__(title="Create Archive", content_width=360, content_height=240)
+        super().__init__(title=_("Create Archive"), content_width=360, content_height=240)
         self._item_stem = item_name.rsplit(".", 1)[0] if "." in item_name and not item_name.startswith(".") else item_name
         self._build_ui()
 
@@ -98,11 +99,11 @@ class ArchiveDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False
         )
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self.close())
         header.pack_start(cancel_btn)
 
-        apply_btn = Gtk.Button(label="Create", css_classes=["suggested-action"])
+        apply_btn = Gtk.Button(label=_("Create"), css_classes=["suggested-action"])
         apply_btn.connect("clicked", self._on_apply)
         header.pack_end(apply_btn)
 
@@ -118,7 +119,7 @@ class ArchiveDialog(Adw.Dialog):
 
         group = Adw.PreferencesGroup()
 
-        self._entry = Adw.EntryRow(title="Archive name")
+        self._entry = Adw.EntryRow(title=_("Archive name"))
         self._entry.set_text(self._item_stem)
         self._entry.connect("entry-activated", lambda _: self._on_apply(None))
         group.add(self._entry)
@@ -126,7 +127,7 @@ class ArchiveDialog(Adw.Dialog):
         string_list = Gtk.StringList()
         for _, label in _ARCHIVE_FORMATS:
             string_list.append(label)
-        self._format_row = Adw.ComboRow(title="Format", model=string_list)
+        self._format_row = Adw.ComboRow(title=_("Format"), model=string_list)
         self._format_row.set_selected(0)
         group.add(self._format_row)
 
@@ -160,7 +161,7 @@ class ChmodDialog(Adw.Dialog):
 
     def __init__(self, current_mode: int):
         super().__init__(
-            title="Change Permissions", content_width=360, content_height=340
+            title=_("Change Permissions"), content_width=360, content_height=340
         )
 
         self._mode = current_mode & 0o777
@@ -174,11 +175,11 @@ class ChmodDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False
         )
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self.close())
         header.pack_start(cancel_btn)
 
-        apply_btn = Gtk.Button(label="Apply", css_classes=["suggested-action"])
+        apply_btn = Gtk.Button(label=_("Apply"), css_classes=["suggested-action"])
         apply_btn.connect("clicked", self._on_apply)
         header.pack_end(apply_btn)
 
@@ -254,7 +255,7 @@ class FileInfoDialog(Adw.Dialog):
 
     def __init__(self, file_info: RemoteFileInfo):
         super().__init__(
-            title="Properties", content_width=380, content_height=360
+            title=_("Properties"), content_width=380, content_height=360
         )
 
         self._build_ui(file_info)
@@ -266,7 +267,7 @@ class FileInfoDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False
         )
 
-        close_btn = Gtk.Button(label="Close")
+        close_btn = Gtk.Button(label=_("Close"))
         close_btn.connect("clicked", lambda _: self.close())
         header.pack_end(close_btn)
 
@@ -332,7 +333,7 @@ class InformationDialog(Adw.Dialog):
 
     def __init__(self, file_info: RemoteFileInfo):
         super().__init__(
-            title="Information", content_width=380, content_height=-1,
+            title=_("Information"), content_width=380, content_height=-1,
         )
         self._file_info = file_info
         self._mode = file_info.permissions & 0o777
@@ -347,12 +348,12 @@ class InformationDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False
         )
 
-        close_btn = Gtk.Button(label="Close")
+        close_btn = Gtk.Button(label=_("Close"))
         close_btn.connect("clicked", lambda _: self.close())
         header.pack_start(close_btn)
 
         self._apply_btn = Gtk.Button(
-            label="Apply", css_classes=["suggested-action"], sensitive=False
+            label=_("Apply"), css_classes=["suggested-action"], sensitive=False
         )
         self._apply_btn.connect("clicked", self._on_apply)
         header.pack_end(self._apply_btn)
@@ -370,7 +371,7 @@ class InformationDialog(Adw.Dialog):
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16)
 
         # Properties section
-        props_group = Adw.PreferencesGroup(title="Properties")
+        props_group = Adw.PreferencesGroup(title=_("Properties"))
         props_group.add(self._info_row("Name", fi.name))
         props_group.add(self._info_row("Path", fi.path))
         props_group.add(self._info_row("Type", "Directory" if fi.is_dir else "File"))
@@ -381,7 +382,7 @@ class InformationDialog(Adw.Dialog):
         box.append(props_group)
 
         # Permissions section
-        perm_group = Adw.PreferencesGroup(title="Permissions")
+        perm_group = Adw.PreferencesGroup(title=_("Permissions"))
 
         grid = Gtk.Grid(
             row_spacing=8, column_spacing=12,
@@ -472,11 +473,11 @@ class DirectoryChooserDialog(Adw.Dialog):
             show_start_title_buttons=False, show_end_title_buttons=False,
         )
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: self.close())
         header.pack_start(cancel_btn)
 
-        self._select_btn = Gtk.Button(label="Select", css_classes=["suggested-action"])
+        self._select_btn = Gtk.Button(label=_("Select"), css_classes=["suggested-action"])
         self._select_btn.connect("clicked", self._on_select)
         header.pack_end(self._select_btn)
 
@@ -499,7 +500,7 @@ class DirectoryChooserDialog(Adw.Dialog):
 
         up_btn = Gtk.Button(
             icon_name="edith-parent-dir-symbolic",
-            tooltip_text="Parent Directory",
+            tooltip_text=_("Parent Directory"),
             css_classes=["flat", "circular"],
         )
         up_btn.connect("clicked", self._on_go_up)
@@ -571,7 +572,7 @@ class DirectoryChooserDialog(Adw.Dialog):
 
         if not dir_names:
             empty = Gtk.Label(
-                label="No subdirectories",
+                label=_("No subdirectories"),
                 css_classes=["dim-label"],
                 margin_top=24,
             )

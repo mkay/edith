@@ -6,6 +6,7 @@ from gi.repository import GObject, Gtk
 
 from edith.monaco_languages import MONACO_LANGUAGES
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 class StatusBar(Gtk.Box):
@@ -36,7 +37,7 @@ class StatusBar(Gtk.Box):
         self.append(self._status_icon)
 
         self._status_label = Gtk.Label(
-            label="Disconnected",
+            label=_("Disconnected"),
             xalign=0,
             ellipsize=3,
             css_classes=["dim-label", "caption"],
@@ -71,21 +72,21 @@ class StatusBar(Gtk.Box):
 
         # ── File-info buttons (hidden when no file is open) ──────────── #
         self._cursor_btn = Gtk.Button(
-            label="Ln 1, Col 1",
+            label=_("Ln 1, Col 1"),
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
-            tooltip_text="Go to line",
+            tooltip_text=_("Go to line"),
         )
         self._cursor_btn.connect("clicked", lambda _: self.emit("cursor-clicked"))
         self.append(self._cursor_btn)
 
         self._wrap_btn = Gtk.Button(
-            label="Wrap",
+            label=_("Wrap"),
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
-            tooltip_text="Toggle word wrap (Ctrl+Shift+W)",
+            tooltip_text=_("Toggle word wrap (Ctrl+Shift+W)"),
         )
         self._wrap_btn.connect("clicked", lambda _: self.emit("wrap-toggled"))
         self.append(self._wrap_btn)
@@ -96,7 +97,7 @@ class StatusBar(Gtk.Box):
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
-            tooltip_text="Change syntax highlighting",
+            tooltip_text=_("Change syntax highlighting"),
         )
         self.append(self._syntax_btn)
 
@@ -105,7 +106,7 @@ class StatusBar(Gtk.Box):
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
-            tooltip_text="Change indentation",
+            tooltip_text=_("Change indentation"),
         )
         self.append(self._indent_btn)
 
@@ -114,7 +115,7 @@ class StatusBar(Gtk.Box):
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
-            tooltip_text="Change line ending",
+            tooltip_text=_("Change line ending"),
         )
         self.append(self._eol_btn)
 
@@ -122,7 +123,7 @@ class StatusBar(Gtk.Box):
 
     def _build_language_popover(self):
         self._lang_search_entry = Gtk.SearchEntry(
-            placeholder_text="Filter…",
+            placeholder_text=_("Filter…"),
             margin_start=8, margin_end=8, margin_top=8, margin_bottom=4,
         )
 
@@ -194,8 +195,8 @@ class StatusBar(Gtk.Box):
 
         # Spaces / Tabs radio
         type_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
-        self._spaces_radio = Gtk.CheckButton(label="Spaces")
-        self._tabs_radio = Gtk.CheckButton(label="Tabs", group=self._spaces_radio)
+        self._spaces_radio = Gtk.CheckButton(label=_("Spaces"))
+        self._tabs_radio = Gtk.CheckButton(label=_("Tabs"), group=self._spaces_radio)
         type_box.append(self._spaces_radio)
         type_box.append(self._tabs_radio)
         box.append(type_box)
@@ -203,7 +204,7 @@ class StatusBar(Gtk.Box):
         box.append(Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL))
 
         # Size buttons
-        size_label = Gtk.Label(label="Size:", xalign=0, css_classes=["dim-label"])
+        size_label = Gtk.Label(label=_("Size:"), xalign=0, css_classes=["dim-label"])
         box.append(size_label)
 
         size_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
@@ -264,7 +265,8 @@ class StatusBar(Gtk.Box):
         self.emit("indent-changed", insert_spaces, tab_size)
 
     def _update_indent_label(self, insert_spaces, tab_size):
-        label = f"Spaces: {tab_size}" if insert_spaces else f"Tab: {tab_size}"
+        label = (_("Spaces: {n}").format(n=tab_size) if insert_spaces
+                 else _("Tab: {n}").format(n=tab_size))
         self._indent_btn.set_label(label)
 
     # ── EOL popover ──────────────────────────────────────────────────── #
@@ -363,7 +365,7 @@ class StatusBar(Gtk.Box):
             self._transfer_label.set_visible(False)
 
     def set_cursor_position(self, line: int, col: int):
-        self._cursor_btn.set_label(f"Ln {line}, Col {col}")
+        self._cursor_btn.set_label(_("Ln {line}, Col {col}").format(line=line, col=col))
         self._cursor_btn.set_visible(True)
 
     def set_word_wrap(self, enabled: bool):

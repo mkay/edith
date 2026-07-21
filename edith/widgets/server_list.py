@@ -9,6 +9,7 @@ from edith.models.server import FolderInfo
 from edith.services.config import ConfigService
 from edith.widgets.folder_row import FolderRow
 from edith.widgets.file_dialogs import NameDialog
+from edith.i18n import _
 
 
 class ServerList(Gtk.Box):
@@ -55,9 +56,9 @@ class ServerList(Gtk.Box):
     def _setup_context_menus(self):
         # --- Folder context menu ---
         folder_menu = Gio.Menu()
-        folder_menu.append("Add Server Here\u2026", "folder.add-server")
-        folder_menu.append("Rename Group\u2026", "folder.rename")
-        folder_menu.append("Delete Group", "folder.delete-folder")
+        folder_menu.append(_("Add Server Here\u2026"), "folder.add-server")
+        folder_menu.append(_("Rename Group\u2026"), "folder.rename")
+        folder_menu.append(_("Delete Group"), "folder.delete-folder")
 
         self._folder_menu = Gtk.PopoverMenu(menu_model=folder_menu, has_arrow=False)
         self._folder_menu.set_parent(self._list_box)
@@ -80,7 +81,7 @@ class ServerList(Gtk.Box):
 
         # --- Empty area context menu ---
         empty_menu = Gio.Menu()
-        empty_menu.append("New Server Group\u2026", "area.new-folder")
+        empty_menu.append(_("New Server Group\u2026"), "area.new-folder")
 
         self._empty_menu = Gtk.PopoverMenu(menu_model=empty_menu, has_arrow=False)
         self._empty_menu.set_parent(self._list_box)
@@ -160,11 +161,11 @@ class ServerList(Gtk.Box):
         folder = child.folder_info
         win = self.get_root()
         dlg = Adw.AlertDialog(
-            heading="Delete Group?",
-            body=f"Delete \u201c{folder.name}\u201d? Servers inside will become ungrouped.",
+            heading=_("Delete Group?"),
+            body=_("Delete \u201c{name}\u201d? Servers inside will become ungrouped.").format(name=folder.name),
         )
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("delete", "Delete")
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("delete", _("Delete"))
         dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.connect("response", self._on_folder_delete_response, folder)
         dlg.present(win)

@@ -8,6 +8,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from edith.services.config import ConfigService
+from edith.i18n import _, ngettext
 
 
 class PreferencesDialog(Adw.PreferencesDialog):
@@ -19,7 +20,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
     }
 
     def __init__(self, window=None):
-        super().__init__(title="Preferences", search_enabled=True)
+        super().__init__(title=_("Preferences"), search_enabled=True)
         self._window = window
         self._building = True
         self._build_editor_page()
@@ -31,14 +32,14 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
     def _build_editor_page(self):
         page = Adw.PreferencesPage(
-            title="Editor",
+            title=_("Editor"),
             icon_name="document-edit-symbolic",
         )
 
-        appearance = Adw.PreferencesGroup(title="Appearance")
+        appearance = Adw.PreferencesGroup(title=_("Appearance"))
 
         self._theme_row = Adw.ActionRow(
-            title="Syntax Theme",
+            title=_("Syntax Theme"),
             subtitle=self._theme_summary(),
             activatable=True,
         )
@@ -47,7 +48,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         appearance.add(self._theme_row)
 
         self._font_row = Adw.ActionRow(
-            title="Editor Font",
+            title=_("Editor Font"),
             subtitle=self._font_summary(),
             activatable=True,
         )
@@ -55,27 +56,27 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self._font_row.connect("activated", self._on_font_activated)
         appearance.add(self._font_row)
 
-        self._line_numbers_row = Adw.ComboRow(title="Line Numbers")
-        self._line_numbers_row.set_model(Gtk.StringList.new(["On", "Off", "Relative"]))
+        self._line_numbers_row = Adw.ComboRow(title=_("Line Numbers"))
+        self._line_numbers_row.set_model(Gtk.StringList.new([_("On"), _("Off"), _("Relative")]))
         saved_ln = ConfigService.get_preference("editor_line_numbers", "on")
         self._line_numbers_row.set_selected({"on": 0, "off": 1, "relative": 2}.get(saved_ln, 0))
         self._line_numbers_row.connect("notify::selected", self._on_editor_setting_changed)
         appearance.add(self._line_numbers_row)
 
         self._minimap_row = Adw.SwitchRow(
-            title="Minimap",
-            subtitle="Show code overview on the right edge",
+            title=_("Minimap"),
+            subtitle=_("Show code overview on the right edge"),
         )
         self._minimap_row.set_active(ConfigService.get_preference("editor_minimap", False))
         self._minimap_row.connect("notify::active", self._on_editor_setting_changed)
         appearance.add(self._minimap_row)
 
         self._render_ws_row = Adw.ComboRow(
-            title="Render Whitespace",
-            subtitle="When to draw spaces and tabs",
+            title=_("Render Whitespace"),
+            subtitle=_("When to draw spaces and tabs"),
         )
         self._render_ws_row.set_model(
-            Gtk.StringList.new(["None", "Boundary", "Selection", "All"])
+            Gtk.StringList.new([_("None"), _("Boundary"), _("Selection"), _("All")])
         )
         saved_ws = ConfigService.get_preference("editor_render_whitespace", "selection")
         self._render_ws_row.set_selected(
@@ -86,11 +87,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
         page.add(appearance)
 
-        editing = Adw.PreferencesGroup(title="Editing")
+        editing = Adw.PreferencesGroup(title=_("Editing"))
 
         self._sticky_row = Adw.SwitchRow(
-            title="Sticky Scroll",
-            subtitle="Pin current scope (function / class) at top",
+            title=_("Sticky Scroll"),
+            subtitle=_("Pin current scope (function / class) at top"),
         )
         self._sticky_row.set_active(
             ConfigService.get_preference("editor_sticky_scroll", False)
@@ -99,8 +100,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         editing.add(self._sticky_row)
 
         self._ligatures_row = Adw.SwitchRow(
-            title="Font Ligatures",
-            subtitle="Requires a ligature font (Fira Code, JetBrains Mono…)",
+            title=_("Font Ligatures"),
+            subtitle=_("Requires a ligature font (Fira Code, JetBrains Mono…)"),
         )
         self._ligatures_row.set_active(
             ConfigService.get_preference("editor_font_ligatures", False)
@@ -110,11 +111,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
         page.add(editing)
 
-        save_group = Adw.PreferencesGroup(title="Save")
+        save_group = Adw.PreferencesGroup(title=_("Save"))
 
         self._format_row = Adw.SwitchRow(
-            title="Format on Save",
-            subtitle="Auto-format HTML, CSS, JSON and JS/TS before saving",
+            title=_("Format on Save"),
+            subtitle=_("Auto-format HTML, CSS, JSON and JS/TS before saving"),
         )
         self._format_row.set_active(
             ConfigService.get_preference("editor_format_on_save", False)
@@ -125,16 +126,16 @@ class PreferencesDialog(Adw.PreferencesDialog):
         page.add(save_group)
 
         advanced = Adw.PreferencesGroup(
-            title="Advanced",
-            description=(
+            title=_("Advanced"),
+            description=_(
                 "Raw Monaco editor options as JSON. These are merged on top of "
                 "all other settings. See the Monaco Editor API docs for available options."
             ),
         )
 
         assoc_row = Adw.ActionRow(
-            title="Syntax Associations",
-            subtitle="Map file extensions to a language",
+            title=_("Syntax Associations"),
+            subtitle=_("Map file extensions to a language"),
             activatable=True,
         )
         assoc_row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
@@ -142,8 +143,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         advanced.add(assoc_row)
 
         overrides_row = Adw.ActionRow(
-            title="Editor Overrides",
-            subtitle="Edit raw Monaco options (JSON)",
+            title=_("Editor Overrides"),
+            subtitle=_("Edit raw Monaco options (JSON)"),
             activatable=True,
         )
         overrides_row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
@@ -157,7 +158,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
     def _build_files_page(self):
         page = Adw.PreferencesPage(
-            title="Files",
+            title=_("Files"),
             icon_name="folder-symbolic",
         )
 
@@ -165,8 +166,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         self._assoc_selected_app = None
 
         add_group = Adw.PreferencesGroup(
-            title="Open With",
-            description=(
+            title=_("Open With"),
+            description=_(
                 "Choose which local application opens a file type when you use "
                 "“Open with…” in the file browser. Without an entry here, the "
                 "system default is used."
@@ -174,7 +175,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
 
         add_btn = Gtk.Button(
-            label="Add",
+            label=_("Add"),
             css_classes=["suggested-action"],
             valign=Gtk.Align.CENTER,
         )
@@ -182,40 +183,39 @@ class PreferencesDialog(Adw.PreferencesDialog):
         add_group.set_header_suffix(add_btn)
 
         self._assoc_ext_row = Adw.EntryRow(
-            title="Extensions (comma-separated, e.g. txt, md, html)"
+            title=_("Extensions (comma-separated, e.g. txt, md, html)")
         )
         add_group.add(self._assoc_ext_row)
 
         self._assoc_app_btn = Gtk.MenuButton(
-            label="Select application…",
+            label=_("Select application…"),
             popover=self._build_app_popover(),
             css_classes=["flat"],
             valign=Gtk.Align.CENTER,
         )
-        app_row = Adw.ActionRow(title="Application")
+        app_row = Adw.ActionRow(title=_("Application"))
         app_row.add_suffix(self._assoc_app_btn)
         app_row.set_activatable_widget(self._assoc_app_btn)
         add_group.add(app_row)
 
         page.add(add_group)
 
-        self._assoc_group = Adw.PreferencesGroup(title="Current Associations")
+        self._assoc_group = Adw.PreferencesGroup(title=_("Current Associations"))
         page.add(self._assoc_group)
         self._rebuild_assoc_list()
 
         from edith.widgets.file_browser import DEFAULT_TOOLS_DIR
 
         tools = Adw.PreferencesGroup(
-            title="Upload Tools",
-            description=(
-                f"Scripts in this folder appear in the file browser's "
-                f"“Upload Tool” menu. Leave empty to use the default "
-                f"({DEFAULT_TOOLS_DIR})."
-            ),
+            title=_("Upload Tools"),
+            description=_(
+                "Scripts in this folder appear in the file browser's "
+                "“Upload Tool” menu. Leave empty to use the default ({path})."
+            ).format(path=DEFAULT_TOOLS_DIR),
         )
 
         self._tools_row = Adw.EntryRow(
-            title="Tools folder",
+            title=_("Tools folder"),
             text=ConfigService.get_preference("tools_folder", ""),
             show_apply_button=True,
         )
@@ -223,7 +223,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
             icon_name="folder-open-symbolic",
             valign=Gtk.Align.CENTER,
             css_classes=["flat"],
-            tooltip_text="Browse…",
+            tooltip_text=_("Browse…"),
         )
         browse_btn.connect("clicked", self._on_tools_browse)
         self._tools_row.add_suffix(browse_btn)
@@ -239,7 +239,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         from edith.services import file_associations as fa
 
         self._app_search_entry = Gtk.SearchEntry(
-            placeholder_text="Filter…",
+            placeholder_text=_("Filter…"),
             margin_start=8,
             margin_end=8,
             margin_top=8,
@@ -319,7 +319,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         fa.set_association(text, self._assoc_selected_app)
         self._assoc_ext_row.set_text("")
         self._assoc_selected_app = None
-        self._assoc_app_btn.set_label("Select application…")
+        self._assoc_app_btn.set_label(_("Select application…"))
         self._rebuild_assoc_list()
 
     def _rebuild_assoc_list(self):
@@ -332,8 +332,8 @@ class PreferencesDialog(Adw.PreferencesDialog):
         grouped = fa.get_associations_by_app()
         if not grouped:
             row = Adw.ActionRow(
-                title="No associations",
-                subtitle="Files open with the system default application",
+                title=_("No associations"),
+                subtitle=_("Files open with the system default application"),
                 sensitive=False,
             )
             self._assoc_group.add(row)
@@ -363,7 +363,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
                 icon_name="list-add-symbolic",
                 valign=Gtk.Align.CENTER,
                 css_classes=["flat"],
-                tooltip_text=f"Add an extension for {name}",
+                tooltip_text=_("Add an extension for {name}").format(name=name),
             )
             add_ext_btn.connect("clicked", self._on_assoc_expand_to_add, row)
             row.add_suffix(add_ext_btn)
@@ -372,26 +372,26 @@ class PreferencesDialog(Adw.PreferencesDialog):
                 icon_name="user-trash-symbolic",
                 valign=Gtk.Align.CENTER,
                 css_classes=["flat"],
-                tooltip_text=f"Remove all {len(exts)} associations",
+                tooltip_text=ngettext("Remove {n} association", "Remove all {n} associations", len(exts)).format(n=len(exts)),
             )
             remove_all_btn.connect("clicked", self._on_assoc_remove, list(exts))
             row.add_suffix(remove_all_btn)
 
             # Expand to add or drop individual extensions.
             for ext in exts:
-                child = Adw.ActionRow(title=f".{ext}")
+                child = Adw.ActionRow(title=".{}".format(ext))
                 ext_btn = Gtk.Button(
                     icon_name="user-trash-symbolic",
                     valign=Gtk.Align.CENTER,
                     css_classes=["flat"],
-                    tooltip_text=f"Remove .{ext}",
+                    tooltip_text=_("Remove .{ext}").format(ext=ext),
                 )
                 ext_btn.connect("clicked", self._on_assoc_remove, ext)
                 child.add_suffix(ext_btn)
                 row.add_row(child)
 
             add_row = Adw.EntryRow(
-                title="Add extensions…",
+                title=_("Add extensions…"),
                 show_apply_button=True,
             )
             add_row.connect("apply", self._on_assoc_add_to_app, desktop_id)
@@ -436,17 +436,17 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
     def _build_general_page(self):
         page = Adw.PreferencesPage(
-            title="General",
+            title=_("General"),
             icon_name="preferences-system-symbolic",
         )
 
-        navigation = Adw.PreferencesGroup(title="Navigation")
+        navigation = Adw.PreferencesGroup(title=_("Navigation"))
 
         self._click_row = Adw.ComboRow(
-            title="Open Items With",
-            subtitle="How files, folders and servers are opened",
+            title=_("Open Items With"),
+            subtitle=_("How files, folders and servers are opened"),
         )
-        self._click_row.set_model(Gtk.StringList.new(["Double Click", "Single Click"]))
+        self._click_row.set_model(Gtk.StringList.new([_("Double Click"), _("Single Click")]))
         self._click_row.set_selected(
             1 if ConfigService.get_preference("single_click_open", False) else 0
         )
@@ -456,12 +456,12 @@ class PreferencesDialog(Adw.PreferencesDialog):
         page.add(navigation)
 
         window_group = Adw.PreferencesGroup(
-            title="Window",
-            description="Size used for newly opened windows.",
+            title=_("Window"),
+            description=_("Size used for newly opened windows."),
         )
 
         self._width_row = Adw.SpinRow(
-            title="Width",
+            title=_("Width"),
             adjustment=Gtk.Adjustment(
                 value=ConfigService.get_preference("window_width", 1100),
                 lower=800, upper=3840, step_increment=10,
@@ -471,7 +471,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         window_group.add(self._width_row)
 
         self._height_row = Adw.SpinRow(
-            title="Height",
+            title=_("Height"),
             adjustment=Gtk.Adjustment(
                 value=ConfigService.get_preference("window_height", 700),
                 lower=600, upper=2160, step_increment=10,
@@ -571,7 +571,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         ConfigService.set_preference("tools_folder", row.get_text().strip())
 
     def _on_tools_browse(self, btn):
-        fd = Gtk.FileDialog(title="Choose Tools Folder")
+        fd = Gtk.FileDialog(title=_("Choose Tools Folder"))
 
         def _chosen(dialog, result):
             try:
@@ -614,7 +614,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
             text = json.dumps(current, indent=2)
 
         dialog = Adw.Dialog(
-            title="Editor Overrides",
+            title=_("Editor Overrides"),
             content_width=480,
             content_height=420,
         )
@@ -625,11 +625,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
             show_end_title_buttons=False,
         )
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: dialog.close())
         header.pack_start(cancel_btn)
 
-        apply_btn = Gtk.Button(label="Apply", css_classes=["suggested-action"])
+        apply_btn = Gtk.Button(label=_("Apply"), css_classes=["suggested-action"])
         header.pack_end(apply_btn)
         toolbar_view.add_top_bar(header)
 
@@ -675,11 +675,11 @@ class PreferencesDialog(Adw.PreferencesDialog):
             try:
                 parsed = json.loads(cleaned) if cleaned.strip() else {}
             except json.JSONDecodeError as e:
-                error_label.set_label(f"Invalid JSON: {e}")
+                error_label.set_label(_("Invalid JSON: {error}").format(error=e))
                 error_label.set_visible(True)
                 return
             if not isinstance(parsed, dict):
-                error_label.set_label("Top level must be a JSON object {}")
+                error_label.set_label(_("Top level must be a JSON object {}"))
                 error_label.set_visible(True)
                 return
             ConfigService.set_preference("editor_overrides", parsed)

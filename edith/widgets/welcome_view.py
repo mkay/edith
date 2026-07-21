@@ -6,6 +6,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk
 
 from edith import VERSION
+from edith.i18n import _
 
 
 class WelcomeView(Adw.Bin):
@@ -17,7 +18,7 @@ class WelcomeView(Adw.Bin):
 
         self._status = Adw.StatusPage(
             icon_name="de.singular.edith-symbolic",
-            title="Welcome to Edith",
+            title=_("Welcome to Edith"),
             vexpand=True,
             hexpand=True,
         )
@@ -29,7 +30,7 @@ class WelcomeView(Adw.Bin):
         )
 
         self._add_server_btn = Gtk.Button(
-            label="Add Your First Server",
+            label=_("Add Your First Server"),
             halign=Gtk.Align.CENTER,
             css_classes=["pill", "suggested-action"],
         )
@@ -41,7 +42,10 @@ class WelcomeView(Adw.Bin):
             halign=Gtk.Align.CENTER,
         )
         self._hint_label.set_markup(
-            'Connect to a server from the sidebar or <a href="create">click here to create one</a>.'
+            # Translators: keep the <a href="create"> markup intact; only the
+            # visible text between the tags should be translated.
+            _('Connect to a server from the sidebar or '
+              '<a href="create">click here to create one</a>.')
         )
         self._hint_label.connect("activate-link", self._on_link_activated)
         child_box.append(self._hint_label)
@@ -59,16 +63,17 @@ class WelcomeView(Adw.Bin):
         if has:
             self._status.set_icon_name("de.singular.edith-symbolic")
             self._status.set_description(
-                f"A code editor that talks (S)FTP\nVersion {VERSION}"
+                _("A code editor that talks (S)FTP") + "\n"
+                + _("Version {version}").format(version=VERSION)
             )
             self._add_server_btn.set_visible(False)
             self._hint_label.set_visible(True)
         else:
             self._status.set_icon_name("de.singular.edith-symbolic")
             self._status.set_description(
-                f"A code editor that talks (S)FTP\nVersion {VERSION}\n\n"
-                "No servers configured yet.\n"
-                "Add a server to get started."
+                _("A code editor that talks (S)FTP") + "\n"
+                + _("Version {version}").format(version=VERSION) + "\n\n"
+                + _("No servers configured yet.\nAdd a server to get started.")
             )
             self._add_server_btn.set_visible(True)
             self._hint_label.set_visible(False)

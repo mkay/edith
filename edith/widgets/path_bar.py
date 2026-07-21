@@ -3,6 +3,7 @@ import gi
 gi.require_version("Gtk", "4.0")
 
 from gi.repository import Gdk, GLib, GObject, Gtk, Pango
+from edith.i18n import _
 
 # Non-current segments ellipsize at ~10 chars, current at ~40
 _ELLIPSIZE_MIN = 7

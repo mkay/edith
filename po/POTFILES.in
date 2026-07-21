@@ -1,0 +1,25 @@
+# List of source files containing translatable strings.
+data/de.singular.edith.desktop.in.in
+
+edith/application.py
+edith/window.py
+edith/services/drag_export.py
+edith/widgets/connect_dialog.py
+edith/widgets/editor_panel.py
+edith/widgets/file_browser.py
+edith/widgets/file_dialogs.py
+edith/widgets/folder_row.py
+edith/widgets/font_chooser_dialog.py
+edith/widgets/image_viewer.py
+edith/widgets/monaco_editor.py
+edith/widgets/path_bar.py
+edith/widgets/preferences_dialog.py
+edith/widgets/server_edit_dialog.py
+edith/widgets/server_list.py
+edith/widgets/server_panel.py
+edith/widgets/server_row.py
+edith/widgets/status_bar.py
+edith/widgets/syntax_associations_dialog.py
+edith/widgets/theme_chooser_dialog.py
+edith/widgets/transfer_panel.py
+edith/widgets/welcome_view.py

@@ -14,6 +14,8 @@ import threading
 
 from gi.repository import Gdk, Gio, GLib
 
+from edith.i18n import _, ngettext
+
 
 class RemoteFilesProvider(Gdk.ContentProvider):
     """A `text/uri-list` provider that downloads on demand."""
@@ -65,7 +67,7 @@ class RemoteFilesProvider(Gdk.ContentProvider):
                 return
             GLib.idle_add(self._succeed, task, stream, uris)
 
-        self._notify(f"Preparing {self._describe()} for drop…", "info")
+        self._notify(_("Preparing {what} for drop…").format(what=self._describe()), "info")
         threading.Thread(target=worker, daemon=True).start()
 
     def do_write_mime_type_finish(self, result):
@@ -76,7 +78,7 @@ class RemoteFilesProvider(Gdk.ContentProvider):
     def _describe(self):
         if len(self._file_infos) == 1:
             return self._file_infos[0].name
-        return f"{len(self._file_infos)} items"
+        return ngettext("{n} item", "{n} items", len(self._file_infos)).format(n=len(self._file_infos))
 
     def _notify(self, message, kind):
         if self._on_status:
@@ -102,12 +104,12 @@ class RemoteFilesProvider(Gdk.ContentProvider):
     def _succeed(self, task, stream, uris):
         with self._lock:
             self._uris = uris
-        self._notify(f"Dropped {self._describe()}", "success")
+        self._notify(_("Dropped {what}").format(what=self._describe()), "success")
         self._write_uris(stream, uris, task)
         return GLib.SOURCE_REMOVE
 
     def _fail(self, task, message):
-        self._notify(f"Drag failed: {message}", "error")
+        self._notify(_("Drag failed: {message}").format(message=message), "error")
         task.return_error(
             GLib.Error.new_literal(
                 Gio.io_error_quark(), message, Gio.IOErrorEnum.FAILED

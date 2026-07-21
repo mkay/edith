@@ -6,6 +6,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk, GObject
 
 from edith.models.server import ServerInfo
+from edith.i18n import _
 
 
 class ServerRow(Gtk.Box):
@@ -62,7 +63,7 @@ class ServerRow(Gtk.Box):
                 icon_name="edith-pin-symbolic",
                 valign=Gtk.Align.CENTER,
                 css_classes=["flat", "dim-label"],
-                tooltip_text="Unpin",
+                tooltip_text=_("Unpin"),
                 focusable=False,
             )
             pin_btn.connect("clicked", lambda _: self.emit("unpin-requested"))

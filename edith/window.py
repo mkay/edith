@@ -18,6 +18,7 @@ from edith.widgets.transfer_panel import TransferPanel
 from edith.widgets.connect_dialog import ConnectDialog
 from edith.widgets.welcome_view import WelcomeView
 from edith.services import credential_store
+from edith.i18n import _, ngettext
 
 
 class EdithWindow(Adw.ApplicationWindow):
@@ -27,7 +28,7 @@ class EdithWindow(Adw.ApplicationWindow):
         super().__init__(
             default_width=w,
             default_height=h,
-            title="Edith",
+            title=_("Edith"),
             **kwargs,
         )
 
@@ -53,18 +54,18 @@ class EdithWindow(Adw.ApplicationWindow):
     def _build_ui(self):
         # === Sidebar ToolbarView (has its own HeaderBar with window controls) ===
         sidebar_header = Adw.HeaderBar(show_end_title_buttons=False)
-        sidebar_header.set_title_widget(Gtk.Label(label="Edith", css_classes=["title"]))
+        sidebar_header.set_title_widget(Gtk.Label(label=_("Edith"), css_classes=["title"]))
 
         self._new_server_btn = Gtk.Button(
             icon_name="edith-server-add-symbolic",
-            tooltip_text="Add Server (Ctrl+N)",
+            tooltip_text=_("Add Server (Ctrl+N)"),
         )
         self._new_server_btn.connect("clicked", lambda _: self._on_new_server(None, None))
         sidebar_header.pack_start(self._new_server_btn)
 
         self._new_folder_btn = Gtk.Button(
             icon_name="edith-group-new-symbolic",
-            tooltip_text="New Server Group",
+            tooltip_text=_("New Server Group"),
         )
         self._new_folder_btn.connect("clicked", lambda _: self._server_list.show_new_folder_dialog())
         sidebar_header.pack_start(self._new_folder_btn)
@@ -111,7 +112,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._pins_section = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, visible=False)
         pins_header = Gtk.Label(
-            label="Pinned",
+            label=_("Pinned"),
             xalign=0,
             css_classes=["dim-label", "caption"],
             margin_start=12,
@@ -132,7 +133,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sidebar_status_icon.set_pixel_size(16)
         status_content.append(self._sidebar_status_icon)
         self._sidebar_status_label = Gtk.Label(
-            label="Disconnected",
+            label=_("Disconnected"),
             xalign=0,
             hexpand=True,
             ellipsize=3,
@@ -168,7 +169,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._connect_btn = Gtk.Button(
             icon_name="edith-connect-symbolic",
-            tooltip_text="Connect",
+            tooltip_text=_("Connect"),
             sensitive=False,
         )
         self._connect_btn.connect("clicked", self._on_connect_btn_clicked)
@@ -176,7 +177,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._back_btn = Gtk.Button(
             icon_name="edith-back-symbolic",
-            tooltip_text="Back",
+            tooltip_text=_("Back"),
             visible=False,
             sensitive=False,
         )
@@ -185,7 +186,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._forward_btn = Gtk.Button(
             icon_name="edith-forward-symbolic",
-            tooltip_text="Forward",
+            tooltip_text=_("Forward"),
             visible=False,
             sensitive=False,
         )
@@ -209,36 +210,36 @@ class EdithWindow(Adw.ApplicationWindow):
 
         menu = Gio.Menu()
         window_section = Gio.Menu()
-        window_section.append("New Window", "app.new-window")
+        window_section.append(_("New Window"), "app.new-window")
         menu.append_section(None, window_section)
         server_section = Gio.Menu()
-        server_section.append("Import from FileZilla\u2026", "win.import-filezilla")
+        server_section.append(_("Import from FileZilla\u2026"), "win.import-filezilla")
         menu.append_section(None, server_section)
         prefs_section = Gio.Menu()
-        prefs_section.append("Preferences\u2026", "app.preferences")
-        prefs_section.append("Keyboard Shortcuts", "app.shortcuts")
-        prefs_section.append("About Edith", "app.about")
+        prefs_section.append(_("Preferences\u2026"), "app.preferences")
+        prefs_section.append(_("Keyboard Shortcuts"), "app.shortcuts")
+        prefs_section.append(_("About Edith"), "app.about")
         menu.append_section(None, prefs_section)
 
         self._transfer_panel = TransferPanel()
         self._transfer_btn = Gtk.MenuButton(
             icon_name="edith-transfers-symbolic",
             popover=self._transfer_panel,
-            tooltip_text="Transfers",
+            tooltip_text=_("Transfers"),
             visible=False,
             sensitive=False,
         )
         self._sidebar_visible = True
         self._sidebar_toggle = Gtk.Button(
             icon_name="edith-sidebar-hide-symbolic",
-            tooltip_text="Toggle Sidebar (F9)",
+            tooltip_text=_("Toggle Sidebar (F9)"),
             focusable=False,
         )
         self._sidebar_toggle.connect("clicked", self._on_sidebar_toggled)
         menu_btn = Gtk.MenuButton(
             icon_name="edith-open-menu-symbolic",
             menu_model=menu,
-            tooltip_text="Main Menu",
+            tooltip_text=_("Main Menu"),
         )
         self._main_header.pack_end(menu_btn)
         self._main_header.pack_end(self._transfer_btn)
@@ -265,7 +266,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._connected_page = Adw.StatusPage(
             icon_name="edith-status-connected-symbolic",
             title="",
-            description="Open a file from the sidebar to start editing.",
+            description=_("Open a file from the sidebar to start editing."),
             vexpand=True,
         )
         self._content_stack.add_named(self._connected_page, "connected")
@@ -450,8 +451,8 @@ class EdithWindow(Adw.ApplicationWindow):
             heading=heading,
             body="\n\n".join(parts),
         )
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("quit", "Quit Anyway")
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("quit", _("Quit Anyway"))
         dialog.set_response_appearance("quit", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.set_default_response("cancel")
 
@@ -519,7 +520,7 @@ class EdithWindow(Adw.ApplicationWindow):
             os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
         ) / "filezilla" / "sitemanager.xml"
 
-        dialog = Gtk.FileDialog(title="Import FileZilla Sites")
+        dialog = Gtk.FileDialog(title=_("Import FileZilla Sites"))
         xml_filter = Gtk.FileFilter()
         xml_filter.set_name("XML files")
         xml_filter.add_pattern("*.xml")
@@ -544,14 +545,14 @@ class EdithWindow(Adw.ApplicationWindow):
         try:
             servers, folders = parse_sitemanager(path)
         except Exception as e:
-            err = Adw.AlertDialog(heading="Import Failed", body=str(e))
-            err.add_response("ok", "OK")
+            err = Adw.AlertDialog(heading=_("Import Failed"), body=str(e))
+            err.add_response("ok", _("OK"))
             err.present(self)
             return
 
         if not servers:
-            err = Adw.AlertDialog(heading="No Servers Found", body="The selected file contained no server entries.")
-            err.add_response("ok", "OK")
+            err = Adw.AlertDialog(heading=_("No Servers Found"), body=_("The selected file contained no server entries."))
+            err.add_response("ok", _("OK"))
             err.present(self)
             return
 
@@ -568,13 +569,25 @@ class EdithWindow(Adw.ApplicationWindow):
         self._server_panel.reload()
         self._server_panel.emit("servers-changed")
 
+        # Built from whole sentences: a translator can reorder within each one,
+        # and every count gets its own plural form.
+        summary = ngettext(
+            "Imported {n} server.", "Imported {n} servers.", len(servers)
+        ).format(n=len(servers))
+        if folders:
+            summary += " " + ngettext(
+                "They were placed in {n} group.",
+                "They were placed in {n} groups.",
+                len(folders),
+            ).format(n=len(folders))
+
         info = Adw.AlertDialog(
-            heading="Import Complete",
-            body=f"Imported {len(servers)} server{'s' if len(servers) != 1 else ''}"
-                 + (f" in {len(folders)} group{'s' if len(folders) != 1 else ''}" if folders else "")
-                 + ".\n\nPasswords could not be imported — you'll need to re-enter them.",
+            heading=_("Import Complete"),
+            body=summary + "\n\n" + _(
+                "Passwords could not be imported — you'll need to re-enter them."
+            ),
         )
-        info.add_response("ok", "OK")
+        info.add_response("ok", _("OK"))
         info.present(self)
 
     def _on_add_server_to_folder(self, server_list, folder_id):
@@ -625,16 +638,16 @@ class EdithWindow(Adw.ApplicationWindow):
         if not editor:
             return
 
-        dialog = Adw.AlertDialog(heading="Go to Line", body="")
+        dialog = Adw.AlertDialog(heading=_("Go to Line"), body="")
         entry = Gtk.Entry(
             input_purpose=Gtk.InputPurpose.DIGITS,
-            placeholder_text="Line number…",
+            placeholder_text=_("Line number…"),
             activates_default=True,
             width_chars=12,
         )
         dialog.set_extra_child(entry)
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("go", "Go")
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("go", _("Go"))
         dialog.set_default_response("go")
         dialog.set_response_appearance("go", Adw.ResponseAppearance.SUGGESTED)
 
@@ -761,10 +774,10 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_error(error):
             self._set_status("error", f"Connection failed: {error}")
             dialog = Adw.AlertDialog(
-                heading="Connection Failed",
+                heading=_("Connection Failed"),
                 body=str(error),
             )
-            dialog.add_response("ok", "OK")
+            dialog.add_response("ok", _("OK"))
             dialog.present(self)
 
         run_async(do_connect, on_success, on_error)
@@ -775,11 +788,11 @@ class EdithWindow(Adw.ApplicationWindow):
             names = self._editor_panel.unsaved_filenames()
             body = "Unsaved changes in: " + ", ".join(names)
             dialog = Adw.AlertDialog(
-                heading="Disconnect with unsaved changes?",
+                heading=_("Disconnect with unsaved changes?"),
                 body=body,
             )
-            dialog.add_response("cancel", "Cancel")
-            dialog.add_response("discard", "Discard & Disconnect")
+            dialog.add_response("cancel", _("Cancel"))
+            dialog.add_response("discard", _("Discard & Disconnect"))
             dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
             dialog.connect("response", self._on_disconnect_response)
             dialog.present(self)
@@ -825,7 +838,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._set_status("connected", f"Connected to {server_info.username}@{server_info.host}")
         self.lookup_action("disconnect").set_enabled(True)
         self._connect_btn.set_icon_name("edith-disconnect-symbolic")
-        self._connect_btn.set_tooltip_text("Disconnect (Ctrl+D)")
+        self._connect_btn.set_tooltip_text(_("Disconnect (Ctrl+D)"))
 
         self._header_stack.set_visible_child_name("pathbar")
         self._back_btn.set_visible(True)
@@ -861,18 +874,18 @@ class EdithWindow(Adw.ApplicationWindow):
         self._poll_timer_id = GLib.timeout_add_seconds(3, self._poll_remote_mtimes)
 
         # Show connected placeholder until the user opens a file
-        self._connected_page.set_title(f"Connected to {server_info.display_name}")
+        self._connected_page.set_title(_("Connected to {server}").format(server=server_info.display_name))
         self._rebuild_recents_child(server_info)
         self._rebuild_pins_bar(server_info)
         self._content_stack.set_visible_child_name("connected")
 
-        self.show_toast(f"Connected to {server_info.display_name}", "success")
+        self.show_toast(_("Connected to {server}").format(server=server_info.display_name), "success")
 
     def _rebuild_recents_child(self, server_info):
         recents = ConfigService.get_recents(server_info.id)
         if not recents:
             self._connected_page.set_child(None)
-            self._connected_page.set_description("Open a file from the sidebar to start editing.")
+            self._connected_page.set_description(_("Open a file from the sidebar to start editing."))
             return
 
         self._connected_page.set_description(None)
@@ -890,7 +903,7 @@ class EdithWindow(Adw.ApplicationWindow):
             row.connect("activated", self._on_recent_activated)
 
             row_menu = Gio.Menu()
-            row_menu.append("Remove from List", "recents.remove")
+            row_menu.append(_("Remove from List"), "recents.remove")
             row_popover = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False)
             row_popover.set_parent(row)
 
@@ -970,7 +983,7 @@ class EdithWindow(Adw.ApplicationWindow):
             row.set_child(box)
 
             pin_menu = Gio.Menu()
-            pin_menu.append("Unpin", "pins.unpin")
+            pin_menu.append(_("Unpin"), "pins.unpin")
             row_popover = Gtk.PopoverMenu(menu_model=pin_menu, has_arrow=False)
             row_popover.set_parent(row)
 
@@ -1082,7 +1095,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._file_browser.reset_detail_mode()
         self.lookup_action("disconnect").set_enabled(False)
         self._connect_btn.set_icon_name("edith-connect-symbolic")
-        self._connect_btn.set_tooltip_text("Connect")
+        self._connect_btn.set_tooltip_text(_("Connect"))
         self._connect_btn.set_sensitive(self._server_panel.get_selected_server() is not None)
 
         # Hide pinned section
@@ -1143,8 +1156,8 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_error(error):
             if isinstance(error, TransferAborted):
                 return
-            self._set_status("error", f"Download failed: {error}")
-            self.show_toast(f"Failed to download: {error}", "error")
+            self._set_status("error", _("Download failed: {error}").format(error=error))
+            self.show_toast(_("Failed to download: {error}").format(error=error), "error")
 
         self._transfer_queue.enqueue(name, do_download, on_success, on_error)
 
@@ -1165,12 +1178,12 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_success(_):
             if on_done:
                 on_done()
-            self.show_toast(f"Downloaded {name}", "success")
+            self.show_toast(_("Downloaded {name}").format(name=name), "success")
 
         def on_error(error):
             if isinstance(error, TransferAborted):
                 return
-            self.show_toast(f"Download failed: {error}", "error")
+            self.show_toast(_("Download failed: {error}").format(error=error), "error")
 
         self._transfer_queue.enqueue(name, do_download, on_success, on_error)
 
@@ -1185,7 +1198,7 @@ class EdithWindow(Adw.ApplicationWindow):
         from edith.services.transfer_queue import TransferAborted
 
         n = len(items)
-        label = f"{n} file{'s' if n != 1 else ''}"
+        label = ngettext("{n} file", "{n} files", n).format(n=n)
         client = self._sftp_client
 
         def do_download(progress_cb, cancel_event, set_channel):
@@ -1196,12 +1209,12 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_success(_):
             if on_done:
                 on_done()
-            self.show_toast(f"Downloaded {label}", "success")
+            self.show_toast(_("Downloaded {name}").format(name=label), "success")
 
         def on_error(error):
             if isinstance(error, TransferAborted):
                 return
-            self.show_toast(f"Download failed: {error}", "error")
+            self.show_toast(_("Download failed: {error}").format(error=error), "error")
 
         self._transfer_queue.enqueue(label, do_download, on_success, on_error)
 
@@ -1244,7 +1257,7 @@ class EdithWindow(Adw.ApplicationWindow):
             self._saving_paths.discard(remote_path)
             if remote_path in self._remote_mtimes:
                 self._remote_mtimes[remote_path] = mtime
-            self.show_toast(f"Uploaded {name}", "success")
+            self.show_toast(_("Uploaded {name}").format(name=name), "success")
             self._file_browser.refresh_path(os.path.dirname(remote_path))
             # Keep an editor tab on the same file in sync with the external edit.
             viewer = self._viewer_for_path(remote_path)
@@ -1253,7 +1266,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         def on_error(error):
             self._saving_paths.discard(remote_path)
-            self.show_toast(f"Failed to upload {name}: {error}", "error")
+            self.show_toast(_("Failed to upload {name}: {error}").format(name=name, error=error), "error")
 
         self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
 
@@ -1273,15 +1286,15 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_success(mtime):
             self._saving_paths.discard(remote_path)
             self._remote_mtimes[remote_path] = mtime
-            self.show_toast(f"Saved {name}", "success")
+            self.show_toast(_("Saved {name}").format(name=name), "success")
 
         def on_error(error):
             self._saving_paths.discard(remote_path)
             dialog = Adw.AlertDialog(
-                heading="Upload Failed",
+                heading=_("Upload Failed"),
                 body=str(error),
             )
-            dialog.add_response("ok", "OK")
+            dialog.add_response("ok", _("OK"))
             dialog.present(self)
 
         self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
@@ -1390,12 +1403,14 @@ class EdithWindow(Adw.ApplicationWindow):
         filename = editor.open_file.filename
 
         dialog = Adw.AlertDialog(
-            heading="File Changed on Server",
-            body=f"\u201c{filename}\u201d has been modified on the server.\n"
-                 "Do you want to reload it? Your unsaved changes will be lost.",
+            heading=_("File Changed on Server"),
+            body=_(
+                "\u201c{filename}\u201d has been modified on the server.\n"
+                "Do you want to reload it? Your unsaved changes will be lost."
+            ).format(filename=filename),
         )
-        dialog.add_response("keep", "Keep Local")
-        dialog.add_response("reload", "Reload")
+        dialog.add_response("keep", _("Keep Local"))
+        dialog.add_response("reload", _("Reload"))
         dialog.set_response_appearance("reload", Adw.ResponseAppearance.DESTRUCTIVE)
 
         self._reload_dialog_paths.add(remote_path)

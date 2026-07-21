@@ -6,6 +6,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Gtk
 
 from edith.models.server import FolderInfo
+from edith.i18n import _
 
 
 class FolderRow(Gtk.Box):

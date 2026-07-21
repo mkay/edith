@@ -9,6 +9,7 @@ configure_file(
 edith_sources = [
   '__main__.py',
   'application.py',
+  'i18n.py',
   'monaco_languages.py',
   'window.py',
 ]

@@ -11,6 +11,7 @@ from gi.repository import Adw, Gtk, GObject, WebKit
 from edith.models.open_file import OpenFile
 from edith.monaco_languages import EXT_TO_MONACO, get_language_name
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 class MonacoEditor(Gtk.Box):
@@ -88,7 +89,7 @@ class MonacoEditor(Gtk.Box):
         """For SVG files: editor + collapsible preview panel side by side."""
         # Floating preview toggle button overlaid on the editor
         self._preview_btn = Gtk.ToggleButton(
-            label="Preview",
+            label=_("Preview"),
             css_classes=["flat", "osd"],
             halign=Gtk.Align.END,
             valign=Gtk.Align.START,

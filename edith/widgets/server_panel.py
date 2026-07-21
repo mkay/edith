@@ -12,6 +12,7 @@ from edith.services.config import ConfigService
 from edith.services import credential_store
 from edith.widgets.server_row import ServerRow
 from edith.widgets.server_edit_dialog import ServerEditDialog
+from edith.i18n import _
 
 
 class ServerPanel(Gtk.Box):
@@ -35,7 +36,7 @@ class ServerPanel(Gtk.Box):
         self._selection_updating = False
 
         # Search bar
-        self._search_entry = Gtk.SearchEntry(placeholder_text="Search servers\u2026")
+        self._search_entry = Gtk.SearchEntry(placeholder_text=_("Search servers\u2026"))
         self._search_entry.connect("search-changed", self._on_search_changed)
         self._search_entry.connect("stop-search", self._on_search_stop)
 
@@ -67,9 +68,9 @@ class ServerPanel(Gtk.Box):
 
         # Empty state
         self._empty_page = Adw.StatusPage(
-            title="No Servers",
+            title=_("No Servers"),
             icon_name="edith-status-no-servers-symbolic",
-            description="Add a server using the button in the toolbar.",
+            description=_("Add a server using the button in the toolbar."),
             vexpand=True,
             visible=False,
         )
@@ -110,20 +111,20 @@ class ServerPanel(Gtk.Box):
 
     def _setup_context_menu(self):
         self._server_menu_model = Gio.Menu()
-        self._server_menu_model.append("Connect", "server.connect")
-        self._server_menu_model.append("Edit", "server.edit")
-        self._server_menu_model.append("Change Password\u2026", "server.change-password")
+        self._server_menu_model.append(_("Connect"), "server.connect")
+        self._server_menu_model.append(_("Edit"), "server.edit")
+        self._server_menu_model.append(_("Change Password\u2026"), "server.change-password")
 
-        self._pin_menu_item = Gio.MenuItem.new("Pin", "server.toggle-pin")
+        self._pin_menu_item = Gio.MenuItem.new(_("Pin"), "server.toggle-pin")
         pin_section = Gio.Menu()
         pin_section.append_item(self._pin_menu_item)
         self._server_menu_model.append_section(None, pin_section)
 
         self._move_submenu = Gio.Menu()
         other_section = Gio.Menu()
-        other_section.append_submenu("Move to Group", self._move_submenu)
-        other_section.append("Duplicate Server", "server.duplicate")
-        other_section.append("Delete", "server.delete")
+        other_section.append_submenu(_("Move to Group"), self._move_submenu)
+        other_section.append(_("Duplicate Server"), "server.duplicate")
+        other_section.append(_("Delete"), "server.delete")
         self._server_menu_model.append_section(None, other_section)
 
         self._server_menu = Gtk.PopoverMenu(menu_model=self._server_menu_model, has_arrow=False)
@@ -180,7 +181,8 @@ class ServerPanel(Gtk.Box):
         )
 
         # Update pin label dynamically (pin section is at flat index 3)
-        pin_label = "Unpin" if ConfigService.is_server_pinned(child.server_info.id) else "Pin"
+        pin_label = (_("Unpin") if ConfigService.is_server_pinned(child.server_info.id)
+                     else _("Pin"))
         pin_section = Gio.Menu()
         pin_section.append(pin_label, "server.toggle-pin")
         self._server_menu_model.remove(3)
@@ -262,7 +264,7 @@ class ServerPanel(Gtk.Box):
             )
             self._move_submenu.append_item(item)
         if current_folder_id != "":
-            item = Gio.MenuItem.new("No Group", None)
+            item = Gio.MenuItem.new(_("No Group"), None)
             item.set_action_and_target_value(
                 "server.move-to-group", GLib.Variant.new_string("")
             )
@@ -292,7 +294,7 @@ class ServerPanel(Gtk.Box):
 
     def _show_change_password_dialog(self, server_info):
         dialog = Adw.Dialog(
-            title="Change Password",
+            title=_("Change Password"),
             content_width=360,
             content_height=180,
         )
@@ -300,18 +302,19 @@ class ServerPanel(Gtk.Box):
         toolbar_view = Adw.ToolbarView()
         header = Adw.HeaderBar(show_start_title_buttons=False, show_end_title_buttons=False)
 
-        cancel_btn = Gtk.Button(label="Cancel")
+        cancel_btn = Gtk.Button(label=_("Cancel"))
         cancel_btn.connect("clicked", lambda _: dialog.close())
         header.pack_start(cancel_btn)
 
-        save_btn = Gtk.Button(label="Save", css_classes=["suggested-action"])
+        save_btn = Gtk.Button(label=_("Save"), css_classes=["suggested-action"])
         header.pack_end(save_btn)
         toolbar_view.add_top_bar(header)
 
         clamp = Adw.Clamp(maximum_size=360, margin_top=16, margin_bottom=16, margin_start=16, margin_end=16)
 
         group = Adw.PreferencesGroup()
-        label = "Key Passphrase" if server_info.auth_method == "key+passphrase" else "Password"
+        label = (_("Key Passphrase") if server_info.auth_method == "key+passphrase"
+                 else _("Password"))
         pw_row = Adw.PasswordEntryRow(title=label)
         group.add(pw_row)
 
@@ -359,11 +362,11 @@ class ServerPanel(Gtk.Box):
     def _confirm_delete(self, server_info):
         win = self.get_root()
         dialog = Adw.AlertDialog(
-            heading="Delete Server?",
-            body=f"Remove \u201c{server_info.display_name}\u201d from your servers?",
+            heading=_("Delete Server?"),
+            body=_("Remove \u201c{name}\u201d from your servers?").format(name=server_info.display_name),
         )
-        dialog.add_response("cancel", "Cancel")
-        dialog.add_response("delete", "Delete")
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("delete", _("Delete"))
         dialog.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dialog.connect("response", self._on_delete_response, server_info)
         dialog.present(win)

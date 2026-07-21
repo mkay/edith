@@ -7,13 +7,14 @@ from gi.repository import Adw, Gtk
 
 from edith.monaco_languages import MONACO_LANGUAGES, get_language_name
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 class SyntaxAssociationsDialog(Adw.PreferencesDialog):
     """Settings dialog for custom file extension → syntax language mappings."""
 
     def __init__(self):
-        super().__init__(title="Syntax Associations", search_enabled=False)
+        super().__init__(title=_("Syntax Associations"), search_enabled=False)
 
         self._selected_lang_id = None
         self._selected_lang_name = "Select language…"
@@ -23,17 +24,17 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
         page = Adw.PreferencesPage()
 
         # --- Add new association ---
-        add_group = Adw.PreferencesGroup(title="Add Association")
+        add_group = Adw.PreferencesGroup(title=_("Add Association"))
 
         add_btn = Gtk.Button(
-            label="Add",
+            label=_("Add"),
             css_classes=["suggested-action"],
             valign=Gtk.Align.CENTER,
         )
         add_btn.connect("clicked", self._on_add)
         add_group.set_header_suffix(add_btn)
 
-        self._ext_row = Adw.EntryRow(title="Extension (without dot, e.g. tpl)")
+        self._ext_row = Adw.EntryRow(title=_("Extension (without dot, e.g. tpl)"))
         add_group.add(self._ext_row)
 
         self._lang_btn = Gtk.MenuButton(
@@ -42,7 +43,7 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
             css_classes=["flat"],
             valign=Gtk.Align.CENTER,
         )
-        lang_row = Adw.ActionRow(title="Language")
+        lang_row = Adw.ActionRow(title=_("Language"))
         lang_row.add_suffix(self._lang_btn)
         lang_row.set_activatable_widget(self._lang_btn)
         add_group.add(lang_row)
@@ -50,7 +51,7 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
         page.add(add_group)
 
         # --- Current associations ---
-        self._assoc_group = Adw.PreferencesGroup(title="Current Associations")
+        self._assoc_group = Adw.PreferencesGroup(title=_("Current Associations"))
         page.add(self._assoc_group)
 
         self.add(page)
@@ -60,7 +61,7 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
 
     def _build_lang_popover(self):
         self._lang_search_entry = Gtk.SearchEntry(
-            placeholder_text="Filter…",
+            placeholder_text=_("Filter…"),
             margin_start=8,
             margin_end=8,
             margin_top=8,
@@ -162,7 +163,7 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
 
         assoc = ConfigService.get_preference("syntax_associations", {})
         if not assoc:
-            row = Adw.ActionRow(title="No custom associations yet")
+            row = Adw.ActionRow(title=_("No custom associations yet"))
             row.set_sensitive(False)
             self._assoc_group.add(row)
             self._assoc_rows.append(row)
@@ -171,13 +172,13 @@ class SyntaxAssociationsDialog(Adw.PreferencesDialog):
         for ext, lang_id in sorted(assoc.items()):
             lang_name = get_language_name(lang_id)
 
-            row = Adw.ActionRow(title=f".{ext}", subtitle=lang_name)
+            row = Adw.ActionRow(title=".{}".format(ext), subtitle=lang_name)
 
             del_btn = Gtk.Button(
                 icon_name="edit-delete-symbolic",
                 css_classes=["flat", "destructive-action"],
                 valign=Gtk.Align.CENTER,
-                tooltip_text=f"Remove .{ext} association",
+                tooltip_text=_("Remove .{ext} association").format(ext=ext),
             )
             del_btn.connect("clicked", lambda _b, e=ext: self._delete_association(e))
             row.add_suffix(del_btn)

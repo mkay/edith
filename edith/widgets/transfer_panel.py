@@ -4,6 +4,7 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 from gi.repository import Gtk
+from edith.i18n import _
 
 
 class _JobRow(Gtk.Box):
@@ -39,7 +40,7 @@ class _JobRow(Gtk.Box):
         top.append(self._name_label)
 
         self._status_label = Gtk.Label(
-            label="Queued",
+            label=_("Queued"),
             xalign=1,
             css_classes=["dim-label", "caption"],
         )
@@ -49,7 +50,7 @@ class _JobRow(Gtk.Box):
             icon_name="window-close-symbolic",
             css_classes=["flat", "circular"],
             valign=Gtk.Align.CENTER,
-            tooltip_text="Cancel",
+            tooltip_text=_("Cancel"),
         )
         self._abort_btn.connect(
             "clicked", lambda _: on_abort(self.job_id, self.status)
@@ -75,14 +76,14 @@ class _JobRow(Gtk.Box):
     def set_done(self):
         self.status = "done"
         self._icon.set_from_icon_name("object-select-symbolic")
-        self._status_label.set_label("Done")
+        self._status_label.set_label(_("Done"))
         self._progress.set_visible(False)
         self._abort_btn.set_visible(False)
 
     def set_aborted(self):
         self.status = "aborted"
         self._icon.set_from_icon_name("process-stop-symbolic")
-        self._status_label.set_label("Cancelled")
+        self._status_label.set_label(_("Cancelled"))
         self._status_label.add_css_class("dim-label")
         self._progress.set_visible(False)
         self._abort_btn.set_visible(False)
@@ -90,7 +91,7 @@ class _JobRow(Gtk.Box):
     def set_failed(self, msg):
         self.status = "failed"
         self._icon.set_from_icon_name("dialog-error-symbolic")
-        self._status_label.set_label("Failed")
+        self._status_label.set_label(_("Failed"))
         self._status_label.remove_css_class("dim-label")
         self._status_label.add_css_class("error")
         self._progress.set_visible(False)
@@ -119,7 +120,7 @@ class TransferPanel(Gtk.Popover):
             spacing=8,
         )
         header_label = Gtk.Label(
-            label="Transfers",
+            label=_("Transfers"),
             xalign=0,
             hexpand=True,
             css_classes=["heading"],
@@ -127,7 +128,7 @@ class TransferPanel(Gtk.Popover):
         header_box.append(header_label)
 
         self._clear_btn = Gtk.Button(
-            label="Clear Done",
+            label=_("Clear Done"),
             css_classes=["flat"],
             visible=False,
             valign=Gtk.Align.CENTER,
@@ -138,7 +139,7 @@ class TransferPanel(Gtk.Popover):
         outer.append(Gtk.Separator())
 
         self._empty_label = Gtk.Label(
-            label="No uploads yet",
+            label=_("No uploads yet"),
             css_classes=["dim-label"],
             margin_top=20,
             margin_bottom=20,

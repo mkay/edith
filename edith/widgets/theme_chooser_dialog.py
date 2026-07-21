@@ -11,6 +11,7 @@ from gi.repository import Adw, Gtk, GObject, WebKit
 
 from edith.monaco_languages import MONACO_THEMES
 from edith.services.config import ConfigService
+from edith.i18n import _
 
 
 PREVIEW_TEXT = '''\
@@ -38,7 +39,7 @@ class ThemeChooserDialog(Adw.Dialog):
 
     def __init__(self):
         super().__init__(
-            title="Syntax Theme",
+            title=_("Syntax Theme"),
             content_width=700,
             content_height=520,
         )
@@ -52,7 +53,7 @@ class ThemeChooserDialog(Adw.Dialog):
         header = Adw.HeaderBar(
             show_start_title_buttons=False, show_end_title_buttons=False,
         )
-        close_btn = Gtk.Button(label="Close")
+        close_btn = Gtk.Button(label=_("Close"))
         close_btn.connect("clicked", lambda _: self.close())
         header.pack_end(close_btn)
         toolbar_view.add_top_bar(header)

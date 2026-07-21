@@ -11,6 +11,7 @@ from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Pango
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.services.config import ConfigService
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
+from edith.i18n import _, ngettext
 
 DEFAULT_TOOLS_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "edith" / "tools"
 
@@ -59,7 +60,7 @@ class FileBrowser(Gtk.Box):
 
         upload_btn = Gtk.Button(
             icon_name="edith-upload-symbolic",
-            tooltip_text="Upload Files",
+            tooltip_text=_("Upload Files"),
             css_classes=["flat", "circular"],
         )
         upload_btn.connect("clicked", self._on_upload_clicked)
@@ -67,7 +68,7 @@ class FileBrowser(Gtk.Box):
 
         refresh_btn = Gtk.Button(
             icon_name="edith-refresh-symbolic",
-            tooltip_text="Refresh",
+            tooltip_text=_("Refresh"),
             css_classes=["flat", "circular"],
         )
         refresh_btn.connect("clicked", lambda _: self.load_directory(self._current_path))
@@ -75,7 +76,7 @@ class FileBrowser(Gtk.Box):
 
         self._hidden_btn = Gtk.ToggleButton(
             icon_name="edith-show-hidden-symbolic",
-            tooltip_text="Show Hidden Files",
+            tooltip_text=_("Show Hidden Files"),
             css_classes=["flat", "circular"],
         )
         self._hidden_btn.connect("toggled", self._on_show_hidden_toggled)
@@ -87,7 +88,7 @@ class FileBrowser(Gtk.Box):
 
         self._detail_btn = Gtk.ToggleButton(
             icon_name="edith-file-details-symbolic",
-            tooltip_text="Show File Details",
+            tooltip_text=_("Show File Details"),
             css_classes=["flat", "circular"],
         )
         self._detail_btn.connect("toggled", self._on_detail_mode_toggled)
@@ -99,7 +100,7 @@ class FileBrowser(Gtk.Box):
 
         # ── Filter entry ────────────────────────────────────────────────
         self._filter_entry = Gtk.SearchEntry(
-            placeholder_text="Filter files\u2026",
+            placeholder_text=_("Filter files\u2026"),
             margin_start=8,
             margin_end=8,
             margin_top=4,
@@ -216,7 +217,7 @@ class FileBrowser(Gtk.Box):
         name_factory.connect("setup", self._setup_name_cell)
         name_factory.connect("bind", self._bind_name_cell)
         name_factory.connect("unbind", self._unbind_name_cell)
-        name_col = Gtk.ColumnViewColumn(title="Name", factory=name_factory, expand=True, resizable=True)
+        name_col = Gtk.ColumnViewColumn(title=_("Name"), factory=name_factory, expand=True, resizable=True)
         name_col.set_sorter(Gtk.CustomSorter.new(
             lambda a, b, _: (
                 (0 if a.file_info.is_parent_dir == b.file_info.is_parent_dir else (-1 if a.file_info.is_parent_dir else 1))
@@ -232,7 +233,7 @@ class FileBrowser(Gtk.Box):
             li, halign=Gtk.Align.END, css=["numeric", "dim-label"]))
         size_factory.connect("bind", self._bind_size_cell)
         size_factory.connect("unbind", self._unbind_text_cell)
-        self._size_col = Gtk.ColumnViewColumn(title="Size", factory=size_factory, resizable=True)
+        self._size_col = Gtk.ColumnViewColumn(title=_("Size"), factory=size_factory, resizable=True)
         self._size_col.set_fixed_width(92)
         self._size_col.set_visible(False)
         self._size_col.set_sorter(Gtk.CustomSorter.new(
@@ -250,7 +251,7 @@ class FileBrowser(Gtk.Box):
             li, css=["monospace", "dim-label"]))
         perm_factory.connect("bind", self._bind_perm_cell)
         perm_factory.connect("unbind", self._unbind_text_cell)
-        self._perm_col = Gtk.ColumnViewColumn(title="Permissions", factory=perm_factory)
+        self._perm_col = Gtk.ColumnViewColumn(title=_("Permissions"), factory=perm_factory)
         self._perm_col.set_fixed_width(132)
         self._perm_col.set_visible(False)
         self._perm_col.set_sorter(Gtk.CustomSorter.new(
@@ -267,7 +268,7 @@ class FileBrowser(Gtk.Box):
         owner_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
         owner_factory.connect("bind", self._bind_owner_cell)
         owner_factory.connect("unbind", self._unbind_text_cell)
-        self._owner_col = Gtk.ColumnViewColumn(title="Owner", factory=owner_factory, resizable=True)
+        self._owner_col = Gtk.ColumnViewColumn(title=_("Owner"), factory=owner_factory, resizable=True)
         self._owner_col.set_fixed_width(100)
         self._owner_col.set_visible(False)
         self._owner_col.set_sorter(Gtk.CustomSorter.new(
@@ -284,7 +285,7 @@ class FileBrowser(Gtk.Box):
         group_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
         group_factory.connect("bind", self._bind_group_cell)
         group_factory.connect("unbind", self._unbind_text_cell)
-        self._group_col = Gtk.ColumnViewColumn(title="Group", factory=group_factory, resizable=True)
+        self._group_col = Gtk.ColumnViewColumn(title=_("Group"), factory=group_factory, resizable=True)
         self._group_col.set_fixed_width(100)
         self._group_col.set_visible(False)
         self._group_col.set_sorter(Gtk.CustomSorter.new(
@@ -301,7 +302,7 @@ class FileBrowser(Gtk.Box):
         mtime_factory.connect("setup", lambda f, li: self._setup_text_cell(li, css=["dim-label"]))
         mtime_factory.connect("bind", self._bind_mtime_cell)
         mtime_factory.connect("unbind", self._unbind_text_cell)
-        self._mtime_col = Gtk.ColumnViewColumn(title="Modified", factory=mtime_factory, resizable=True)
+        self._mtime_col = Gtk.ColumnViewColumn(title=_("Modified"), factory=mtime_factory, resizable=True)
         self._mtime_col.set_fixed_width(130)
         self._mtime_col.set_visible(False)
         self._mtime_col.set_sorter(Gtk.CustomSorter.new(
@@ -367,7 +368,7 @@ class FileBrowser(Gtk.Box):
                 drag_box.append(Gtk.Label(label=fi.name))
             else:
                 drag_box.append(Gtk.Image(icon_name="edith-select-items-symbolic", pixel_size=16))
-                drag_box.append(Gtk.Label(label=f"{len(paths)} items"))
+                drag_box.append(Gtk.Label(label=ngettext("{n} item", "{n} items", len(paths)).format(n=len(paths))))
             Gtk.DragIcon.get_for_drag(gdk_drag).set_child(drag_box)
 
         drag.connect("prepare", on_drag_prepare)
@@ -426,7 +427,7 @@ class FileBrowser(Gtk.Box):
             icon.set_visible(True)
             icon.set_from_icon_name("edith-parent-dir-symbolic")
             label.set_text("")
-            box.set_tooltip_text("Parent directory")
+            box.set_tooltip_text(_("Parent directory"))
         else:
             icon.set_visible(True)
             icon.set_from_icon_name(fi.icon_name)
@@ -499,29 +500,29 @@ class FileBrowser(Gtk.Box):
 
         # New File / New Folder
         section_new = Gio.Menu()
-        section_new.append("New File", "file.new-file")
-        section_new.append("New Folder", "file.new-folder")
+        section_new.append(_("New File"), "file.new-file")
+        section_new.append(_("New Folder"), "file.new-folder")
         menu.append_section(None, section_new)
 
         # Actions, Upload Tool, Rename, Delete
         actions_submenu = Gio.Menu()
-        actions_submenu.append("Move to", "file.move-to")
-        actions_submenu.append("Copy to", "file.copy-to")
-        actions_submenu.append("Duplicate", "file.duplicate")
+        actions_submenu.append(_("Move to"), "file.move-to")
+        actions_submenu.append(_("Copy to"), "file.copy-to")
+        actions_submenu.append(_("Duplicate"), "file.duplicate")
 
         self._tools_submenu = Gio.Menu()
 
         section_ops = Gio.Menu()
-        section_ops.append_submenu("Actions", actions_submenu)
-        section_ops.append_submenu("Upload Tool", self._tools_submenu)
-        section_ops.append("Rename", "file.rename")
-        section_ops.append("Delete", "file.delete")
+        section_ops.append_submenu(_("Actions"), actions_submenu)
+        section_ops.append_submenu(_("Upload Tool"), self._tools_submenu)
+        section_ops.append(_("Rename"), "file.rename")
+        section_ops.append(_("Delete"), "file.delete")
         menu.append_section(None, section_ops)
 
         # Download, Copy Path, Open with…
         section_transfer = Gio.Menu()
-        section_transfer.append("Download", "file.download")
-        section_transfer.append("Copy Path", "file.copy-path")
+        section_transfer.append(_("Download"), "file.download")
+        section_transfer.append(_("Copy Path"), "file.copy-path")
         # Rebuilt on each right-click so the label can name the resolved app.
         self._open_with_section = Gio.Menu()
         section_transfer.append_section(None, self._open_with_section)
@@ -529,9 +530,9 @@ class FileBrowser(Gtk.Box):
 
         # Pin, Information, Refresh
         section_misc = Gio.Menu()
-        section_misc.append("Pin", "file.pin")
-        section_misc.append("Information", "file.information")
-        section_misc.append("Refresh", "file.refresh")
+        section_misc.append(_("Pin"), "file.pin")
+        section_misc.append(_("Information"), "file.information")
+        section_misc.append(_("Refresh"), "file.refresh")
         menu.append_section(None, section_misc)
 
         self._context_menu = Gtk.PopoverMenu(menu_model=menu, has_arrow=False)
@@ -711,7 +712,7 @@ class FileBrowser(Gtk.Box):
                     "file.upload-tool", GLib.Variant.new_string(str(tool_path)))
                 self._tools_submenu.append_item(item_menu)
         else:
-            empty = Gio.MenuItem.new("(empty)", None)
+            empty = Gio.MenuItem.new(_("(empty)"), None)
             empty.set_action_and_target_value("file.upload-tool", GLib.Variant.new_string(""))
             self._tools_submenu.append_item(empty)
 
@@ -940,10 +941,10 @@ class FileBrowser(Gtk.Box):
         if len(infos) > 1:
             n = len(infos)
             dlg = Adw.AlertDialog(
-                heading=f"Delete {n} items?",
-                body="This will permanently delete the selected files and folders.",
+                heading=_("Delete {n} items?").format(n=n),
+                body=_("This will permanently delete the selected files and folders."),
             )
-            dlg.add_response("cancel", "Cancel")
+            dlg.add_response("cancel", _("Cancel"))
             dlg.add_response("delete", f"Delete {n} Items")
             dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
             dlg.connect("response", self._do_bulk_delete, infos)
@@ -952,11 +953,11 @@ class FileBrowser(Gtk.Box):
         fi = infos[0]
         kind = "folder" if fi.is_dir else "file"
         dlg = Adw.AlertDialog(
-            heading=f"Delete {kind}?",
-            body=f"Permanently delete \u201c{fi.name}\u201d?",
+            heading=_("Delete {kind}?").format(kind=kind),
+            body=_("Permanently delete \u201c{name}\u201d?").format(name=fi.name),
         )
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("delete", "Delete")
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("delete", _("Delete"))
         dlg.set_response_appearance("delete", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.connect("response", self._do_delete, fi)
         dlg.present(self.get_root())
@@ -973,7 +974,7 @@ class FileBrowser(Gtk.Box):
         def on_deleted(_):
             self.load_directory(self._current_path)
             if self._window:
-                self._window.show_toast(f"Deleted \u201c{name}\u201d", "success")
+                self._window.show_toast(_("Deleted \u201c{name}\u201d").format(name=name), "success")
 
         if fi.is_dir:
             run_async(lambda: client.rmdir_recursive(fi.path), on_deleted,
@@ -1028,7 +1029,7 @@ class FileBrowser(Gtk.Box):
         if len(infos) > 1:
             dialog = DirectoryChooserDialog(
                 self._window.sftp_client,
-                title=f"Move {len(infos)} items to\u2026",
+                title=ngettext("Move {n} item to\u2026", "Move {n} items to\u2026", len(infos)).format(n=len(infos)),
                 start_path=self._current_path,
             )
             dialog.connect("chosen", self._do_bulk_move_to, infos)
@@ -1037,7 +1038,7 @@ class FileBrowser(Gtk.Box):
         fi = infos[0]
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
-            title=f"Move \u201c{fi.name}\u201d to\u2026",
+            title=_("Move \u201c{name}\u201d to\u2026").format(name=fi.name),
             start_path=self._current_path,
         )
         dialog.connect("chosen", self._do_move_to, fi)
@@ -1058,7 +1059,7 @@ class FileBrowser(Gtk.Box):
         def on_moved(_):
             self.load_directory(self._current_path)
             if self._window:
-                self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_name}\u201d", "success")
+                self._window.show_toast(_("Moved \u201c{name}\u201d to \u201c{dest}\u201d").format(name=name, dest=dest_name), "success")
 
         run_async(lambda: client.rename(src, dst), on_moved,
                   lambda e: self._show_op_error(str(e)))
@@ -1070,7 +1071,7 @@ class FileBrowser(Gtk.Box):
         if len(infos) > 1:
             dialog = DirectoryChooserDialog(
                 self._window.sftp_client,
-                title=f"Copy {len(infos)} items to\u2026",
+                title=ngettext("Copy {n} item to\u2026", "Copy {n} items to\u2026", len(infos)).format(n=len(infos)),
                 start_path=self._current_path,
             )
             dialog.connect("chosen", self._do_bulk_copy_to, infos)
@@ -1079,7 +1080,7 @@ class FileBrowser(Gtk.Box):
         fi = infos[0]
         dialog = DirectoryChooserDialog(
             self._window.sftp_client,
-            title=f"Copy \u201c{fi.name}\u201d to\u2026",
+            title=_("Copy \u201c{name}\u201d to\u2026").format(name=fi.name),
             start_path=self._current_path,
         )
         dialog.connect("chosen", self._do_copy_to, fi)
@@ -1233,7 +1234,7 @@ class FileBrowser(Gtk.Box):
         def on_success(name):
             self.load_directory(cur_dir)
             if self._window:
-                self._window.show_toast(f"Created \u201c{name}\u201d", "success")
+                self._window.show_toast(_("Created \u201c{name}\u201d").format(name=name), "success")
 
         queue.enqueue(
             f"Archive {fi.name}",
@@ -1385,7 +1386,7 @@ class FileBrowser(Gtk.Box):
 
         if not files:
             if self._current_path == "/":
-                self._status_label.set_text("Empty directory")
+                self._status_label.set_text(_("Empty directory"))
                 self._status_label.remove_css_class("error")
                 self._stack.set_visible_child_name("status")
             return
@@ -1407,13 +1408,13 @@ class FileBrowser(Gtk.Box):
     def _show_listing_error(self, message: str):
         self._items.clear()
         self._store.remove_all()
-        self._status_label.set_text(f"Error: {message}")
+        self._status_label.set_text(_("Error: {message}").format(message=message))
         self._status_label.add_css_class("error")
         self._stack.set_visible_child_name("status")
 
     def _show_op_error(self, message: str):
         if self._window:
-            self._window.show_toast(f"Error: {message}", "error")
+            self._window.show_toast(_("Error: {message}").format(message=message), "error")
         else:
             self._show_listing_error(message)
 
@@ -1505,7 +1506,7 @@ class FileBrowser(Gtk.Box):
         def on_bulk_deleted(_):
             self.load_directory(self._current_path)
             if self._window:
-                self._window.show_toast(f"Deleted {n} item{'s' if n != 1 else ''}", "success")
+                self._window.show_toast(ngettext("Deleted {n} item", "Deleted {n} items", n).format(n=n), "success")
 
         run_async(do_delete, on_bulk_deleted, lambda e: self._show_op_error(str(e)))
 
@@ -1587,7 +1588,7 @@ class FileBrowser(Gtk.Box):
     def _on_upload_clicked(self, btn):
         if not self._window or not self._window.sftp_client:
             return
-        dialog = Gtk.FileDialog(title="Upload Files")
+        dialog = Gtk.FileDialog(title=_("Upload Files"))
         dialog.open_multiple(self.get_root(), None, self._on_upload_files_selected)
 
     def _on_upload_files_selected(self, dialog, result):
@@ -1661,8 +1662,8 @@ class FileBrowser(Gtk.Box):
             body = f"{listing} already exist in the current directory. Do you want to replace them?"
 
         dlg = Adw.AlertDialog(heading=heading, body=body)
-        dlg.add_response("cancel", "Cancel")
-        dlg.add_response("replace", "Replace")
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("replace", _("Replace"))
         dlg.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
         dlg.set_default_response("cancel")
         dlg.set_close_response("cancel")
@@ -1686,16 +1687,16 @@ class FileBrowser(Gtk.Box):
         if not infos:
             return
         if len(infos) > 1:
-            dialog = Gtk.FileDialog(title=f"Download {len(infos)} items to\u2026")
+            dialog = Gtk.FileDialog(title=ngettext("Download {n} item to\u2026", "Download {n} items to\u2026", len(infos)).format(n=len(infos)))
             dialog.select_folder(self.get_root(), None,
                                  lambda d, r: self._on_bulk_download_folder(d, r, infos))
             return
         info = infos[0]
         if info.is_dir:
-            dialog = Gtk.FileDialog(title=f"Download \u201c{info.name}\u201d to")
+            dialog = Gtk.FileDialog(title=_("Download \u201c{name}\u201d to").format(name=info.name))
             dialog.select_folder(self.get_root(), None, self._on_download_folder_chosen)
         else:
-            dialog = Gtk.FileDialog(title="Save File", initial_name=info.name)
+            dialog = Gtk.FileDialog(title=_("Save File"), initial_name=info.name)
             dialog.save(self.get_root(), None, self._on_download_save_chosen)
 
     def _on_download_folder_chosen(self, dialog, result):
@@ -1732,11 +1733,12 @@ class FileBrowser(Gtk.Box):
         self._open_with_section.remove_all()
 
         if fi is None or fi.is_dir:
-            self._open_with_section.append("Open Locally", "file.open-locally")
+            self._open_with_section.append(_("Open Locally"), "file.open-locally")
             return
 
         app, _is_custom = fa.resolve(fi.name)
-        label = f"Open with {app.get_display_name()}" if app else "Open Locally"
+        label = (_("Open with {app}").format(app=app.get_display_name()) if app
+                 else _("Open Locally"))
         self._open_with_section.append(label, "file.open-locally")
 
         # Alternatives for this file type, minus the one already offered above.
@@ -1750,7 +1752,7 @@ class FileBrowser(Gtk.Box):
                     "file.open-with", GLib.Variant.new_string(other.get_id() or "")
                 )
                 submenu.append_item(menu_item)
-            self._open_with_section.append_submenu("Open With", submenu)
+            self._open_with_section.append_submenu(_("Open With"), submenu)
 
     def _on_open_with(self, action, param):
         """Open the file once with a specific application."""
@@ -1866,9 +1868,9 @@ class FileBrowser(Gtk.Box):
             if self._window:
                 if n == 1:
                     name = valid[0].rstrip("/").rsplit("/", 1)[-1]
-                    self._window.show_toast(f"Moved \u201c{name}\u201d to \u201c{dest_label}\u201d", "success")
+                    self._window.show_toast(_("Moved \u201c{name}\u201d to \u201c{dest}\u201d").format(name=name, dest=dest_label), "success")
                 else:
-                    self._window.show_toast(f"Moved {n} items to \u201c{dest_label}\u201d", "success")
+                    self._window.show_toast(ngettext("Moved {n} item to \u201c{dest}\u201d", "Moved {n} items to \u201c{dest}\u201d", n).format(n=n, dest=dest_label), "success")
 
         run_async(do_moves, on_done, lambda e: self._show_op_error(str(e)))
 

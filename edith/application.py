@@ -5,10 +5,11 @@ gi.require_version("Adw", "1")
 
 from pathlib import Path
 
-from gi.repository import Adw, Gdk, Gio, Gtk
+from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from edith import APP_ID, APP_NAME, VERSION
 from edith.window import EdithWindow
+from edith.i18n import _
 
 
 class EdithApplication(Adw.Application):
@@ -164,6 +165,12 @@ label.error { color: @error_color; }
             website="https://github.com/mkay/edith",
             license_type=Gtk.License.MIT_X11,
         )
+        # Translators: replace this with your name(s); it is shown in the
+        # About dialog. Untranslated, the placeholder is hidden rather than
+        # displayed literally.
+        credits = _("translator-credits")
+        if credits != "translator-credits":
+            about.set_translator_credits(credits)
         about.present(self.props.active_window)
 
     def _on_new_window(self, action, param):
@@ -184,47 +191,51 @@ label.error { color: @error_color; }
 
         # Build shortcuts window programmatically
         shortcuts = [
-            ("General", [
-                ("<Control>q", "Quit"),
-                ("<Control><Shift>n", "New Window"),
-                ("<Control>comma", "Preferences"),
-                ("F9", "Toggle sidebar"),
-                ("<Control>n", "New server"),
+            (_("General"), [
+                ("<Control>q", _("Quit")),
+                ("<Control><Shift>n", _("New Window")),
+                ("<Control>comma", _("Preferences")),
+                ("F9", _("Toggle sidebar")),
+                ("<Control>n", _("New server")),
             ]),
-            ("Editing", [
-                ("<Control>s", "Save file"),
-                ("<Control>w", "Close tab"),
-                ("<Control>f", "Find"),
-                ("<Control><Shift>f", "Find and Replace"),
-                ("<Control>g", "Go to Line"),
-                ("<Control>z", "Undo"),
-                ("<Control><Shift>z", "Redo"),
+            (_("Editing"), [
+                ("<Control>s", _("Save file")),
+                ("<Control>w", _("Close tab")),
+                ("<Control>f", _("Find")),
+                ("<Control><Shift>f", _("Find and Replace")),
+                ("<Control>g", _("Go to Line")),
+                ("<Control>z", _("Undo")),
+                ("<Control><Shift>z", _("Redo")),
             ]),
-            ("Connection", [
-                ("<Control>f", "Search servers"),
+            (_("Connection"), [
+                ("<Control>f", _("Search servers")),
             ]),
-            ("File Browser", [
-                ("F2", "Rename"),
-                ("Delete", "Delete"),
-                ("F5", "Refresh"),
-                ("BackSpace", "Parent directory"),
+            (_("File Browser"), [
+                ("F2", _("Rename")),
+                ("Delete", _("Delete")),
+                ("F5", _("Refresh")),
+                ("BackSpace", _("Parent directory")),
             ]),
         ]
+
+        # Titles are translated, so they may legitimately contain & or < —
+        # both of which would produce invalid XML for Gtk.Builder.
+        def esc(text):
+            return GLib.markup_escape_text(text)
 
         sections_xml = ""
         for group_title, items in shortcuts:
             items_xml = ""
             for accel, title in items:
-                accel_escaped = accel.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 items_xml += (
                     f'<child><object class="GtkShortcutsShortcut">'
-                    f'<property name="accelerator">{accel_escaped}</property>'
-                    f'<property name="title">{title}</property>'
+                    f'<property name="accelerator">{esc(accel)}</property>'
+                    f'<property name="title">{esc(title)}</property>'
                     f"</object></child>"
                 )
             sections_xml += (
                 f'<child><object class="GtkShortcutsGroup">'
-                f'<property name="title">{group_title}</property>'
+                f'<property name="title">{esc(group_title)}</property>'
                 f"{items_xml}</object></child>"
             )
 
