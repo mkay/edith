@@ -1475,7 +1475,8 @@ class FileBrowser(Gtk.Box):
         self._group_col.set_visible(show)
         self._mtime_col.set_visible(show)
         if self._window:
-            self._window.adjust_sidebar_width(750 if show else 280)
+            # None restores the user's saved sidebar width.
+            self._window.adjust_sidebar_width(750 if show else None)
 
     def reset_detail_mode(self):
         """Leave extended view (e.g. on disconnect) so the sidebar returns

@@ -41,6 +41,8 @@ class EdithWindow(Adw.ApplicationWindow):
         self._poll_timer_id = None
         self._poll_in_flight = False
         self._reload_dialog_paths = set()  # paths with an open reload dialog
+        self._sidebar_width_timer = None   # debounces saving the paned position
+        self._sidebar_width_suppress = None  # ignores programmatic resizes
 
         from edith.services.external_edit import ExternalEditManager
         self._external_edits = ExternalEditManager()
@@ -156,9 +158,12 @@ class EdithWindow(Adw.ApplicationWindow):
         self._sidebar_toolbar.add_bottom_bar(sidebar_bottom)
 
         # === Main ToolbarView (no window controls — they live in the sidebar header) ===
+        # The sidebar header carries start-side window controls and this one
+        # carries end-side controls, so the buttons land on whichever edge the
+        # user's gtk-decoration-layout puts them on.
         self._main_header = Adw.HeaderBar(
             show_start_title_buttons=False,
-            show_end_title_buttons=False,
+            show_end_title_buttons=True,
         )
 
         self._connect_btn = Gtk.Button(
@@ -301,7 +306,9 @@ class EdithWindow(Adw.ApplicationWindow):
 
         # === Resizable paned: sidebar | main ===
         self._paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL)
-        self._sidebar_width = 280
+        self._sidebar_width = max(
+            int(ConfigService.get_preference("sidebar_width", 280)), 180
+        )
 
         self._paned.set_start_child(self._sidebar_toolbar)
         self._paned.set_resize_start_child(False)
@@ -310,6 +317,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._paned.set_resize_end_child(True)
         self._paned.set_shrink_end_child(False)
         self._paned.set_position(self._sidebar_width)
+        self._paned.connect("notify::position", self._on_sidebar_position_changed)
 
         self.set_content(self._paned)
 
@@ -408,6 +416,11 @@ class EdithWindow(Adw.ApplicationWindow):
     # --- Signal handlers ---
 
     def _on_close_request(self, window):
+        # Flush a pending width save; the timer won't survive the window.
+        if self._sidebar_width_timer:
+            self._cancel_sidebar_width_save()
+            self._save_sidebar_width()
+
         if self._force_close:
             return False  # allow close
 
@@ -459,7 +472,9 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _toggle_sidebar(self):
         if self._sidebar_visible:
+            self._cancel_sidebar_width_save()
             self._sidebar_width = max(self._paned.get_position(), 180)
+            ConfigService.set_preference("sidebar_width", self._sidebar_width)
             self._sidebar_toolbar.set_visible(False)
             self._sidebar_visible = False
             self._sidebar_toggle.set_icon_name("edith-sidebar-show-symbolic")
@@ -1502,11 +1517,47 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._sidebar_status_popover.set_child(grid)
 
-    def adjust_sidebar_width(self, width: int):
-        """Set the sidebar paned position (used by detail-mode toggle)."""
-        self._sidebar_width = width
+    def adjust_sidebar_width(self, width: int | None = None):
+        """Set the paned position without changing the user's saved width.
+
+        Used by the detail-mode toggle. `None` restores the saved width.
+        """
+        if width is None:
+            width = self._sidebar_width
+        # Programmatic resizes (and the allocation churn they cause) must not
+        # overwrite the width the user chose by dragging.
+        self._cancel_sidebar_width_save()
+        if self._sidebar_width_suppress:
+            GLib.source_remove(self._sidebar_width_suppress)
+        self._sidebar_width_suppress = GLib.timeout_add(
+            600, self._resume_sidebar_width_save
+        )
         if self._sidebar_visible:
             self._paned.set_position(width)
+
+    def _resume_sidebar_width_save(self):
+        self._sidebar_width_suppress = None
+        return GLib.SOURCE_REMOVE
+
+    def _cancel_sidebar_width_save(self):
+        if self._sidebar_width_timer:
+            GLib.source_remove(self._sidebar_width_timer)
+            self._sidebar_width_timer = None
+
+    def _on_sidebar_position_changed(self, paned, pspec):
+        """Debounce saving so a drag writes the config once, not per pixel."""
+        if self._sidebar_width_suppress or not self._sidebar_visible:
+            return
+        self._cancel_sidebar_width_save()
+        self._sidebar_width_timer = GLib.timeout_add(400, self._save_sidebar_width)
+
+    def _save_sidebar_width(self):
+        self._sidebar_width_timer = None
+        position = self._paned.get_position()
+        if position >= 180 and position != self._sidebar_width:
+            self._sidebar_width = position
+            ConfigService.set_preference("sidebar_width", position)
+        return GLib.SOURCE_REMOVE
 
     def reveal_in_sidebar(self, remote_path: str):
         """Show the file in the sidebar file browser."""
