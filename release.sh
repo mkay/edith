@@ -44,9 +44,9 @@ sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
 # 2. Generate release notes before tagging
 PREV_TAG=$(git tag --sort=-version:refname | head -1)
 if [[ -n "$PREV_TAG" ]]; then
-    RELEASE_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG..HEAD" | grep -v -E "^- (Release |first commit)")
+    RELEASE_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG..HEAD" | grep -v -E "^- (Release |Update PKGBUILD checksums|first commit)")
 else
-    RELEASE_NOTES=$(git log --pretty=format:"- %s" | grep -v -E "^- (Release |first commit)")
+    RELEASE_NOTES=$(git log --pretty=format:"- %s" | grep -v -E "^- (Release |Update PKGBUILD checksums|first commit)")
 fi
 echo "==> Release notes:"
 echo "$RELEASE_NOTES"
