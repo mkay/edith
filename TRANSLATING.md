@@ -3,6 +3,25 @@
 Translations live in `po/`. Each language is one `.po` file named after its
 locale code (`de.po`, `tr.po`, `fr.po` …).
 
+## Who should translate
+
+Please translate only into your **mother tongue**, or a language you genuinely
+speak — not one you are running through a machine translator.
+
+This isn't gatekeeping — it's the only part that can't be automated. Producing a
+draft is trivial; anyone can paste `edith.pot` into a translation engine, and so
+can I. What no machine and no non-speaker can do is tell whether the result
+actually sounds like the language. Machine output reads plausibly while getting
+the register wrong, mistranslating a term of art, or mangling a case ending —
+and a user who meets that has no way to tell it's wrong. Plain English is the
+better failure.
+
+So the contribution isn't the text. It's you putting your name to it.
+
+By all means start from a machine draft if it saves you typing — just leave the
+entries `fuzzy` until you have read every one, which is exactly what the fuzzy
+flag is for (see below).
+
 ## Adding a new language
 
 ```sh
@@ -64,5 +83,5 @@ the About dialog. Untranslated, it stays hidden.
 ## Submitting
 
 Open a pull request with your `.po` file (and the `po/LINGUAS` line if the
-language is new). Machine-translated entries are welcome as a starting point,
-but please leave them marked fuzzy until a speaker has reviewed them.
+language is new). Anything you have not read yourself should still be marked
+fuzzy — see [Who should translate](#who-should-translate).

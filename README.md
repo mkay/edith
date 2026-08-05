@@ -13,12 +13,16 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 
 - **SFTP & FTP** — SFTP (SSH), plain FTP, FTPS with explicit or implicit TLS
 - **Server management** — saved connections with password/key auth, organized into drag-and-drop groups
-- **File browser** — sortable columns, drag-and-drop move/upload/copy, shift/ctrl+click multi-select, pinned files, breadcrumb path bar with history, parent directory dropdown for quick navigation
+- **File browser** — sortable columns, drag-and-drop move/upload/copy, drag files out to download them, shift/ctrl+click multi-select, pinned files, breadcrumb path bar with history, parent directory dropdown for quick navigation
 - **Upload tools** — keep frequently used scripts (e.g. adminer.php) in a tools folder; upload them to any directory via the right-click menu
 - **Monaco editor** — VS Code's engine via WebKitGTK — syntax highlighting for 80+ languages, Emmet, find/replace, go to line, word wrap, customizable themes and fonts
 - **Live editing** — files downloaded to temp, edited locally, uploaded on save; detects external changes on the server and reloads automatically
+- **Your own editor too** — open or edit any remote file in a local application, with per-file-type associations you choose
 - **Image & SVG** — raster images open in a viewer with metadata; SVGs get a live side-by-side preview
+- **Languages** — English and German so far, selectable in Preferences or following your system. [More are welcome](#translations)
+- **Preferences** — one window for editor, file and general settings, including single- or double-click navigation
 - **Secure credentials** — system keychain (GNOME Keyring or compatible), never plain text on disk
+- **Safe by default** — your servers and settings are backed up automatically at every start
 
 ## Keyboard shortcuts
 
@@ -52,6 +56,7 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 - python-paramiko
 - python-gobject
 - python-keyring
+- python-defusedxml
 
 ## Building (Arch Linux)
 
@@ -81,6 +86,25 @@ edith
 ```
 
 Or launch from your application menu.
+
+## Translations
+
+Edith currently speaks English and German. Pick a language under
+**Preferences → General**, or leave it following your system.
+
+**Would you like Edith in your own language?** Translating it means editing one
+text file — no build environment, no code. Everything you need is in
+[TRANSLATING.md](TRANSLATING.md).
+
+One request: please translate only into your **mother tongue**, or a language
+you genuinely speak. Running the strings through a machine translator is easy
+enough that anyone could do it, including me — what I can't do is tell whether
+the result sounds right. A machine draft reads plausibly while quietly getting
+the register wrong, mistranslating a term of art, or breaking a grammatical case
+in a way no non-speaker will ever notice. That's worse than plain English,
+because a user who sees it has no way to know it's wrong.
+
+So the valuable part isn't producing the text — it's you vouching for it.
 
 ## License
 
