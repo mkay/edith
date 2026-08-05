@@ -6,6 +6,8 @@ deliberately not translated: unlike every other string in the app they never pas
 through gettext, and stay English whatever the language setting says.
 """
 
+import re
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -22,6 +24,15 @@ RESOURCE_PATH = "/de/singular/edith/whatsnew.md"
 # it only ever moves forward — a downgrade re-shows the older version's notes,
 # which is the honest thing to do since they describe what is actually running.
 SEEN_KEY = "whats_new_seen"
+
+#: Markdown links, `[label](url)`. Preferred over a bare URL: a full URL set in
+#: a narrow dialog wraps mid-scheme and reads like debris.
+_MD_LINK_RE = re.compile(r"\[([^\]]+)\]\((https?://[^)\s]+)\)")
+
+#: Bare http(s) URLs, linkified as a fallback so a plainly-written URL still
+#: works. Trailing punctuation is left out of the match so a link ending a
+#: sentence does not swallow the full stop.
+_URL_RE = re.compile(r"(https?://[^\s<>]*[^\s<>.,;:!?)\]])")
 
 
 def load_notes() -> list:
@@ -54,12 +65,49 @@ def load_notes() -> list:
     return bullets
 
 
+def _linkify(bullet: str) -> str:
+    """Escape a bullet for Pango and turn any bare URL into a link.
+
+    Keeps whatsnew.md plain text: a URL is written as itself, with no markup to
+    author or to escape by hand. GTK's default ::activate-link handler opens it,
+    so nothing needs wiring up at the label.
+    """
+    def bare(text):
+        # re.split with one capture group alternates text, match, text, …
+        parts = _URL_RE.split(text)
+        return "".join(
+            f'<a href="{e}">{e}</a>' if i % 2 else e
+            for i, e in ((i, GLib.markup_escape_text(p)) for i, p in enumerate(parts))
+        )
+
+    out = []
+    last = 0
+    for m in _MD_LINK_RE.finditer(bullet):
+        out.append(bare(bullet[last:m.start()]))
+        label = GLib.markup_escape_text(m.group(1))
+        url = GLib.markup_escape_text(m.group(2))
+        out.append(f'<a href="{url}">{label}</a>')
+        last = m.end()
+    out.append(bare(bullet[last:]))
+    return "".join(out)
+
+
+def _unlink(bullet: str) -> str:
+    """Escape a bullet, reducing markdown links to their label.
+
+    Adw.AboutDialog's release-notes parser takes the AppStream subset, which has
+    no <a>: handing it one makes it reject the whole document. It carries its own
+    "Help Translate Edith" row anyway, so the label alone reads fine there.
+    """
+    return GLib.markup_escape_text(_MD_LINK_RE.sub(r"\1", bullet))
+
+
 def release_notes_markup() -> str:
     """The notes as the AppStream-flavoured HTML subset Adw.AboutDialog wants."""
     bullets = load_notes()
     if not bullets:
         return ""
-    items = "".join(f"<li>{GLib.markup_escape_text(b)}</li>" for b in bullets)
+    items = "".join(f"<li>{_unlink(b)}</li>" for b in bullets)
     return f"<ul>{items}</ul>"
 
 
@@ -82,7 +130,8 @@ class WhatsNewDialog(Adw.AlertDialog):
             row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
             row.append(Gtk.Label(label="•", valign=Gtk.Align.START))
             label = Gtk.Label(
-                label=bullet,
+                label=_linkify(bullet),
+                use_markup=True,
                 wrap=True,
                 xalign=0.0,
                 halign=Gtk.Align.START,

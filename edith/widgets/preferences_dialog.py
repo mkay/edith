@@ -8,7 +8,8 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from edith.services.config import ConfigService
-from edith.i18n import _, ngettext, LANGUAGE_KEY, SUPPORTED_LANGUAGES
+from edith.i18n import (_, ngettext, LANGUAGE_KEY, SUPPORTED_LANGUAGES,
+                        TRANSLATE_URL)
 
 
 class PreferencesDialog(Adw.PreferencesDialog):
@@ -460,6 +461,22 @@ class PreferencesDialog(Adw.PreferencesDialog):
         )
         self._language_row.connect("notify::selected", self._on_language_changed)
         appearance.add(self._language_row)
+
+        # Right under the dropdown, because someone who just opened it and did
+        # not find their language is exactly the person worth asking — and the
+        # barrier worth naming is that it is a text file, not a build.
+        translate_row = Adw.ActionRow(
+            title=_("Your language missing?"),
+            subtitle=_("Edith can be translated into any language — it's a text "
+                       "file, not code."),
+            activatable=True,
+        )
+        translate_row.add_suffix(Gtk.Image(icon_name="adw-external-link-symbolic"))
+        translate_row.connect(
+            "activated",
+            lambda *_a: Gtk.UriLauncher(uri=TRANSLATE_URL).launch(self.get_root(), None, None, None),
+        )
+        appearance.add(translate_row)
 
         page.add(appearance)
 

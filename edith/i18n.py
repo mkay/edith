@@ -29,6 +29,12 @@ SUPPORTED_LANGUAGES = [
 #: Config key holding the override. Empty/absent means "follow the system".
 LANGUAGE_KEY = "language"
 
+#: Where to send someone who wants Edith in a language it does not speak yet.
+#: TRANSLATING.md rather than the issue tracker: it documents the whole
+#: workflow, and the point of the invitation is that adding a language is a
+#: text file rather than a build environment.
+TRANSLATE_URL = "https://github.com/mkay/edith/blob/main/TRANSLATING.md"
+
 
 def _apply_language_override():
     """Point gettext at the configured language before any catalogue loads.

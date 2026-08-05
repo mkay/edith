@@ -9,7 +9,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk
 
 from edith import APP_ID, APP_NAME, VERSION
 from edith.window import EdithWindow
-from edith.i18n import _
+from edith.i18n import _, TRANSLATE_URL
 
 
 class EdithApplication(Adw.Application):
@@ -195,6 +195,10 @@ label.error { color: @error_color; }
         credits = _("translator-credits")
         if credits != "translator-credits":
             about.set_translator_credits(credits)
+
+        # The durable home for the invitation: the release-notes dialog carries
+        # it too, but only once, and only for people updating.
+        about.add_link(_("Help Translate Edith"), TRANSLATE_URL)
 
         # Gives About its own "What's New" section, so the notes stay reachable
         # after the one-off dialog has been dismissed.

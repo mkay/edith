@@ -15,10 +15,13 @@ The released version is what AUR shows, which can be several sessions behind mai
 
 Blank lines and this comment are ignored. Every other line is one bullet; a leading
 "-", "*" or "•" is optional and stripped.
+
+Links may be written as [label](https://…) or as a bare URL. Prefer the labelled
+form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Edith speaks German. Pick the language under Preferences → General, or leave it following your system.
+- Edith now speaks German — and can speak your language too. Pick one under Preferences → General.
+- Would you like Edith in your mother tongue? Translating it is a text file, not code — see [TRANSLATING.md](https://github.com/mkay/edith/blob/main/TRANSLATING.md).
 - The editor no longer loses its undo history part-way through a session.
 - Dragging files between two Edith windows no longer freezes the app.
 - Your servers and settings are now backed up automatically at every start.
-- If Edith ever stops responding it writes a report to ~/.cache/edith/freeze-dump.log — attach it to a bug report.
