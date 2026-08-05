@@ -186,7 +186,7 @@ msgstr "Hauptmenü"
 #: edith/window.py:269 edith/window.py:888
 msgid "Open a file from the sidebar to start editing."
 msgstr ""
-"Öffnen Sie eine Datei in der Seitenleiste, um mit dem Bearbeiten zu beginnen."
+"Öffne eine Datei in der Seitenleiste, um mit dem Bearbeiten zu beginnen."
 
 #: edith/window.py:454 edith/window.py:649 edith/window.py:794
 #: edith/widgets/connect_dialog.py:34 edith/widgets/editor_panel.py:268
@@ -249,7 +249,7 @@ msgstr "Import abgeschlossen"
 #: edith/window.py:587
 msgid "Passwords could not be imported — you'll need to re-enter them."
 msgstr ""
-"Passwörter konnten nicht importiert werden – Sie müssen sie erneut eingeben."
+"Passwörter konnten nicht importiert werden – du musst sie erneut eingeben."
 
 #: edith/window.py:644
 msgid "Line number…"
@@ -341,7 +341,7 @@ msgid ""
 "Do you want to reload it? Your unsaved changes will be lost."
 msgstr ""
 "„{filename}“ wurde auf dem Server geändert.\n"
-"Möchten Sie sie neu laden? Ihre ungespeicherten Änderungen gehen verloren."
+"Möchtest du sie neu laden? Deine ungespeicherten Änderungen gehen verloren."
 
 #: edith/window.py:1434
 msgid "Keep Local"
@@ -602,7 +602,7 @@ msgstr "Datei existiert bereits"
 msgid ""
 "“{name}” already exists in the current directory. Do you want to replace it?"
 msgstr ""
-"„{name}“ existiert bereits im aktuellen Ordner. Möchten Sie den vorhandenen "
+"„{name}“ existiert bereits im aktuellen Ordner. Möchtest du den vorhandenen "
 "Eintrag ersetzen?"
 
 #: edith/widgets/file_browser.py:1711 edith/widgets/file_browser.py:2033
@@ -623,7 +623,7 @@ msgid ""
 "{listing} already exist in the current directory. Do you want to replace "
 "them?"
 msgstr ""
-"{listing} existieren bereits im aktuellen Ordner. Möchten Sie die "
+"{listing} existieren bereits im aktuellen Ordner. Möchtest du die "
 "vorhandenen Einträge ersetzen?"
 
 #: edith/widgets/file_browser.py:1720 edith/widgets/file_browser.py:2042
@@ -674,14 +674,14 @@ msgstr "Objekt existiert bereits"
 #, python-brace-format
 msgid "“{name}” already exists in “{dest}”. Do you want to replace it?"
 msgstr ""
-"„{name}“ existiert bereits in „{dest}“. Möchten Sie den vorhandenen Eintrag "
+"„{name}“ existiert bereits in „{dest}“. Möchtest du den vorhandenen Eintrag "
 "ersetzen?"
 
 #: edith/widgets/file_browser.py:2036 edith/widgets/file_browser.py:2174
 #, python-brace-format
 msgid "{listing} already exist in “{dest}”. Do you want to replace them?"
 msgstr ""
-"{listing} existieren bereits in „{dest}“. Möchten Sie die vorhandenen "
+"{listing} existieren bereits in „{dest}“. Möchtest du die vorhandenen "
 "Einträge ersetzen?"
 
 #: edith/widgets/file_browser.py:2083
@@ -777,7 +777,7 @@ msgid ""
 "The editor for “{filename}” crashed and was restored with your unsaved "
 "changes. Undo history was lost."
 msgstr ""
-"Der Editor für „{filename}“ ist abgestürzt und wurde mit Ihren "
+"Der Editor für „{filename}“ ist abgestürzt und wurde mit deinen "
 "ungespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging "
 "dabei verloren."
 
@@ -853,7 +853,7 @@ msgstr "Alle"
 
 #: edith/widgets/preferences_dialog.py:93
 msgid "Sticky Scroll"
-msgstr "Haftendes Scrollen"
+msgstr "Fixierter Bildlauf"
 
 #: edith/widgets/preferences_dialog.py:94
 msgid "Pin current scope (function / class) at top"
@@ -885,7 +885,7 @@ msgid ""
 "settings. See the Monaco Editor API docs for available options."
 msgstr ""
 "Rohe Monaco-Editor-Optionen als JSON. Diese werden über alle anderen "
-"Einstellungen gelegt. Verfügbare Optionen finden Sie in der Monaco-Editor-"
+"Einstellungen gelegt. Verfügbare Optionen findest du in der Monaco-Editor-"
 "API-Dokumentation."
 
 #: edith/widgets/preferences_dialog.py:137
@@ -900,7 +900,7 @@ msgstr "Dateiendungen einer Sprache zuordnen"
 #: edith/widgets/preferences_dialog.py:146
 #: edith/widgets/preferences_dialog.py:717
 msgid "Editor Overrides"
-msgstr "Editor-Überschreibungen"
+msgstr "Editor-Overrides"
 
 #: edith/widgets/preferences_dialog.py:147
 msgid "Edit raw Monaco options (JSON)"
@@ -915,8 +915,8 @@ msgid ""
 "Choose which local application opens a file type when you use “Open with…” "
 "in the file browser. Without an entry here, the system default is used."
 msgstr ""
-"Wählen Sie, welche lokale Anwendung einen Dateityp öffnet, wenn Sie „Öffnen "
-"mit…“ im Dateibrowser verwenden. Ohne Eintrag hier wird die Systemvorgabe "
+"Wähle aus, welche lokale Anwendung einen Dateityp öffnet, wenn du „Öffnen "
+"mit…“ im Dateibrowser verwendest. Ohne Eintrag hier wird die Systemvorgabe "
 "verwendet."
 
 #: edith/widgets/preferences_dialog.py:178
@@ -957,7 +957,7 @@ msgstr ""
 
 #: edith/widgets/preferences_dialog.py:218
 msgid "Tools folder"
-msgstr "Werkzeugordner"
+msgstr "Upload-Werkzeug Ordner"
 
 #: edith/widgets/preferences_dialog.py:226
 msgid "Browse…"
@@ -1075,7 +1075,7 @@ msgstr[1] "{listing} haben ungespeicherte Änderungen. Bitte vor dem Neustart sp
 
 #: edith/widgets/preferences_dialog.py:674
 msgid "Choose Tools Folder"
-msgstr "Werkzeugordner wählen"
+msgstr "Upload-Werkzeug Ordner wählen"
 
 #: edith/widgets/preferences_dialog.py:778
 #, python-brace-format
@@ -1221,7 +1221,7 @@ msgstr "Keine Server"
 #: edith/widgets/server_panel.py:73
 msgid "Add a server using the button in the toolbar."
 msgstr ""
-"Fügen Sie über die Schaltfläche in der Werkzeugleiste einen Server hinzu."
+"Füge über die Schaltfläche in der Werkzeugleiste einen Server hinzu."
 
 #: edith/widgets/server_panel.py:115
 msgid "Edit"
@@ -1254,7 +1254,7 @@ msgstr "Server löschen?"
 #: edith/widgets/server_panel.py:366
 #, python-brace-format
 msgid "Remove “{name}” from your servers?"
-msgstr "„{name}“ aus Ihren Servern entfernen?"
+msgstr "„{name}“ aus deinen Servern entfernen?"
 
 #: edith/widgets/status_bar.py:75
 msgid "Ln 1, Col 1"
@@ -1358,7 +1358,7 @@ msgstr "Willkommen bei Edith"
 
 #: edith/widgets/welcome_view.py:33
 msgid "Add Your First Server"
-msgstr "Fügen Sie Ihren ersten Server hinzu"
+msgstr "Ersten Server hinzufügen"
 
 #. Translators: keep the <a href="create"> markup intact; only the
 #. visible text between the tags should be translated.
@@ -1367,8 +1367,8 @@ msgid ""
 "Connect to a server from the sidebar or <a href=\"create\">click here to "
 "create one</a>."
 msgstr ""
-"Verbinden Sie sich über die Seitenleiste mit einem Server oder <a "
-"href=\"create\">klicken Sie hier, um einen anzulegen</a>."
+"Verbinde dich über die Seitenleiste mit einem Server oder <a "
+"href=\"create\">klicke hier, um einen Server anzulegen</a>."
 
 #: edith/widgets/welcome_view.py:66 edith/widgets/welcome_view.py:74
 msgid "A code editor that talks (S)FTP"
@@ -1385,4 +1385,4 @@ msgid ""
 "Add a server to get started."
 msgstr ""
 "Noch keine Server eingerichtet.\n"
-"Fügen Sie einen Server hinzu, um zu beginnen."
+"Füge einen Server hinzu."
