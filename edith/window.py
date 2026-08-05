@@ -1660,3 +1660,8 @@ class EdithWindow(Adw.ApplicationWindow):
     def connected_server(self):
         """The ServerInfo this window is connected to, or None."""
         return self._connected_server
+
+    @property
+    def editor_panel(self):
+        """The tab view holding this window's editors."""
+        return self._editor_panel

@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 21:44+0300\n"
+"POT-Creation-Date: 2026-08-05 22:00+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -194,7 +194,7 @@ msgstr ""
 #: edith/widgets/file_browser.py:1719 edith/widgets/file_browser.py:2041
 #: edith/widgets/file_browser.py:2179 edith/widgets/file_dialogs.py:36
 #: edith/widgets/file_dialogs.py:102 edith/widgets/file_dialogs.py:178
-#: edith/widgets/file_dialogs.py:476 edith/widgets/preferences_dialog.py:628
+#: edith/widgets/file_dialogs.py:476 edith/widgets/preferences_dialog.py:728
 #: edith/widgets/server_edit_dialog.py:38 edith/widgets/server_list.py:167
 #: edith/widgets/server_panel.py:305 edith/widgets/server_panel.py:368
 #: edith/widgets/transfer_panel.py:53
@@ -215,6 +215,7 @@ msgstr "Import fehlgeschlagen"
 
 #: edith/window.py:549 edith/window.py:555 edith/window.py:590
 #: edith/window.py:780 edith/window.py:1299
+#: edith/widgets/preferences_dialog.py:619
 #: edith/widgets/server_edit_dialog.py:364
 msgid "OK"
 msgstr "OK"
@@ -600,10 +601,12 @@ msgstr "Datei existiert bereits"
 #, python-brace-format
 msgid ""
 "“{name}” already exists in the current directory. Do you want to replace it?"
-msgstr "„{name}“ existiert bereits im aktuellen Ordner. Möchten Sie den vorhandenen Eintrag ersetzen?"
+msgstr ""
+"„{name}“ existiert bereits im aktuellen Ordner. Möchten Sie den vorhandenen "
+"Eintrag ersetzen?"
 
 #: edith/widgets/file_browser.py:1711 edith/widgets/file_browser.py:2033
-#: edith/widgets/file_browser.py:2171
+#: edith/widgets/file_browser.py:2171 edith/widgets/preferences_dialog.py:610
 #, python-brace-format
 msgid " and {n} more"
 msgstr " und {n} weitere"
@@ -619,7 +622,9 @@ msgstr "{n} Objekte existieren bereits"
 msgid ""
 "{listing} already exist in the current directory. Do you want to replace "
 "them?"
-msgstr "{listing} existieren bereits im aktuellen Ordner. Möchten Sie die vorhandenen Einträge ersetzen?"
+msgstr ""
+"{listing} existieren bereits im aktuellen Ordner. Möchten Sie die "
+"vorhandenen Einträge ersetzen?"
 
 #: edith/widgets/file_browser.py:1720 edith/widgets/file_browser.py:2042
 #: edith/widgets/file_browser.py:2180
@@ -657,7 +662,9 @@ msgstr "Öffnen mit"
 
 #: edith/widgets/file_browser.py:1969
 msgid "Can't move these files: the source connection is no longer open."
-msgstr "Diese Dateien können nicht verschoben werden: Die Quellverbindung ist nicht mehr geöffnet."
+msgstr ""
+"Diese Dateien können nicht verschoben werden: Die Quellverbindung ist nicht "
+"mehr geöffnet."
 
 #: edith/widgets/file_browser.py:2025 edith/widgets/file_browser.py:2163
 msgid "Item already exists"
@@ -666,12 +673,16 @@ msgstr "Objekt existiert bereits"
 #: edith/widgets/file_browser.py:2027 edith/widgets/file_browser.py:2165
 #, python-brace-format
 msgid "“{name}” already exists in “{dest}”. Do you want to replace it?"
-msgstr "„{name}“ existiert bereits in „{dest}“. Möchten Sie den vorhandenen Eintrag ersetzen?"
+msgstr ""
+"„{name}“ existiert bereits in „{dest}“. Möchten Sie den vorhandenen Eintrag "
+"ersetzen?"
 
 #: edith/widgets/file_browser.py:2036 edith/widgets/file_browser.py:2174
 #, python-brace-format
 msgid "{listing} already exist in “{dest}”. Do you want to replace them?"
-msgstr "{listing} existieren bereits in „{dest}“. Möchten Sie die vorhandenen Einträge ersetzen?"
+msgstr ""
+"{listing} existieren bereits in „{dest}“. Möchten Sie die vorhandenen "
+"Einträge ersetzen?"
 
 #: edith/widgets/file_browser.py:2083
 #, python-brace-format
@@ -693,7 +704,7 @@ msgid "Copying to “{dest}”…"
 msgstr "Wird nach „{dest}“ kopiert …"
 
 #: edith/widgets/file_dialogs.py:40 edith/widgets/file_dialogs.py:182
-#: edith/widgets/file_dialogs.py:356 edith/widgets/preferences_dialog.py:632
+#: edith/widgets/file_dialogs.py:356 edith/widgets/preferences_dialog.py:732
 msgid "Apply"
 msgstr "Anwenden"
 
@@ -765,19 +776,25 @@ msgstr "Vorschau"
 msgid ""
 "The editor for “{filename}” crashed and was restored with your unsaved "
 "changes. Undo history was lost."
-msgstr "Der Editor für „{filename}“ ist abgestürzt und wurde mit Ihren ungespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging dabei verloren."
+msgstr ""
+"Der Editor für „{filename}“ ist abgestürzt und wurde mit Ihren "
+"ungespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging "
+"dabei verloren."
 
 #: edith/widgets/monaco_editor.py:306
 #, python-brace-format
 msgid ""
 "The editor for “{filename}” crashed and was reloaded. Undo history was lost."
-msgstr "Der Editor für „{filename}“ ist abgestürzt und wurde neu geladen. Die Rückgängig-Chronik ging dabei verloren."
+msgstr ""
+"Der Editor für „{filename}“ ist abgestürzt und wurde neu geladen. Die "
+"Rückgängig-Chronik ging dabei verloren."
 
 #: edith/widgets/preferences_dialog.py:35
 msgid "Editor"
 msgstr "Editor"
 
 #: edith/widgets/preferences_dialog.py:39
+#: edith/widgets/preferences_dialog.py:443
 msgid "Appearance"
 msgstr "Erscheinungsbild"
 
@@ -881,7 +898,7 @@ msgid "Map file extensions to a language"
 msgstr "Dateiendungen einer Sprache zuordnen"
 
 #: edith/widgets/preferences_dialog.py:146
-#: edith/widgets/preferences_dialog.py:617
+#: edith/widgets/preferences_dialog.py:717
 msgid "Editor Overrides"
 msgstr "Editor-Überschreibungen"
 
@@ -980,52 +997,92 @@ msgstr ".{ext} entfernen"
 msgid "Add extensions…"
 msgstr "Endungen hinzufügen…"
 
-#: edith/widgets/preferences_dialog.py:443
+#: edith/widgets/preferences_dialog.py:449
+msgid "System default"
+msgstr "Systemvorgabe"
+
+#: edith/widgets/preferences_dialog.py:452
+#: edith/widgets/syntax_associations_dialog.py:46
+msgid "Language"
+msgstr "Sprache"
+
+#: edith/widgets/preferences_dialog.py:453
+msgid "Applied when Edith restarts"
+msgstr "Wird beim Neustart von Edith angewendet"
+
+#: edith/widgets/preferences_dialog.py:466
 msgid "Navigation"
 msgstr "Navigation"
 
-#: edith/widgets/preferences_dialog.py:446
+#: edith/widgets/preferences_dialog.py:469
 msgid "Open Items With"
 msgstr "Objekte öffnen mit"
 
-#: edith/widgets/preferences_dialog.py:447
+#: edith/widgets/preferences_dialog.py:470
 msgid "How files, folders and servers are opened"
 msgstr "Wie Dateien, Ordner und Server geöffnet werden"
 
-#: edith/widgets/preferences_dialog.py:449
+#: edith/widgets/preferences_dialog.py:472
 msgid "Double Click"
 msgstr "Doppelklick"
 
-#: edith/widgets/preferences_dialog.py:449
+#: edith/widgets/preferences_dialog.py:472
 msgid "Single Click"
 msgstr "Einfachklick"
 
-#: edith/widgets/preferences_dialog.py:459
+#: edith/widgets/preferences_dialog.py:482
 msgid "Window"
 msgstr "Fenster"
 
-#: edith/widgets/preferences_dialog.py:460
+#: edith/widgets/preferences_dialog.py:483
 msgid "Size used for newly opened windows."
 msgstr "Größe für neu geöffnete Fenster."
 
-#: edith/widgets/preferences_dialog.py:464
+#: edith/widgets/preferences_dialog.py:487
 msgid "Width"
 msgstr "Breite"
 
-#: edith/widgets/preferences_dialog.py:474
+#: edith/widgets/preferences_dialog.py:497
 msgid "Height"
 msgstr "Höhe"
 
-#: edith/widgets/preferences_dialog.py:574
+#: edith/widgets/preferences_dialog.py:592
+msgid "Restart Edith?"
+msgstr "Edith neu starten?"
+
+#: edith/widgets/preferences_dialog.py:593
+msgid "The new language takes effect after Edith restarts."
+msgstr "Die neue Sprache wird nach einem Neustart von Edith verwendet."
+
+#: edith/widgets/preferences_dialog.py:595
+msgid "Later"
+msgstr "Später"
+
+#: edith/widgets/preferences_dialog.py:596
+msgid "Restart Now"
+msgstr "Jetzt neu starten"
+
+#: edith/widgets/preferences_dialog.py:612
+msgid "Unsaved Changes"
+msgstr "Ungespeicherte Änderungen"
+
+#: edith/widgets/preferences_dialog.py:614
+#, python-brace-format
+msgid "{listing} has unsaved changes. Save it before restarting."
+msgid_plural "{listing} have unsaved changes. Save them before restarting."
+msgstr[0] "{listing} hat ungespeicherte Änderungen. Bitte vor dem Neustart speichern."
+msgstr[1] "{listing} haben ungespeicherte Änderungen. Bitte vor dem Neustart speichern."
+
+#: edith/widgets/preferences_dialog.py:674
 msgid "Choose Tools Folder"
 msgstr "Werkzeugordner wählen"
 
-#: edith/widgets/preferences_dialog.py:678
+#: edith/widgets/preferences_dialog.py:778
 #, python-brace-format
 msgid "Invalid JSON: {error}"
 msgstr "Ungültiges JSON: {error}"
 
-#: edith/widgets/preferences_dialog.py:682
+#: edith/widgets/preferences_dialog.py:782
 #, python-brace-format
 msgid "Top level must be a JSON object {}"
 msgstr "Die oberste Ebene muss ein JSON-Objekt {} sein"
@@ -1261,10 +1318,6 @@ msgstr "Zuordnung hinzufügen"
 #: edith/widgets/syntax_associations_dialog.py:37
 msgid "Extension (without dot, e.g. tpl)"
 msgstr "Endung (ohne Punkt, z. B. tpl)"
-
-#: edith/widgets/syntax_associations_dialog.py:46
-msgid "Language"
-msgstr "Sprache"
 
 #: edith/widgets/syntax_associations_dialog.py:166
 msgid "No custom associations yet"

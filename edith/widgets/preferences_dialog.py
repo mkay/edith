@@ -8,7 +8,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from edith.services.config import ConfigService
-from edith.i18n import _, ngettext
+from edith.i18n import _, ngettext, LANGUAGE_KEY, SUPPORTED_LANGUAGES
 
 
 class PreferencesDialog(Adw.PreferencesDialog):
@@ -440,6 +440,29 @@ class PreferencesDialog(Adw.PreferencesDialog):
             icon_name="preferences-system-symbolic",
         )
 
+        appearance = Adw.PreferencesGroup(title=_("Appearance"))
+
+        # "System default" first, then each language named in itself — a
+        # German speaker looking for German should not have to know the
+        # English word for it.
+        self._language_codes = [""] + [c for c, _label in SUPPORTED_LANGUAGES]
+        labels = [_("System default")] + [label for _c, label in SUPPORTED_LANGUAGES]
+
+        self._language_row = Adw.ComboRow(
+            title=_("Language"),
+            subtitle=_("Applied when Edith restarts"),
+        )
+        self._language_row.set_model(Gtk.StringList.new(labels))
+        saved_lang = ConfigService.get_preference(LANGUAGE_KEY, "")
+        self._language_row.set_selected(
+            self._language_codes.index(saved_lang)
+            if saved_lang in self._language_codes else 0
+        )
+        self._language_row.connect("notify::selected", self._on_language_changed)
+        appearance.add(self._language_row)
+
+        page.add(appearance)
+
         navigation = Adw.PreferencesGroup(title=_("Navigation"))
 
         self._click_row = Adw.ComboRow(
@@ -550,6 +573,83 @@ class PreferencesDialog(Adw.PreferencesDialog):
         if self._window:
             self._window.apply_editor_settings()
         self.emit("editor-settings-changed")
+
+    def _on_language_changed(self, row, pspec):
+        if self._building:
+            return
+        idx = row.get_selected()
+        if idx >= len(self._language_codes):
+            return
+        code = self._language_codes[idx]
+        if code == ConfigService.get_preference(LANGUAGE_KEY, ""):
+            return
+        ConfigService.set_preference(LANGUAGE_KEY, code)
+
+        # gettext resolves each string when its widget is built, so nothing
+        # already on screen can change language in place. Restarting is the
+        # honest way to apply it.
+        dlg = Adw.AlertDialog(
+            heading=_("Restart Edith?"),
+            body=_("The new language takes effect after Edith restarts."),
+        )
+        dlg.add_response("later", _("Later"))
+        dlg.add_response("restart", _("Restart Now"))
+        dlg.set_default_response("restart")
+        dlg.set_close_response("later")
+        dlg.connect("response", self._on_restart_response)
+        dlg.present(self._window or self)
+
+    def _on_restart_response(self, dlg, response):
+        if response != "restart":
+            return
+        app = self._window.get_application() if self._window else None
+        unsaved = self._unsaved_names(app)
+        if unsaved:
+            listing = ", ".join(f"“{n}”" for n in unsaved[:5])
+            if len(unsaved) > 5:
+                listing += _(" and {n} more").format(n=len(unsaved) - 5)
+            warn = Adw.AlertDialog(
+                heading=_("Unsaved Changes"),
+                body=ngettext(
+                    "{listing} has unsaved changes. Save it before restarting.",
+                    "{listing} have unsaved changes. Save them before restarting.",
+                    len(unsaved),
+                ).format(listing=listing),
+            )
+            warn.add_response("ok", _("OK"))
+            warn.present(self._window or self)
+            return
+        self.close()
+        GLib.idle_add(self._restart)
+
+    @staticmethod
+    def _unsaved_names(app):
+        """Filenames with unsaved changes, across every window."""
+        if app is None:
+            return []
+        names = []
+        for win in app.get_windows():
+            panel = getattr(win, "editor_panel", None)
+            if panel is None:
+                continue
+            try:
+                names.extend(panel.unsaved_filenames())
+            except Exception:  # noqa: BLE001 - never block a restart on this
+                pass
+        return names
+
+    @staticmethod
+    def _restart():
+        import os
+        import sys
+        # execv replaces this process, so the single-instance lock is released
+        # with it — a fresh Edith comes up rather than a second one handing
+        # off to the corpse of the old.
+        try:
+            os.execv(sys.executable, [sys.executable] + sys.argv)
+        except OSError:
+            pass
+        return GLib.SOURCE_REMOVE
 
     def _on_navigation_changed(self, row, pspec):
         if self._building:
