@@ -36,6 +36,12 @@ class ConfigService:
             return {}
 
     @classmethod
+    def _write_raw(cls, data: dict):
+        path = cls._servers_file()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, indent=2))
+
+    @classmethod
     def _save(cls, servers: List[ServerInfo], folders: List[FolderInfo]):
         path = cls._servers_file()
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -160,8 +166,7 @@ class ConfigService:
         paths.insert(0, path)
         recents[server_id] = paths[:ConfigService.RECENTS_MAX]
         data["recents"] = recents
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)
 
     @staticmethod
     def delete_recent(server_id: str, path: str):
@@ -169,8 +174,7 @@ class ConfigService:
         recents = data.get("recents", {})
         recents[server_id] = [p for p in recents.get(server_id, []) if p != path]
         data["recents"] = recents
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)
 
     # --- Pins ---
 
@@ -188,8 +192,7 @@ class ConfigService:
             entries.append({"path": path, "is_dir": is_dir})
         pins[server_id] = entries
         data["pins"] = pins
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)
 
     @staticmethod
     def delete_pin(server_id: str, path: str):
@@ -197,8 +200,7 @@ class ConfigService:
         pins = data.get("pins", {})
         pins[server_id] = [e for e in pins.get(server_id, []) if e["path"] != path]
         data["pins"] = pins
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)
 
     # --- Pinned servers ---
 
@@ -220,10 +222,19 @@ class ConfigService:
         else:
             pins.append(server_id)
         data["pinned_servers"] = pins
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)
 
     # --- Preferences ---
+
+    @staticmethod
+    def has_config() -> bool:
+        """True when a config file already exists, i.e. this is not a first run.
+
+        The closest thing Linux offers to Android's firstInstallTime check, and
+        packaging-agnostic: pacman, Flatpak and a source checkout all leave the
+        config alone. Call it before anything writes config this session.
+        """
+        return ConfigService._servers_file().exists()
 
     @staticmethod
     def get_preference(key: str, default=None):
@@ -236,5 +247,4 @@ class ConfigService:
         prefs = data.get("preferences", {})
         prefs[key] = value
         data["preferences"] = prefs
-        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
-        SERVERS_FILE.write_text(json.dumps(data, indent=2))
+        ConfigService._write_raw(data)

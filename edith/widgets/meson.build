@@ -19,6 +19,7 @@ widgets_sources = [
   'theme_chooser_dialog.py',
   'transfer_panel.py',
   'welcome_view.py',
+  'whats_new_dialog.py',
 ]
 
 install_data(widgets_sources, install_dir: moduledir / 'widgets')

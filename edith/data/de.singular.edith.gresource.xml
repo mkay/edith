@@ -1,5 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <gresources>
+  <gresource prefix="/de/singular/edith">
+    <file alias="whatsnew.md">data/whatsnew.md</file>
+  </gresource>
   <gresource prefix="/de/singular/edith/icons/hicolor/scalable/actions">
     <file alias="edith-sidebar-show-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-show-symbolic.svg</file>
     <file alias="edith-sidebar-hide-symbolic.svg">data/icons/hicolor/scalable/actions/edith-sidebar-hide-symbolic.svg</file>

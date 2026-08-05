@@ -106,10 +106,22 @@ label.error { color: @error_color; }
                 Gdk.Display.get_default(), css, Gtk.STYLE_PROVIDER_PRIORITY_USER
             )
 
+            # Sampled before anything writes config, so the release notes can
+            # tell a fresh install from an upgrade.
+            from edith.services.config import ConfigService
+            first_run = not ConfigService.has_config()
+
             # Migrate old GtkSourceView scheme IDs to Monaco theme IDs
             self._migrate_config()
 
             win = EdithWindow(application=self)
+            win.present()
+
+            # After present(), and on an idle callback: Adw.Dialog needs a
+            # realized parent to attach to.
+            from edith.widgets.whats_new_dialog import present_if_updated
+            GLib.idle_add(present_if_updated, win, first_run)
+            return
         win.present()
 
     def _migrate_config(self):
@@ -178,6 +190,15 @@ label.error { color: @error_color; }
         credits = _("translator-credits")
         if credits != "translator-credits":
             about.set_translator_credits(credits)
+
+        # Gives About its own "What's New" section, so the notes stay reachable
+        # after the one-off dialog has been dismissed.
+        from edith.widgets.whats_new_dialog import release_notes_markup
+        notes = release_notes_markup()
+        if notes:
+            about.set_release_notes(notes)
+            about.set_release_notes_version(VERSION)
+
         about.present(self.props.active_window)
 
     def do_shutdown(self):

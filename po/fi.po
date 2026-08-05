@@ -10,7 +10,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-07-21 18:38+0300\n"
+"POT-Creation-Date: 2026-08-05 22:50+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: Finnish\n"
@@ -38,114 +38,114 @@ msgstr "sftp;ssh;etä;editori;palvelin;"
 #. Translators: replace this with your name(s); it is shown in the
 #. About dialog. Untranslated, the placeholder is hidden rather than
 #. displayed literally.
-#: edith/application.py:171
+#: edith/application.py:190
 msgid "translator-credits"
 msgstr ""
 
-#: edith/application.py:194 edith/widgets/preferences_dialog.py:439
+#: edith/application.py:233 edith/widgets/preferences_dialog.py:439
 #, fuzzy
 msgid "General"
 msgstr "Yleiset"
 
-#: edith/application.py:195
+#: edith/application.py:234
 #, fuzzy
 msgid "Quit"
 msgstr "Lopeta"
 
-#: edith/application.py:196 edith/window.py:213
+#: edith/application.py:235 edith/window.py:213
 #, fuzzy
 msgid "New Window"
 msgstr "Uusi ikkuna"
 
-#: edith/application.py:197 edith/widgets/preferences_dialog.py:23
+#: edith/application.py:236 edith/widgets/preferences_dialog.py:23
 #, fuzzy
 msgid "Preferences"
 msgstr "Asetukset"
 
-#: edith/application.py:198
+#: edith/application.py:237
 #, fuzzy
 msgid "Toggle sidebar"
 msgstr "Näytä/piilota sivupalkki"
 
-#: edith/application.py:199
+#: edith/application.py:238
 #, fuzzy
 msgid "New server"
 msgstr "Uusi palvelin"
 
-#: edith/application.py:201 edith/widgets/preferences_dialog.py:90
+#: edith/application.py:240 edith/widgets/preferences_dialog.py:90
 #, fuzzy
 msgid "Editing"
 msgstr "Muokkaus"
 
-#: edith/application.py:202
+#: edith/application.py:241
 #, fuzzy
 msgid "Save file"
 msgstr "Tallenna tiedosto"
 
-#: edith/application.py:203
+#: edith/application.py:242
 #, fuzzy
 msgid "Close tab"
 msgstr "Sulje välilehti"
 
-#: edith/application.py:204
+#: edith/application.py:243
 #, fuzzy
 msgid "Find"
 msgstr "Etsi"
 
-#: edith/application.py:205
+#: edith/application.py:244
 #, fuzzy
 msgid "Find and Replace"
 msgstr "Etsi ja korvaa"
 
-#: edith/application.py:206 edith/window.py:641
+#: edith/application.py:245 edith/window.py:641
 #, fuzzy
 msgid "Go to Line"
 msgstr "Siirry riville"
 
-#: edith/application.py:207
+#: edith/application.py:246
 #, fuzzy
 msgid "Undo"
 msgstr "Kumoa"
 
-#: edith/application.py:208
+#: edith/application.py:247
 #, fuzzy
 msgid "Redo"
 msgstr "Tee uudelleen"
 
-#: edith/application.py:210
+#: edith/application.py:249
 #, fuzzy
 msgid "Connection"
 msgstr "Yhteys"
 
-#: edith/application.py:211
+#: edith/application.py:250
 #, fuzzy
 msgid "Search servers"
 msgstr "Etsi palvelimia"
 
-#: edith/application.py:213
+#: edith/application.py:252
 #, fuzzy
 msgid "File Browser"
 msgstr "Tiedostoselain"
 
-#: edith/application.py:214 edith/widgets/file_browser.py:518
+#: edith/application.py:253 edith/widgets/file_browser.py:565
 #, fuzzy
 msgid "Rename"
 msgstr "Nimeä uudelleen"
 
-#: edith/application.py:215 edith/widgets/file_browser.py:519
-#: edith/widgets/file_browser.py:960 edith/widgets/server_list.py:168
+#: edith/application.py:254 edith/widgets/file_browser.py:566
+#: edith/widgets/file_browser.py:1007 edith/widgets/server_list.py:168
 #: edith/widgets/server_panel.py:127 edith/widgets/server_panel.py:369
 #, fuzzy
 msgid "Delete"
 msgstr "Poista"
 
-#: edith/application.py:216 edith/widgets/file_browser.py:71
-#: edith/widgets/file_browser.py:535
+#: edith/application.py:255 edith/widgets/file_browser.py:105
+#: edith/widgets/file_browser.py:582
 #, fuzzy
 msgid "Refresh"
 msgstr "Päivitä"
 
-#: edith/application.py:217 edith/widgets/file_browser.py:430
+#: edith/application.py:256 edith/widgets/file_browser.py:477
 #, fuzzy
 msgid "Parent directory"
 msgstr "Yläkansio"
@@ -228,10 +228,11 @@ msgstr "Avaa tiedosto sivupalkista aloittaaksesi muokkaamisen."
 
 #: edith/window.py:454 edith/window.py:649 edith/window.py:794
 #: edith/widgets/connect_dialog.py:34 edith/widgets/editor_panel.py:268
-#: edith/widgets/file_browser.py:947 edith/widgets/file_browser.py:959
-#: edith/widgets/file_browser.py:1665 edith/widgets/file_dialogs.py:36
+#: edith/widgets/file_browser.py:994 edith/widgets/file_browser.py:1006
+#: edith/widgets/file_browser.py:1719 edith/widgets/file_browser.py:2041
+#: edith/widgets/file_browser.py:2179 edith/widgets/file_dialogs.py:36
 #: edith/widgets/file_dialogs.py:102 edith/widgets/file_dialogs.py:178
-#: edith/widgets/file_dialogs.py:476 edith/widgets/preferences_dialog.py:628
+#: edith/widgets/file_dialogs.py:476 edith/widgets/preferences_dialog.py:728
 #: edith/widgets/server_edit_dialog.py:38 edith/widgets/server_list.py:167
 #: edith/widgets/server_panel.py:305 edith/widgets/server_panel.py:368
 #: edith/widgets/transfer_panel.py:53
@@ -255,7 +256,8 @@ msgid "Import Failed"
 msgstr "Tuonti epäonnistui"
 
 #: edith/window.py:549 edith/window.py:555 edith/window.py:590
-#: edith/window.py:780 edith/window.py:1297
+#: edith/window.py:780 edith/window.py:1299
+#: edith/widgets/preferences_dialog.py:619
 #: edith/widgets/server_edit_dialog.py:364
 #, fuzzy
 msgid "OK"
@@ -363,32 +365,32 @@ msgid_plural "{n} files"
 msgstr[0] "{n} tiedosto"
 msgstr[1] "{n} tiedostoa"
 
-#: edith/window.py:1260
+#: edith/window.py:1262
 #, fuzzy, python-brace-format
 msgid "Uploaded {name}"
 msgstr "{name} lähetetty"
 
-#: edith/window.py:1269
+#: edith/window.py:1271
 #, fuzzy, python-brace-format
 msgid "Failed to upload {name}: {error}"
 msgstr "Tiedoston {name} lähetys epäonnistui: {error}"
 
-#: edith/window.py:1289
+#: edith/window.py:1291
 #, fuzzy, python-brace-format
 msgid "Saved {name}"
 msgstr "{name} tallennettu"
 
-#: edith/window.py:1294
+#: edith/window.py:1296
 #, fuzzy
 msgid "Upload Failed"
 msgstr "Lähetys epäonnistui"
 
-#: edith/window.py:1406
+#: edith/window.py:1428
 #, fuzzy
 msgid "File Changed on Server"
 msgstr "Tiedosto muuttui palvelimella"
 
-#: edith/window.py:1408
+#: edith/window.py:1430
 #, fuzzy, python-brace-format
 msgid ""
 "“{filename}” has been modified on the server.\n"
@@ -397,34 +399,34 @@ msgstr ""
 "”{filename}” on muuttunut palvelimella.\n"
 "Haluatko ladata sen uudelleen? Tallentamattomat muutoksesi menetetään."
 
-#: edith/window.py:1412
+#: edith/window.py:1434
 #, fuzzy
 msgid "Keep Local"
 msgstr "Säilytä paikallinen"
 
-#: edith/window.py:1413
+#: edith/window.py:1435
 #, fuzzy
 msgid "Reload"
 msgstr "Lataa uudelleen"
 
-#: edith/services/drag_export.py:70
+#: edith/services/drag_export.py:71
 #, fuzzy, python-brace-format
 msgid "Preparing {what} for drop…"
 msgstr "Valmistellaan kohdetta {what} pudotusta varten…"
 
-#: edith/services/drag_export.py:81 edith/widgets/file_browser.py:371
+#: edith/services/drag_export.py:82 edith/widgets/file_browser.py:416
 #, fuzzy, python-brace-format
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} kohde"
 msgstr[1] "{n} kohdetta"
 
-#: edith/services/drag_export.py:107
+#: edith/services/drag_export.py:108
 #, fuzzy, python-brace-format
 msgid "Dropped {what}"
 msgstr "{what} pudotettu"
 
-#: edith/services/drag_export.py:112
+#: edith/services/drag_export.py:113
 #, fuzzy, python-brace-format
 msgid "Drag failed: {message}"
 msgstr "Vetäminen epäonnistui: {message}"
@@ -460,13 +462,13 @@ msgstr "Yhdistetään käyttäjänä {user}@{host}:{port}"
 msgid "Show in Sidebar"
 msgstr "Näytä sivupalkissa"
 
-#: edith/widgets/editor_panel.py:49 edith/widgets/file_browser.py:533
+#: edith/widgets/editor_panel.py:49 edith/widgets/file_browser.py:580
 #: edith/widgets/server_panel.py:118 edith/widgets/server_panel.py:185
 #, fuzzy
 msgid "Pin"
 msgstr "Kiinnitä"
 
-#: edith/widgets/editor_panel.py:50 edith/widgets/file_browser.py:525
+#: edith/widgets/editor_panel.py:50 edith/widgets/file_browser.py:572
 #, fuzzy
 msgid "Copy Path"
 msgstr "Kopioi polku"
@@ -502,228 +504,292 @@ msgstr "Hylkää"
 msgid "Save"
 msgstr "Tallenna"
 
-#: edith/widgets/file_browser.py:63 edith/widgets/file_browser.py:1591
+#: edith/widgets/file_browser.py:97 edith/widgets/file_browser.py:1638
 #, fuzzy
 msgid "Upload Files"
 msgstr "Lähetä tiedostoja"
 
-#: edith/widgets/file_browser.py:79
+#: edith/widgets/file_browser.py:113
 #, fuzzy
 msgid "Show Hidden Files"
 msgstr "Näytä piilotiedostot"
 
-#: edith/widgets/file_browser.py:91
+#: edith/widgets/file_browser.py:125
 #, fuzzy
 msgid "Show File Details"
 msgstr "Näytä tiedostotiedot"
 
-#: edith/widgets/file_browser.py:103
+#: edith/widgets/file_browser.py:137
 #, fuzzy
 msgid "Filter files…"
 msgstr "Suodata tiedostoja…"
 
-#: edith/widgets/file_browser.py:220
+#: edith/widgets/file_browser.py:259
 #, fuzzy
 msgid "Name"
 msgstr "Nimi"
 
-#: edith/widgets/file_browser.py:236 edith/widgets/font_chooser_dialog.py:46
+#: edith/widgets/file_browser.py:275 edith/widgets/font_chooser_dialog.py:46
 #, fuzzy
 msgid "Size"
 msgstr "Koko"
 
-#: edith/widgets/file_browser.py:254 edith/widgets/file_dialogs.py:385
+#: edith/widgets/file_browser.py:293 edith/widgets/file_dialogs.py:385
 #, fuzzy
 msgid "Permissions"
 msgstr "Oikeudet"
 
-#: edith/widgets/file_browser.py:271
+#: edith/widgets/file_browser.py:310
 #, fuzzy
 msgid "Owner"
 msgstr "Omistaja"
 
-#: edith/widgets/file_browser.py:288 edith/widgets/server_edit_dialog.py:153
+#: edith/widgets/file_browser.py:327 edith/widgets/server_edit_dialog.py:153
 #, fuzzy
 msgid "Group"
 msgstr "Ryhmä"
 
-#: edith/widgets/file_browser.py:305
+#: edith/widgets/file_browser.py:344
 #, fuzzy
 msgid "Modified"
 msgstr "Muokattu"
 
-#: edith/widgets/file_browser.py:503
+#: edith/widgets/file_browser.py:550
 #, fuzzy
 msgid "New File"
 msgstr "Uusi tiedosto"
 
-#: edith/widgets/file_browser.py:504
+#: edith/widgets/file_browser.py:551
 #, fuzzy
 msgid "New Folder"
 msgstr "Uusi kansio"
 
-#: edith/widgets/file_browser.py:509
+#: edith/widgets/file_browser.py:556
 #, fuzzy
 msgid "Move to"
 msgstr "Siirrä kohteeseen"
 
-#: edith/widgets/file_browser.py:510
+#: edith/widgets/file_browser.py:557
 #, fuzzy
 msgid "Copy to"
 msgstr "Kopioi kohteeseen"
 
-#: edith/widgets/file_browser.py:511
+#: edith/widgets/file_browser.py:558
 #, fuzzy
 msgid "Duplicate"
 msgstr "Monista"
 
-#: edith/widgets/file_browser.py:516
+#: edith/widgets/file_browser.py:563
 #, fuzzy
 msgid "Actions"
 msgstr "Toiminnot"
 
-#: edith/widgets/file_browser.py:517
+#: edith/widgets/file_browser.py:564
 #, fuzzy
 msgid "Upload Tool"
 msgstr "Lähetystyökalu"
 
-#: edith/widgets/file_browser.py:524
+#: edith/widgets/file_browser.py:571
 #, fuzzy
 msgid "Download"
 msgstr "Lataa"
 
-#: edith/widgets/file_browser.py:534 edith/widgets/file_dialogs.py:336
+#: edith/widgets/file_browser.py:581 edith/widgets/file_dialogs.py:336
 #, fuzzy
 msgid "Information"
 msgstr "Tiedot"
 
-#: edith/widgets/file_browser.py:715
+#: edith/widgets/file_browser.py:762
 #, fuzzy
 msgid "(empty)"
 msgstr "(tyhjä)"
 
-#: edith/widgets/file_browser.py:944
+#: edith/widgets/file_browser.py:991
 #, fuzzy, python-brace-format
 msgid "Delete {n} items?"
 msgstr "Poistetaanko {n} kohdetta?"
 
-#: edith/widgets/file_browser.py:945
+#: edith/widgets/file_browser.py:992
 #, fuzzy
 msgid "This will permanently delete the selected files and folders."
 msgstr "Tämä poistaa valitut tiedostot ja kansiot pysyvästi."
 
-#: edith/widgets/file_browser.py:956
+#: edith/widgets/file_browser.py:1003
 #, fuzzy, python-brace-format
 msgid "Delete {kind}?"
 msgstr "Poistetaanko {kind}?"
 
-#: edith/widgets/file_browser.py:957
+#: edith/widgets/file_browser.py:1004
 #, fuzzy, python-brace-format
 msgid "Permanently delete “{name}”?"
 msgstr "Poistetaanko ”{name}” pysyvästi?"
 
-#: edith/widgets/file_browser.py:977
+#: edith/widgets/file_browser.py:1024
 #, fuzzy, python-brace-format
 msgid "Deleted “{name}”"
 msgstr "”{name}” poistettu"
 
-#: edith/widgets/file_browser.py:1032
+#: edith/widgets/file_browser.py:1079
 #, fuzzy, python-brace-format
 msgid "Move {n} item to…"
 msgid_plural "Move {n} items to…"
 msgstr[0] "Siirrä {n} kohde kohteeseen…"
 msgstr[1] "Siirrä {n} kohdetta kohteeseen…"
 
-#: edith/widgets/file_browser.py:1041
+#: edith/widgets/file_browser.py:1088
 #, fuzzy, python-brace-format
 msgid "Move “{name}” to…"
 msgstr "Siirrä ”{name}” kohteeseen…"
 
-#: edith/widgets/file_browser.py:1062 edith/widgets/file_browser.py:1871
+#: edith/widgets/file_browser.py:1109 edith/widgets/file_browser.py:2081
 #, fuzzy, python-brace-format
 msgid "Moved “{name}” to “{dest}”"
 msgstr "”{name}” siirretty kohteeseen ”{dest}”"
 
-#: edith/widgets/file_browser.py:1074
+#: edith/widgets/file_browser.py:1121
 #, fuzzy, python-brace-format
 msgid "Copy {n} item to…"
 msgid_plural "Copy {n} items to…"
 msgstr[0] "Kopioi {n} kohde kohteeseen…"
 msgstr[1] "Kopioi {n} kohdetta kohteeseen…"
 
-#: edith/widgets/file_browser.py:1083
+#: edith/widgets/file_browser.py:1130
 #, fuzzy, python-brace-format
 msgid "Copy “{name}” to…"
 msgstr "Kopioi ”{name}” kohteeseen…"
 
-#: edith/widgets/file_browser.py:1237
+#: edith/widgets/file_browser.py:1284
 #, fuzzy, python-brace-format
 msgid "Created “{name}”"
 msgstr "”{name}” luotu"
 
-#: edith/widgets/file_browser.py:1389
+#: edith/widgets/file_browser.py:1436
 #, fuzzy
 msgid "Empty directory"
 msgstr "Tyhjä kansio"
 
-#: edith/widgets/file_browser.py:1411 edith/widgets/file_browser.py:1417
+#: edith/widgets/file_browser.py:1458 edith/widgets/file_browser.py:1464
 #, fuzzy, python-brace-format
 msgid "Error: {message}"
 msgstr "Virhe: {message}"
 
-#: edith/widgets/file_browser.py:1509
+#: edith/widgets/file_browser.py:1556
 #, fuzzy, python-brace-format
 msgid "Deleted {n} item"
 msgid_plural "Deleted {n} items"
 msgstr[0] "{n} kohde poistettu"
 msgstr[1] "{n} kohdetta poistettu"
 
-#: edith/widgets/file_browser.py:1666
+#: edith/widgets/file_browser.py:1703
+msgid "Folder already exists"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1703
+msgid "File already exists"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1705
+#, python-brace-format
+msgid ""
+"“{name}” already exists in the current directory. Do you want to replace it?"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1711 edith/widgets/file_browser.py:2033
+#: edith/widgets/file_browser.py:2171 edith/widgets/preferences_dialog.py:610
+#, python-brace-format
+msgid " and {n} more"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1712 edith/widgets/file_browser.py:2034
+#: edith/widgets/file_browser.py:2172
+#, python-brace-format
+msgid "{n} items already exist"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1714
+#, python-brace-format
+msgid ""
+"{listing} already exist in the current directory. Do you want to replace "
+"them?"
+msgstr ""
+
+#: edith/widgets/file_browser.py:1720 edith/widgets/file_browser.py:2042
+#: edith/widgets/file_browser.py:2180
 #, fuzzy
 msgid "Replace"
 msgstr "Korvaa"
 
-#: edith/widgets/file_browser.py:1690
+#: edith/widgets/file_browser.py:1744
 #, fuzzy, python-brace-format
 msgid "Download {n} item to…"
 msgid_plural "Download {n} items to…"
 msgstr[0] "Lataa {n} kohde kohteeseen…"
 msgstr[1] "Lataa {n} kohdetta kohteeseen…"
 
-#: edith/widgets/file_browser.py:1696
+#: edith/widgets/file_browser.py:1750
 #, fuzzy, python-brace-format
 msgid "Download “{name}” to"
 msgstr "Lataa ”{name}” kohteeseen"
 
-#: edith/widgets/file_browser.py:1699
+#: edith/widgets/file_browser.py:1753
 #, fuzzy
 msgid "Save File"
 msgstr "Tallenna tiedosto"
 
-#: edith/widgets/file_browser.py:1736 edith/widgets/file_browser.py:1741
+#: edith/widgets/file_browser.py:1790 edith/widgets/file_browser.py:1795
 #, fuzzy
 msgid "Open Locally"
 msgstr "Avaa paikallisesti"
 
-#: edith/widgets/file_browser.py:1740
+#: edith/widgets/file_browser.py:1794
 #, fuzzy, python-brace-format
 msgid "Open with {app}"
 msgstr "Avaa sovelluksella {app}"
 
-#: edith/widgets/file_browser.py:1755 edith/widgets/preferences_dialog.py:169
+#: edith/widgets/file_browser.py:1809 edith/widgets/preferences_dialog.py:169
 #, fuzzy
 msgid "Open With"
 msgstr "Avaa sovelluksella"
 
-#: edith/widgets/file_browser.py:1873
+#: edith/widgets/file_browser.py:1969
+msgid "Can't move these files: the source connection is no longer open."
+msgstr ""
+
+#: edith/widgets/file_browser.py:2025 edith/widgets/file_browser.py:2163
+msgid "Item already exists"
+msgstr ""
+
+#: edith/widgets/file_browser.py:2027 edith/widgets/file_browser.py:2165
+#, python-brace-format
+msgid "“{name}” already exists in “{dest}”. Do you want to replace it?"
+msgstr ""
+
+#: edith/widgets/file_browser.py:2036 edith/widgets/file_browser.py:2174
+#, python-brace-format
+msgid "{listing} already exist in “{dest}”. Do you want to replace them?"
+msgstr ""
+
+#: edith/widgets/file_browser.py:2083
 #, fuzzy, python-brace-format
 msgid "Moved {n} item to “{dest}”"
 msgid_plural "Moved {n} items to “{dest}”"
 msgstr[0] "{n} kohde siirretty kohteeseen ”{dest}”"
 msgstr[1] "{n} kohdetta siirretty kohteeseen ”{dest}”"
 
+#: edith/widgets/file_browser.py:2134
+#, fuzzy, python-brace-format
+msgid "Copied {n} item to “{dest}”"
+msgid_plural "Copied {n} items to “{dest}”"
+msgstr[0] "{n} kohde siirretty kohteeseen ”{dest}”"
+msgstr[1] "{n} kohdetta siirretty kohteeseen ”{dest}”"
+
+#: edith/widgets/file_browser.py:2142
+#, fuzzy, python-brace-format
+msgid "Copying to “{dest}”…"
+msgstr "Kopioi ”{name}” kohteeseen…"
+
 #: edith/widgets/file_dialogs.py:40 edith/widgets/file_dialogs.py:182
-#: edith/widgets/file_dialogs.py:356 edith/widgets/preferences_dialog.py:632
+#: edith/widgets/file_dialogs.py:356 edith/widgets/preferences_dialog.py:732
 #, fuzzy
 msgid "Apply"
 msgstr "Käytä"
@@ -761,6 +827,7 @@ msgstr "Ominaisuudet"
 #: edith/widgets/file_dialogs.py:270 edith/widgets/file_dialogs.py:351
 #: edith/widgets/font_chooser_dialog.py:36
 #: edith/widgets/theme_chooser_dialog.py:56
+#: edith/widgets/whats_new_dialog.py:76
 #, fuzzy
 msgid "Close"
 msgstr "Sulje"
@@ -801,10 +868,23 @@ msgstr "Fonttiperhe"
 msgid "Search fonts…"
 msgstr "Etsi fontteja…"
 
-#: edith/widgets/font_chooser_dialog.py:82 edith/widgets/monaco_editor.py:92
+#: edith/widgets/font_chooser_dialog.py:82 edith/widgets/monaco_editor.py:99
 #, fuzzy
 msgid "Preview"
 msgstr "Esikatselu"
+
+#: edith/widgets/monaco_editor.py:301
+#, python-brace-format
+msgid ""
+"The editor for “{filename}” crashed and was restored with your unsaved "
+"changes. Undo history was lost."
+msgstr ""
+
+#: edith/widgets/monaco_editor.py:306
+#, python-brace-format
+msgid ""
+"The editor for “{filename}” crashed and was reloaded. Undo history was lost."
+msgstr ""
 
 #: edith/widgets/preferences_dialog.py:35
 #, fuzzy
@@ -812,6 +892,7 @@ msgid "Editor"
 msgstr "Editori"
 
 #: edith/widgets/preferences_dialog.py:39
+#: edith/widgets/preferences_dialog.py:443
 #, fuzzy
 msgid "Appearance"
 msgstr "Ulkoasu"
@@ -939,7 +1020,7 @@ msgid "Map file extensions to a language"
 msgstr "Liitä tiedostopäätteet kieleen"
 
 #: edith/widgets/preferences_dialog.py:146
-#: edith/widgets/preferences_dialog.py:617
+#: edith/widgets/preferences_dialog.py:717
 #, fuzzy
 msgid "Editor Overrides"
 msgstr "Editorin ohitukset"
@@ -1054,62 +1135,104 @@ msgstr "Poista .{ext}"
 msgid "Add extensions…"
 msgstr "Lisää päätteitä…"
 
-#: edith/widgets/preferences_dialog.py:443
+#: edith/widgets/preferences_dialog.py:449
+msgid "System default"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:452
+#: edith/widgets/syntax_associations_dialog.py:46
+#, fuzzy
+msgid "Language"
+msgstr "Kieli"
+
+#: edith/widgets/preferences_dialog.py:453
+msgid "Applied when Edith restarts"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:466
 #, fuzzy
 msgid "Navigation"
 msgstr "Navigointi"
 
-#: edith/widgets/preferences_dialog.py:446
+#: edith/widgets/preferences_dialog.py:469
 #, fuzzy
 msgid "Open Items With"
 msgstr "Avaa kohteet"
 
-#: edith/widgets/preferences_dialog.py:447
+#: edith/widgets/preferences_dialog.py:470
 #, fuzzy
 msgid "How files, folders and servers are opened"
 msgstr "Miten tiedostot, kansiot ja palvelimet avataan"
 
-#: edith/widgets/preferences_dialog.py:449
+#: edith/widgets/preferences_dialog.py:472
 #, fuzzy
 msgid "Double Click"
 msgstr "Kaksoisnapsautuksella"
 
-#: edith/widgets/preferences_dialog.py:449
+#: edith/widgets/preferences_dialog.py:472
 #, fuzzy
 msgid "Single Click"
 msgstr "Yhdellä napsautuksella"
 
-#: edith/widgets/preferences_dialog.py:459
+#: edith/widgets/preferences_dialog.py:482
 #, fuzzy
 msgid "Window"
 msgstr "Ikkuna"
 
-#: edith/widgets/preferences_dialog.py:460
+#: edith/widgets/preferences_dialog.py:483
 #, fuzzy
 msgid "Size used for newly opened windows."
 msgstr "Uusien ikkunoiden koko."
 
-#: edith/widgets/preferences_dialog.py:464
+#: edith/widgets/preferences_dialog.py:487
 #, fuzzy
 msgid "Width"
 msgstr "Leveys"
 
-#: edith/widgets/preferences_dialog.py:474
+#: edith/widgets/preferences_dialog.py:497
 #, fuzzy
 msgid "Height"
 msgstr "Korkeus"
 
-#: edith/widgets/preferences_dialog.py:574
+#: edith/widgets/preferences_dialog.py:592
+msgid "Restart Edith?"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:593
+msgid "The new language takes effect after Edith restarts."
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:595
+msgid "Later"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:596
+msgid "Restart Now"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:612
+#, fuzzy
+msgid "Unsaved Changes"
+msgstr "Tallennetaanko muutokset?"
+
+#: edith/widgets/preferences_dialog.py:614
+#, python-brace-format
+msgid "{listing} has unsaved changes. Save it before restarting."
+msgid_plural "{listing} have unsaved changes. Save them before restarting."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/widgets/preferences_dialog.py:674
 #, fuzzy
 msgid "Choose Tools Folder"
 msgstr "Valitse työkalukansio"
 
-#: edith/widgets/preferences_dialog.py:678
+#: edith/widgets/preferences_dialog.py:778
 #, fuzzy, python-brace-format
 msgid "Invalid JSON: {error}"
 msgstr "Virheellinen JSON: {error}"
 
-#: edith/widgets/preferences_dialog.py:682
+#: edith/widgets/preferences_dialog.py:782
 #, fuzzy, python-brace-format
 msgid "Top level must be a JSON object {}"
 msgstr "Ylimmän tason on oltava JSON-objekti {}"
@@ -1396,11 +1519,6 @@ msgstr "Lisää liitos"
 msgid "Extension (without dot, e.g. tpl)"
 msgstr "Pääte (ilman pistettä, esim. tpl)"
 
-#: edith/widgets/syntax_associations_dialog.py:46
-#, fuzzy
-msgid "Language"
-msgstr "Kieli"
-
 #: edith/widgets/syntax_associations_dialog.py:166
 #, fuzzy
 msgid "No custom associations yet"
@@ -1458,7 +1576,9 @@ msgstr "Lisää ensimmäinen palvelimesi"
 msgid ""
 "Connect to a server from the sidebar or <a href=\"create\">click here to "
 "create one</a>."
-msgstr "Yhdistä palvelimeen sivupalkista tai <a href=\"create\">luo uusi napsauttamalla tästä</a>."
+msgstr ""
+"Yhdistä palvelimeen sivupalkista tai <a href=\"create\">luo uusi "
+"napsauttamalla tästä</a>."
 
 #: edith/widgets/welcome_view.py:66 edith/widgets/welcome_view.py:74
 #, fuzzy
@@ -1466,8 +1586,7 @@ msgid "A code editor that talks (S)FTP"
 msgstr "Koodieditori, joka puhuu (S)FTP:tä"
 
 #: edith/widgets/welcome_view.py:67 edith/widgets/welcome_view.py:75
-#, python-brace-format
-#, fuzzy
+#, fuzzy, python-brace-format
 msgid "Version {version}"
 msgstr "Versio {version}"
 
@@ -1476,4 +1595,12 @@ msgstr "Versio {version}"
 msgid ""
 "No servers configured yet.\n"
 "Add a server to get started."
-msgstr "Palvelimia ei ole vielä määritetty.\nAloita lisäämällä palvelin."
+msgstr ""
+"Palvelimia ei ole vielä määritetty.\n"
+"Aloita lisäämällä palvelin."
+
+#. Translators: dialog title for the release notes shown after an
+#. update. The notes themselves are always English.
+#: edith/widgets/whats_new_dialog.py:73
+msgid "What's New"
+msgstr "Mitä uutta"
