@@ -37,6 +37,13 @@ class EdithApplication(Adw.Application):
     def do_activate(self):
         win = self.props.active_window
         if not win:
+            # Watch the main loop for freezes.  Only here, never in main():
+            # launching Edith while it's already running spawns a short-lived
+            # process that hands off to the primary instance and never runs a
+            # main loop of its own, which the watchdog would report as a hang.
+            from edith.services.freeze_watchdog import install as install_watchdog
+            install_watchdog()
+
             # Load bundled icon resources and register with the icon theme
             gresource = Path(__file__).parent / "data" / "de.singular.edith.gresource"
             Gio.resources_register(Gio.resource_load(str(gresource)))
@@ -172,6 +179,17 @@ label.error { color: @error_color; }
         if credits != "translator-credits":
             about.set_translator_credits(credits)
         about.present(self.props.active_window)
+
+    def do_shutdown(self):
+        # Pairs with the "started" line in the diagnostic log: an app that
+        # vanishes on its own should say whether it shut down through the
+        # normal GApplication path or simply stopped existing.
+        try:
+            from edith.services.freeze_watchdog import record
+            record(f"=== application shutdown ({len(self.get_windows())} windows open) ===")
+        except Exception:  # noqa: BLE001 - diagnostics must never block exit
+            pass
+        Adw.Application.do_shutdown(self)
 
     def _on_new_window(self, action, param):
         win = EdithWindow(application=self)

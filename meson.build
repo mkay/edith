@@ -34,3 +34,7 @@ gnome.post_install(
   gtk_update_icon_cache: true,
   update_desktop_database: true,
 )
+
+# Ship .pyc alongside the sources: the install prefix isn't user-writable, so
+# without this every launch recompiles every module and throws the result away.
+meson.add_install_script(python, meson.project_source_root() / 'build-aux' / 'compile-bytecode.py')
