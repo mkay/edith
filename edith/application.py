@@ -111,6 +111,11 @@ label.error { color: @error_color; }
             from edith.services.config import ConfigService
             first_run = not ConfigService.has_config()
 
+            # Before anything can write to it. Servers, folders, pins and every
+            # preference share one small file, so keeping a few copies costs
+            # nothing next to what losing it costs.
+            ConfigService.backup_now()
+
             # Migrate old GtkSourceView scheme IDs to Monaco theme IDs
             self._migrate_config()
 

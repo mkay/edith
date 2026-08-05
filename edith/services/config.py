@@ -36,19 +36,87 @@ class ConfigService:
             return {}
 
     @classmethod
-    def _write_raw(cls, data: dict):
+    def _write_raw(cls, data: dict, deliberate: bool = False):
+        """Write the whole config back, refusing to silently drop every server.
+
+        Everything the app knows lives in this one file, so a writer that meant
+        to touch a single preference can take the server list with it if the
+        read half of its read-modify-write went wrong. That happened once — the
+        readers followed the servers-file override while the writers went to the
+        real path, so a preference write landed an empty dict on top of 218
+        servers. The class of bug is silent and total, which is exactly what a
+        cheap assertion is for.
+
+        [deliberate] is for the writers whose actual job is the server list;
+        only those may take it to zero, which is what deleting your last server
+        legitimately does.
+        """
         path = cls._servers_file()
+
+        if not deliberate:
+            current = cls._load_raw()
+            if current.get("servers") and not data.get("servers"):
+                # Skip the write rather than raise: the caller is saving a
+                # preference or a recent path, and losing that is trivial next
+                # to losing the servers. Say so loudly in the diagnostic log,
+                # since nothing else about this failure is visible.
+                from edith.services.freeze_watchdog import record
+                record(
+                    f"REFUSED config write that would drop "
+                    f"{len(current['servers'])} servers from {path} "
+                    f"(payload keys: {sorted(data)})"
+                )
+                return
+
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2))
 
     @classmethod
     def _save(cls, servers: List[ServerInfo], folders: List[FolderInfo]):
-        path = cls._servers_file()
-        path.parent.mkdir(parents=True, exist_ok=True)
         data = cls._load_raw()
         data["servers"] = [s.to_dict() for s in servers]
         data["folders"] = [f.to_dict() for f in folders]
-        path.write_text(json.dumps(data, indent=2))
+        cls._write_raw(data, deliberate=True)
+
+    # --- Backups ---
+
+    BACKUP_KEEP = 10
+
+    @classmethod
+    def backup_now(cls):
+        """Snapshot the config beside itself, keeping the last BACKUP_KEEP.
+
+        Called once at startup. The whole config is one small file, so a plain
+        copy is cheaper than reasoning about what is worth saving. Never raises:
+        a failed backup must not stop the app from starting.
+        """
+        path = cls._servers_file()
+        try:
+            if not path.exists():
+                return
+            content = path.read_bytes()
+            # An empty or serverless config is not worth preserving, and would
+            # push a good backup out of the rotation.
+            if not cls._load_raw().get("servers"):
+                return
+
+            backup_dir = path.parent / "backups"
+            backup_dir.mkdir(parents=True, exist_ok=True)
+            existing = sorted(backup_dir.glob("servers-*.json"))
+
+            # Unchanged since the last run is the common case; rewriting it
+            # would rotate a week of history out over a week of idle launches.
+            if existing and existing[-1].read_bytes() == content:
+                return
+
+            import time
+            stamp = time.strftime("%Y%m%d-%H%M%S")
+            (backup_dir / f"servers-{stamp}.json").write_bytes(content)
+
+            for stale in sorted(backup_dir.glob("servers-*.json"))[:-cls.BACKUP_KEEP]:
+                stale.unlink()
+        except OSError:
+            pass
 
     # --- Server operations ---
 
