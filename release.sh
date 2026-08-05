@@ -37,6 +37,40 @@ trap cleanup EXIT
 
 echo "==> Releasing $PROJECT_NAME $TAG"
 
+# 0. The release notes must actually describe this release. The what's-new
+# dialog shows whatsnew.md verbatim under the new version number, so shipping
+# the previous release's bullets tells every updating user something false.
+# Checked before anything is bumped, tagged or pushed, so a failure here costs
+# nothing but a re-run.
+WHATSNEW="$PROJECT_NAME/data/whatsnew.md"
+PREV_TAG=$(git tag --sort=-version:refname | head -1)
+
+if [[ ! -f "$WHATSNEW" ]]; then
+    echo "ERROR: $WHATSNEW is missing — the release notes dialog reads it."
+    exit 1
+elif [[ -n "${SKIP_WHATSNEW_CHECK:-}" ]]; then
+    echo "==> SKIP_WHATSNEW_CHECK set, not checking $WHATSNEW"
+elif [[ -z "$PREV_TAG" ]]; then
+    echo "==> First release, not checking $WHATSNEW"
+else
+    # release.sh only commits meson.build and the PKGBUILDs, so an uncommitted
+    # edit here would be left out of the tag it was written for.
+    if ! git diff --quiet -- "$WHATSNEW" || ! git diff --cached --quiet -- "$WHATSNEW"; then
+        echo "ERROR: $WHATSNEW has uncommitted changes."
+        echo "       release.sh won't include them in $TAG. Commit them first."
+        exit 1
+    fi
+    if [[ -z "$(git log --oneline "$PREV_TAG..HEAD" -- "$WHATSNEW")" ]]; then
+        echo "ERROR: $WHATSNEW has not changed since $PREV_TAG."
+        echo "       The what's-new dialog would show $PREV_TAG's notes under $TAG."
+        echo "       Rewrite it, or re-run with SKIP_WHATSNEW_CHECK=1."
+        exit 1
+    fi
+    echo "==> Release notes for $TAG:"
+    awk '/<!--/{c=1} /-->/{c=0;next} !c' "$WHATSNEW" \
+        | sed -n 's/^[[:space:]]*[-*•][[:space:]]*/    • /p'
+fi
+
 # 1. Update version in meson.build, PKGBUILD, and Python package
 sed -i "0,/version: '[^']*'/{s/version: '[^']*'/version: '$VERSION'/}" meson.build
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
@@ -44,8 +78,7 @@ sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
 # report the wrong version to pacman.
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD.local
 
-# 2. Generate release notes before tagging
-PREV_TAG=$(git tag --sort=-version:refname | head -1)
+# 2. Generate the changelog for the forge releases (PREV_TAG set in step 0)
 if [[ -n "$PREV_TAG" ]]; then
     RELEASE_NOTES=$(git log --pretty=format:"- %s" "$PREV_TAG..HEAD" | grep -v -E "^- (Release |Update PKGBUILD checksums|first commit)")
 else
