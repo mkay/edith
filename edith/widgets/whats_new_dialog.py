@@ -95,7 +95,7 @@ class WhatsNewDialog(Adw.AlertDialog):
         # height is a cap, not a request: four or five bullets never reach it.
         scroller = Gtk.ScrolledWindow(
             propagate_natural_height=True,
-            max_content_height=320,
+            max_content_height=440,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
             child=box,
         )
