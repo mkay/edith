@@ -56,7 +56,7 @@ class RemoteFilesProvider(Gdk.ContentProvider):
 
         # A second request for an already-materialised drag costs nothing.
         if self._uris is not None:
-            self._write_uris(stream, self._uris, task)
+            self._write_uris(stream, self._uris, task, io_priority, cancellable)
             return
 
         def worker():
@@ -65,7 +65,8 @@ class RemoteFilesProvider(Gdk.ContentProvider):
             except Exception as exc:                      # noqa: BLE001
                 GLib.idle_add(self._fail, task, str(exc))
                 return
-            GLib.idle_add(self._succeed, task, stream, uris)
+            GLib.idle_add(self._succeed, task, stream, uris, io_priority,
+                          cancellable)
 
         self._notify(_("Preparing {what} for drop…").format(what=self._describe()), "info")
         threading.Thread(target=worker, daemon=True).start()
@@ -101,11 +102,11 @@ class RemoteFilesProvider(Gdk.ContentProvider):
             uris.append(GLib.filename_to_uri(os.path.abspath(local_path), None))
         return uris
 
-    def _succeed(self, task, stream, uris):
+    def _succeed(self, task, stream, uris, io_priority, cancellable):
         with self._lock:
             self._uris = uris
         self._notify(_("Dropped {what}").format(what=self._describe()), "success")
-        self._write_uris(stream, uris, task)
+        self._write_uris(stream, uris, task, io_priority, cancellable)
         return GLib.SOURCE_REMOVE
 
     def _fail(self, task, message):
@@ -117,13 +118,40 @@ class RemoteFilesProvider(Gdk.ContentProvider):
         )
         return GLib.SOURCE_REMOVE
 
-    def _write_uris(self, stream, uris, task):
+    def _write_uris(self, stream, uris, task, io_priority, cancellable):
+        """Write the payload from a worker thread.
+
+        The write must not happen on the main thread. A drag between two
+        Edith windows is served *and* consumed by the same main loop, so a
+        write that blocks — which it does as soon as the payload outgrows the
+        pipe buffer — parks the main thread on a pipe only the main thread
+        could drain. That deadlocks every window at once, permanently.
+
+        write_all_async() is not a fix: on a blocking fd it blocks just the
+        same. A thread is the only version that holds regardless of how the
+        stream was set up.
+        """
         # text/uri-list is CRLF separated per RFC 2483.
         payload = "".join(f"{uri}\r\n" for uri in uris).encode()
-        try:
-            stream.write_all(payload, None)
-            stream.close(None)
-        except GLib.Error as exc:
-            task.return_error(exc)
-            return
+
+        def worker():
+            try:
+                stream.write_all(payload, cancellable)
+                stream.close(cancellable)
+            except GLib.Error as exc:
+                GLib.idle_add(self._return_error, task, exc)
+                return
+            GLib.idle_add(self._return_ok, task)
+
+        threading.Thread(target=worker, daemon=True,
+                         name="edith-drag-write").start()
+
+    @staticmethod
+    def _return_ok(task):
         task.return_boolean(True)
+        return GLib.SOURCE_REMOVE
+
+    @staticmethod
+    def _return_error(task, exc):
+        task.return_error(exc)
+        return GLib.SOURCE_REMOVE
