@@ -1698,15 +1698,22 @@ class FileBrowser(Gtk.Box):
         n = len(existing_names)
         if n == 1:
             is_dir = os.path.isdir(conflict_paths[0])
-            kind = "Folder" if is_dir else "File"
-            heading = f"{kind} already exists"
-            body = f"\u201c{existing_names[0]}\u201d already exists in the current directory. Do you want to replace it?"
+            # Two whole sentences rather than an interpolated noun: German
+            # needs the article to agree with it ("Der Ordner"/"Die Datei").
+            heading = _("Folder already exists") if is_dir else _("File already exists")
+            body = _(
+                "\u201c{name}\u201d already exists in the current directory. "
+                "Do you want to replace it?"
+            ).format(name=existing_names[0])
         else:
             listing = ", ".join(f"\u201c{name}\u201d" for name in existing_names[:5])
             if n > 5:
-                listing += f" and {n - 5} more"
-            heading = f"{n} items already exist"
-            body = f"{listing} already exist in the current directory. Do you want to replace them?"
+                listing += _(" and {n} more").format(n=n - 5)
+            heading = _("{n} items already exist").format(n=n)
+            body = _(
+                "{listing} already exist in the current directory. "
+                "Do you want to replace them?"
+            ).format(listing=listing)
 
         dlg = Adw.AlertDialog(heading=heading, body=body)
         dlg.add_response("cancel", _("Cancel"))
