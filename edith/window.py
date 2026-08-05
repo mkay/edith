@@ -1655,3 +1655,8 @@ class EdithWindow(Adw.ApplicationWindow):
     @property
     def sftp_client(self):
         return self._sftp_client
+
+    @property
+    def connected_server(self):
+        """The ServerInfo this window is connected to, or None."""
+        return self._connected_server

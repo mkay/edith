@@ -10,10 +10,44 @@ from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Pango
 
 from edith.models.remote_file import RemoteFileInfo, RemoteFileItem
 from edith.services.config import ConfigService
+# Imported at module scope, not lazily inside the handlers: a drag or drop must
+# never be the thing that triggers a first-time import (see build-aux/
+# compile-bytecode.py — an uncached import here stalls the UI for seconds).
+from edith.services.async_worker import run_async as _run_async
+from edith.services.drag_export import RemoteFilesProvider
+from edith.services.temp_manager import TempManager
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
 from edith.i18n import _, ngettext
 
 DEFAULT_TOOLS_DIR = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local" / "share")) / "edith" / "tools"
+
+# A drag that started inside Edith carries this private format alongside its
+# payload.  It exists purely so drop targets can recognise our own drags:
+# without it, an internal drag looks exactly like a file-manager drag (both
+# offer text/uri-list) and gets routed through the download-to-temp-and-
+# re-upload path instead of a direct server-side move.
+INTERNAL_DRAG_MIME = "application/x-edith-remote-drag"
+
+# First line of the internal payload; the rest of the lines are remote paths.
+# The server id lets the receiving window tell a move (same server, cheap
+# rename) from a transfer (different server, real copy).
+_DRAG_HEADER_PREFIX = "edith-drag/1\t"
+
+
+def _encode_drag_payload(server_id, paths):
+    return "\n".join([f"{_DRAG_HEADER_PREFIX}{server_id or ''}"] + list(paths))
+
+
+def _decode_drag_payload(value):
+    """Return (server_id, paths). server_id is None for foreign/legacy drags."""
+    lines = [ln for ln in (value or "").split("\n") if ln]
+    if not lines:
+        return None, []
+    if lines[0].startswith(_DRAG_HEADER_PREFIX):
+        return lines[0][len(_DRAG_HEADER_PREFIX):] or None, lines[1:]
+    # Plain text from somewhere else (or an older Edith): treat every line as
+    # a path on this window's own server, which is the pre-existing behaviour.
+    return None, lines
 
 
 def _get_tools_dir() -> Path:
@@ -182,6 +216,11 @@ class FileBrowser(Gtk.Box):
         # ── Path bar drop target ─────────────────────────────────────────
         self._setup_pathbar_drop_target()
 
+        # ── Internal drop target (moves within/between Edith windows) ────
+        # Added before the upload target so it gets first refusal on drops
+        # that land outside a folder row.
+        self._setup_list_drop_target()
+
         # ── Upload drop target (external files from file manager) ────────
         self._setup_upload_drop_target()
 
@@ -340,22 +379,28 @@ class FileBrowser(Gtk.Box):
                 return None
             paths = self._get_selected_paths_for_drag(item_ref[0])
             internal = Gdk.ContentProvider.new_for_value(
-                GObject.Value(GObject.TYPE_STRING, "\n".join(paths))
+                GObject.Value(
+                    GObject.TYPE_STRING,
+                    _encode_drag_payload(self._current_server_id(), paths),
+                )
+            )
+            # Marker format: lets Edith's own drop targets recognise this drag
+            # and avoid the external download/re-upload route entirely.
+            marker = Gdk.ContentProvider.new_for_bytes(
+                INTERNAL_DRAG_MIME, GLib.Bytes.new(b"1")
             )
 
             # Offer text/uri-list too, so file managers can receive the drop.
             client = self._window.sftp_client if self._window else None
             if client is None:
-                return internal
-
-            from edith.services.drag_export import RemoteFilesProvider
+                return Gdk.ContentProvider.new_union([internal, marker])
 
             external = RemoteFilesProvider(
                 client,
                 self._get_selected_infos_for_drag(item_ref[0]),
                 on_status=self._show_drag_status,
             )
-            return Gdk.ContentProvider.new_union([internal, external])
+            return Gdk.ContentProvider.new_union([internal, marker, external])
 
         def on_drag_begin(d, gdk_drag):
             if not item_ref[0]:
@@ -378,8 +423,10 @@ class FileBrowser(Gtk.Box):
         # Drop target (directories only)
         drop = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
 
-        def on_drop_accept(d, drop_val):
-            return is_dir_ref[0]
+        def on_drop_accept(d, gdk_drop):
+            # Folders only, and only for Edith's own drags — a stray text drag
+            # from another app must not be read as a list of remote paths.
+            return is_dir_ref[0] and self._is_internal_drag(gdk_drop)
 
         def on_drop_enter(d, x, y):
             if is_dir_ref[0]:
@@ -397,7 +444,7 @@ class FileBrowser(Gtk.Box):
                     dest = "/".join(self._current_path.rstrip("/").split("/")[:-1]) or "/"
                 else:
                     dest = fi.path
-                self._perform_drag_move(value, dest)
+                self._perform_drag_drop(value, dest)
                 return True
             return False
 
@@ -1816,6 +1863,7 @@ class FileBrowser(Gtk.Box):
 
     def _setup_pathbar_drop_target(self):
         target = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+        target.connect("accept", self._on_list_drop_accept)
         target.connect("drop", self._on_pathbar_drop)
         target.connect("enter", self._on_pathbar_drag_enter)
         target.connect("leave", self._on_pathbar_drag_leave)
@@ -1829,18 +1877,98 @@ class FileBrowser(Gtk.Box):
         self._path_bar.remove_css_class("drop-target")
 
     def _on_pathbar_drop(self, target, value, x, y):
-        self._perform_drag_move(value, self._current_path)
+        self._perform_drag_drop(value, self._current_path)
         return True
 
-    def _perform_drag_move(self, value, dest_dir):
+    def _setup_list_drop_target(self):
+        """Internal drops that don't land on a folder row — empty space below
+        the listing, or a file row — move into the directory being shown.
+
+        Without this they fall through to the upload target, which treats an
+        Edith drag like a file-manager drag and round-trips the data through
+        /tmp instead of moving it on the server.
+        """
+        target = Gtk.DropTarget.new(GObject.TYPE_STRING, Gdk.DragAction.MOVE)
+        target.connect("accept", self._on_list_drop_accept)
+        target.connect("drop", self._on_list_drop)
+        target.connect("enter", self._on_list_drag_enter)
+        target.connect("leave", self._on_list_drag_leave)
+        self._stack.add_controller(target)
+
+    def _on_list_drop_accept(self, target, drop):
+        if not self._is_internal_drag(drop):
+            return False
+        return bool(self._window and self._window.sftp_client)
+
+    def _on_list_drag_enter(self, target, x, y):
+        self._stack.add_css_class("drop-target")
+        return Gdk.DragAction.MOVE
+
+    def _on_list_drag_leave(self, target):
+        self._stack.remove_css_class("drop-target")
+
+    def _on_list_drop(self, target, value, x, y):
+        self._stack.remove_css_class("drop-target")
+        self._perform_drag_drop(value, self._current_path)
+        return True
+
+    def _current_server_id(self):
+        if not self._window:
+            return None
+        server = self._window.connected_server
+        return getattr(server, "id", None) if server else None
+
+    def _source_window_for(self, server_id):
+        """Find another window connected to `server_id` (all windows share one
+        process, so a cross-server drag can use the source window's client)."""
+        app = self._window.get_application() if self._window else None
+        if not app or not server_id:
+            return None
+        for win in app.get_windows():
+            if win is self._window:
+                continue
+            server = getattr(win, "connected_server", None)
+            if server is not None and getattr(server, "id", None) == server_id:
+                if getattr(win, "sftp_client", None):
+                    return win
+        return None
+
+    def _perform_drag_drop(self, value, dest_dir):
+        """Handle a drop of Edith's own drag payload into `dest_dir`.
+
+        Same server → server-side rename. Different server → a real transfer
+        via the source window's client. Either way the work happens off the
+        main thread and any conflict prompt is raised after the drag has
+        finished, never while GTK is still negotiating the drop.
+        """
         if not self._window or not self._window.sftp_client:
             return
-        src_paths = [p for p in value.split("\n") if p]
+        src_server_id, src_paths = _decode_drag_payload(value)
         if not src_paths:
             return
-        client = self._window.sftp_client
-        from edith.services.async_worker import run_async
+
         dest_stripped = dest_dir.rstrip("/")
+        own_server_id = self._current_server_id()
+        cross_server = (
+            src_server_id is not None
+            and own_server_id is not None
+            and src_server_id != own_server_id
+        )
+
+        if cross_server:
+            source_win = self._source_window_for(src_server_id)
+            if source_win is None:
+                self._show_op_error(
+                    _("Can't move these files: the source connection is no longer open.")
+                )
+                return
+            self._perform_cross_server_drop(source_win, src_paths, dest_stripped)
+            return
+
+        self._perform_same_server_move(src_paths, dest_stripped, dest_dir)
+
+    def _perform_same_server_move(self, src_paths, dest_stripped, dest_dir):
+        client = self._window.sftp_client
         dest_label = dest_stripped.rsplit("/", 1)[-1] or dest_dir
 
         # Filter out no-ops
@@ -1857,10 +1985,85 @@ class FileBrowser(Gtk.Box):
         if not valid:
             return
 
+        # Names already taken at the destination would make rename() fail, so
+        # ask first rather than surfacing a bare SFTP error.
+        def check_conflicts():
+            existing = []
+            for sp in valid:
+                name = sp.rstrip("/").rsplit("/", 1)[-1]
+                try:
+                    client.stat(f"{dest_stripped}/{name}")
+                    existing.append(name)
+                except OSError:
+                    pass
+            return existing
+
+        def on_checked(existing):
+            if not existing:
+                self._run_moves(valid, dest_stripped, dest_label, overwrite=False)
+                return
+            free = [sp for sp in valid
+                    if sp.rstrip("/").rsplit("/", 1)[-1] not in existing]
+            clashing = [sp for sp in valid
+                        if sp.rstrip("/").rsplit("/", 1)[-1] in existing]
+            if free:
+                self._run_moves(free, dest_stripped, dest_label, overwrite=False)
+            self._ask_move_overwrite(clashing, existing, dest_stripped, dest_label)
+
+        _run_async(check_conflicts, on_checked, lambda e: self._show_op_error(str(e)))
+
+    def _ask_move_overwrite(self, clashing, existing_names, dest_stripped, dest_label):
+        n = len(existing_names)
+        if n == 1:
+            heading = _("Item already exists")
+            body = _(
+                "“{name}” already exists in “{dest}”. "
+                "Do you want to replace it?"
+            ).format(name=existing_names[0], dest=dest_label)
+        else:
+            listing = ", ".join(f"“{name}”" for name in existing_names[:5])
+            if n > 5:
+                listing += _(" and {n} more").format(n=n - 5)
+            heading = _("{n} items already exist").format(n=n)
+            body = _(
+                "{listing} already exist in “{dest}”. "
+                "Do you want to replace them?"
+            ).format(listing=listing, dest=dest_label)
+
+        dlg = Adw.AlertDialog(heading=heading, body=body)
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("replace", _("Replace"))
+        dlg.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
+        dlg.set_default_response("cancel")
+        dlg.set_close_response("cancel")
+
+        def on_response(_dlg, response):
+            if response == "replace":
+                self._run_moves(clashing, dest_stripped, dest_label, overwrite=True)
+
+        dlg.connect("response", on_response)
+        # Present from an idle callback so the dialog can never appear while
+        # GTK is still finishing the drop.
+        GLib.idle_add(lambda: (dlg.present(self.get_root()), GLib.SOURCE_REMOVE)[1])
+
+    def _run_moves(self, valid, dest_stripped, dest_label, overwrite=False):
+        client = self._window.sftp_client
+
         def do_moves():
             for sp in valid:
                 name = sp.rstrip("/").rsplit("/", 1)[-1]
-                client.rename(sp, f"{dest_stripped}/{name}")
+                target = f"{dest_stripped}/{name}"
+                if overwrite:
+                    # rename() fails outright if the target exists, so the old
+                    # entry has to go first.
+                    try:
+                        if client.is_dir(target):
+                            client.rmdir_recursive(target)
+                        else:
+                            client.remove(target)
+                    except OSError:
+                        pass
+                client.rename(sp, target)
 
         n = len(valid)
         def on_done(_):
@@ -1872,7 +2075,112 @@ class FileBrowser(Gtk.Box):
                 else:
                     self._window.show_toast(ngettext("Moved {n} item to \u201c{dest}\u201d", "Moved {n} items to \u201c{dest}\u201d", n).format(n=n, dest=dest_label), "success")
 
-        run_async(do_moves, on_done, lambda e: self._show_op_error(str(e)))
+        _run_async(do_moves, on_done, lambda e: self._show_op_error(str(e)))
+
+    def _perform_cross_server_drop(self, source_win, src_paths, dest_stripped):
+        """Copy files between two different servers.
+
+        There is no server-side shortcut here — the bytes have to come down
+        from one connection and go up the other — but it runs entirely on a
+        worker thread through the transfer queue, so the UI stays responsive.
+        """
+
+        src_client = source_win.sftp_client
+        dst_client = self._window.sftp_client
+        dest_label = dest_stripped.rsplit("/", 1)[-1] or "/"
+
+        def check_conflicts():
+            existing = []
+            for sp in src_paths:
+                name = sp.rstrip("/").rsplit("/", 1)[-1]
+                try:
+                    dst_client.stat(f"{dest_stripped}/{name}")
+                    existing.append(name)
+                except OSError:
+                    pass
+            return existing
+
+        def transfer(paths, overwrite):
+            def do_transfer():
+                for sp in paths:
+                    name = sp.rstrip("/").rsplit("/", 1)[-1]
+                    local_path = str(TempManager.get_temp_path(sp))
+                    if src_client.is_dir(sp):
+                        src_client.download_recursive(sp, local_path)
+                        dst_client.upload_directory(
+                            local_path, f"{dest_stripped}/{name}",
+                            overwrite=overwrite,
+                        )
+                    else:
+                        src_client.download(sp, local_path)
+                        dst_client.upload(
+                            local_path, f"{dest_stripped}/{name}",
+                            overwrite=overwrite,
+                        )
+                return len(paths)
+
+            def on_done(n):
+                self.load_directory(self._current_path)
+                if self._window:
+                    self._window.show_toast(
+                        ngettext(
+                            "Copied {n} item to “{dest}”",
+                            "Copied {n} items to “{dest}”", n,
+                        ).format(n=n, dest=dest_label),
+                        "success",
+                    )
+
+            if self._window:
+                self._window.show_toast(
+                    _("Copying to “{dest}”…").format(dest=dest_label), "info"
+                )
+            _run_async(do_transfer, on_done, lambda e: self._show_op_error(str(e)))
+
+        def on_checked(existing):
+            free = [sp for sp in src_paths
+                    if sp.rstrip("/").rsplit("/", 1)[-1] not in existing]
+            clashing = [sp for sp in src_paths
+                        if sp.rstrip("/").rsplit("/", 1)[-1] in existing]
+            if free:
+                transfer(free, overwrite=False)
+            if clashing:
+                self._ask_cross_server_overwrite(
+                    clashing, existing, dest_label, transfer
+                )
+
+        _run_async(check_conflicts, on_checked, lambda e: self._show_op_error(str(e)))
+
+    def _ask_cross_server_overwrite(self, clashing, existing_names, dest_label, transfer):
+        n = len(existing_names)
+        if n == 1:
+            heading = _("Item already exists")
+            body = _(
+                "“{name}” already exists in “{dest}”. "
+                "Do you want to replace it?"
+            ).format(name=existing_names[0], dest=dest_label)
+        else:
+            listing = ", ".join(f"“{name}”" for name in existing_names[:5])
+            if n > 5:
+                listing += _(" and {n} more").format(n=n - 5)
+            heading = _("{n} items already exist").format(n=n)
+            body = _(
+                "{listing} already exist in “{dest}”. "
+                "Do you want to replace them?"
+            ).format(listing=listing, dest=dest_label)
+
+        dlg = Adw.AlertDialog(heading=heading, body=body)
+        dlg.add_response("cancel", _("Cancel"))
+        dlg.add_response("replace", _("Replace"))
+        dlg.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
+        dlg.set_default_response("cancel")
+        dlg.set_close_response("cancel")
+
+        def on_response(_dlg, response):
+            if response == "replace":
+                transfer(clashing, overwrite=True)
+
+        dlg.connect("response", on_response)
+        GLib.idle_add(lambda: (dlg.present(self.get_root()), GLib.SOURCE_REMOVE)[1])
 
     # ──────────────────────────────────────────────────────────────────────
     # Upload drop target (external files/folders from file manager)
@@ -1880,10 +2188,24 @@ class FileBrowser(Gtk.Box):
 
     def _setup_upload_drop_target(self):
         target = Gtk.DropTarget.new(Gdk.FileList, Gdk.DragAction.COPY)
+        target.connect("accept", self._on_upload_accept)
         target.connect("drop", self._on_upload_drop)
         target.connect("enter", self._on_upload_drag_enter)
         target.connect("leave", self._on_upload_drag_leave)
         self._stack.add_controller(target)
+
+    @staticmethod
+    def _is_internal_drag(drop):
+        formats = drop.get_formats() if drop else None
+        return bool(formats and formats.contain_mime_type(INTERNAL_DRAG_MIME))
+
+    def _on_upload_accept(self, target, drop):
+        # Edith's own drags also advertise text/uri-list (for file managers).
+        # Accepting them here would download the remote file to /tmp and
+        # re-upload it; the internal target handles them properly instead.
+        if self._is_internal_drag(drop):
+            return False
+        return bool(self._window and self._window.sftp_client)
 
     def _on_upload_drag_enter(self, target, x, y):
         if not self._window or not self._window.sftp_client:
