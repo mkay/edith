@@ -14,9 +14,6 @@ Blank lines and this comment are ignored. Every other line is one bullet; a lead
 -->
 
 - German translation now uses informal address throughout.
-
-- Drags between Edith windows no longer freeze the app.
-
-- A watchdog records main-loop freezes to ~/.cache/edith/freeze-dump.log.
-
 - The interface language can be set explicitly in Preferences.
+- Drags between Edith windows no longer freeze the app.
+- A watchdog records main-loop freezes to ~/.cache/edith/freeze-dump.log.
