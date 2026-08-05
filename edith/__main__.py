@@ -1,4 +1,6 @@
 import locale
+import logging
+import os
 import sys
 
 from edith import LOCALEDIR
@@ -7,6 +9,13 @@ from edith.application import EdithApplication
 
 
 def main():
+    # Warnings and above always go to stderr; EDITH_DEBUG=1 turns on the
+    # diagnostic chatter (undo-history resets, renderer crashes, …).
+    logging.basicConfig(
+        level=logging.DEBUG if os.environ.get("EDITH_DEBUG") else logging.WARNING,
+        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+    )
+
     # Honour the user's locale, and point the C library at our catalogues so
     # anything translated below the Python layer resolves too.
     try:

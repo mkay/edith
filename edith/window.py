@@ -626,12 +626,12 @@ class EdithWindow(Adw.ApplicationWindow):
     def _on_undo(self, action, param):
         editor = self._editor_panel.get_current_editor()
         if editor:
-            editor.trigger_action("undo")
+            editor.undo()
 
     def _on_redo(self, action, param):
         editor = self._editor_panel.get_current_editor()
         if editor:
-            editor.trigger_action("redo")
+            editor.redo()
 
     def _on_goto_line(self, action, param):
         editor = self._editor_panel.get_current_editor()
@@ -1254,9 +1254,11 @@ class EdithWindow(Adw.ApplicationWindow):
             return client.stat(remote_path).st_mtime
 
         def on_success(mtime):
-            self._saving_paths.discard(remote_path)
+            # Record the post-upload mtime before clearing the suppression
+            # flag, so the poller never sees our own write as a remote change.
             if remote_path in self._remote_mtimes:
                 self._remote_mtimes[remote_path] = mtime
+            self._saving_paths.discard(remote_path)
             self.show_toast(_("Uploaded {name}").format(name=name), "success")
             self._file_browser.refresh_path(os.path.dirname(remote_path))
             # Keep an editor tab on the same file in sync with the external edit.
@@ -1284,8 +1286,8 @@ class EdithWindow(Adw.ApplicationWindow):
             return client.stat(remote_path).st_mtime
 
         def on_success(mtime):
-            self._saving_paths.discard(remote_path)
             self._remote_mtimes[remote_path] = mtime
+            self._saving_paths.discard(remote_path)
             self.show_toast(_("Saved {name}").format(name=name), "success")
 
         def on_error(error):
@@ -1339,6 +1341,13 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_stat_done(changed):
             self._poll_in_flight = False
             for rpath, new_mtime in changed:
+                # A save may have started *after* paths_to_check was collected;
+                # its own upload bumps the remote mtime, which would otherwise
+                # look like a remote change and trigger a pointless reload.
+                if rpath in self._saving_paths:
+                    continue
+                if rpath in self._reload_dialog_paths:
+                    continue
                 self._remote_mtimes[rpath] = new_mtime
                 viewer = self._viewer_for_path(rpath)
                 if not viewer:
@@ -1384,10 +1393,23 @@ class EdithWindow(Adw.ApplicationWindow):
 
         from edith.services.async_worker import run_async
 
-        def do_download():
-            client.download(remote_path, local_path)
+        def read_local():
+            try:
+                with open(local_path, "rb") as f:
+                    return f.read()
+            except OSError:
+                return None
 
-        def on_done(_):
+        def do_download():
+            before = read_local()
+            client.download(remote_path, local_path)
+            # An mtime bump without a content change (touch, rsync, our own
+            # round-trip) must not disturb the open tab at all.
+            return before is None or before != read_local()
+
+        def on_done(changed):
+            if not changed:
+                return
             v = self._viewer_for_path(remote_path)
             if v:
                 v.reload_from_disk()

@@ -1,5 +1,6 @@
 import gi
 import json
+import logging
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("WebKit", "6.0")
@@ -12,6 +13,8 @@ from edith.models.open_file import OpenFile
 from edith.monaco_languages import EXT_TO_MONACO, get_language_name
 from edith.services.config import ConfigService
 from edith.i18n import _
+
+log = logging.getLogger(__name__)
 
 
 class MonacoEditor(Gtk.Box):
@@ -38,6 +41,10 @@ class MonacoEditor(Gtk.Box):
         self._cursor_col = 1
         self._pending_save_callback = None
         self._is_svg = open_file.filename.lower().endswith(".svg")
+        # Most recent unsaved editor text, refreshed by the JS side every ~2s
+        # while the buffer is dirty.  Used to rebuild the tab if the WebKit
+        # render process dies (which otherwise loses both edits and history).
+        self._content_snapshot = None
 
         self._build_ui()
         self._load_file_and_init()
@@ -225,6 +232,21 @@ class MonacoEditor(Gtk.Box):
             self._word_wrap = data.get("wordWrap", True)
             self.emit("wrap-changed", self._word_wrap)
 
+        elif msg_type == "history-reset":
+            # The undo stack was thrown away.  "init" is expected (fresh tab);
+            # anything else means there is still a path that destroys history,
+            # so log it loudly enough to be seen without EDITH_DEBUG.
+            reason = data.get("reason", "unknown")
+            log.log(
+                logging.INFO if reason == "init" else logging.WARNING,
+                "undo history reset (%s) for %s",
+                reason,
+                self.open_file.filename,
+            )
+
+        elif msg_type == "content-snapshot":
+            self._content_snapshot = data.get("content", "")
+
         elif msg_type == "save-content":
             content = data.get("content", "")
             try:
@@ -232,6 +254,7 @@ class MonacoEditor(Gtk.Box):
                     f.write(content)
             except OSError:
                 pass
+            self._content_snapshot = None
             self._eval_js("EdithBridge.markClean()")
             self._refresh_svg_preview()
             cb = self._pending_save_callback
@@ -251,24 +274,58 @@ class MonacoEditor(Gtk.Box):
             self.activate_action("win.close-tab", None)
 
     def _on_web_process_terminated(self, webview, reason):
-        """WebKit renderer crashed — reset state and reload from disk."""
+        """WebKit renderer crashed — rebuild the editor.
+
+        Undo history cannot survive this, but unsaved text can: the last
+        snapshot from the JS side is restored instead of the stale file on
+        disk.  Either way the user is told, rather than silently finding a
+        dead Ctrl+Z later on.
+        """
+        log.warning(
+            "WebKit render process terminated (%s) for %s",
+            reason,
+            self.open_file.filename,
+        )
         self._ready = False
         self._pending_js = []
         self._pending_save_callback = None
-        self._load_file_and_init()  # queues init JS into _pending_js
+
+        recovered = self._content_snapshot
+        # queues init JS into _pending_js, using the snapshot if we have one
+        self._load_file_and_init(content_override=recovered)
         monaco_dir = Path(__file__).parent.parent / "data" / "monaco"
         self._webview.load_uri((monaco_dir / "editor.html").as_uri())
+
+        if recovered is not None:
+            msg = _(
+                "The editor for “{filename}” crashed and was restored with "
+                "your unsaved changes. Undo history was lost."
+            ).format(filename=self.open_file.filename)
+        else:
+            msg = _(
+                "The editor for “{filename}” crashed and was reloaded. "
+                "Undo history was lost."
+            ).format(filename=self.open_file.filename)
+        self._notify(msg)
+
+    def _notify(self, message, kind="error", timeout=8):
+        root = self.get_root()
+        if root is not None and hasattr(root, "show_toast"):
+            root.show_toast(message, kind, timeout)
 
     # ------------------------------------------------------------------ #
     #  File loading & init                                                 #
     # ------------------------------------------------------------------ #
 
-    def _load_file_and_init(self):
-        try:
-            with open(self.open_file.local_path, "r", errors="replace") as f:
-                content = f.read()
-        except Exception as e:
-            content = f"Error loading file: {e}"
+    def _load_file_and_init(self, content_override=None):
+        if content_override is not None:
+            content = content_override
+        else:
+            try:
+                with open(self.open_file.local_path, "r", errors="replace") as f:
+                    content = f.read()
+            except Exception as e:
+                content = f"Error loading file: {e}"
 
         lang_id = self._detect_language()
         self._language_id = lang_id
@@ -302,6 +359,11 @@ class MonacoEditor(Gtk.Box):
                 json.dumps(custom_options),
             )
         )
+
+        # Restored crash content differs from what's on disk — keep the tab
+        # flagged dirty so the user can still save it.
+        if content_override is not None:
+            self._eval_js("EdithBridge.markDirty()")
 
     def _detect_language(self):
         filename = self.open_file.filename
@@ -430,6 +492,12 @@ class MonacoEditor(Gtk.Box):
 
     def apply_custom_options(self, opts: dict):
         self._eval_js(f"EdithBridge.setCustomOptions({json.dumps(opts)})")
+
+    def undo(self):
+        self._eval_js("EdithBridge.undo()")
+
+    def redo(self):
+        self._eval_js("EdithBridge.redo()")
 
     def trigger_action(self, action_id: str):
         self._eval_js(f"EdithBridge.triggerAction({json.dumps(action_id)})")

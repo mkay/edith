@@ -10,6 +10,50 @@
   var pendingCalls = [];
   var ready = false;
   var loadingContent = false;  // suppress dirty tracking during setValue
+  var snapshotTimer = null;    // debounced content snapshot for crash recovery
+
+  // Report to Python whenever the model's undo history is thrown away, so a
+  // lost undo stack shows up in the log instead of being a mystery.
+  function reportHistoryReset(reason) {
+    postMessage("history-reset", { reason: reason });
+  }
+
+  // Replace the whole buffer *without* destroying undo history.
+  // editor.setValue() resets the model's EditStack; pushEditOperations keeps
+  // it and makes the replacement itself undoable.
+  function replaceContentPreservingHistory(content) {
+    var model = editor.getModel();
+    if (model.getValue() === content) return false;
+
+    var selections = editor.getSelections();
+    var scrollTop = editor.getScrollTop();
+    var scrollLeft = editor.getScrollLeft();
+
+    loadingContent = true;
+    try {
+      model.pushStackElement();
+      model.pushEditOperations(
+        selections,
+        [{ range: model.getFullModelRange(), text: content }],
+        function () { return null; }
+      );
+      model.pushStackElement();
+    } finally {
+      loadingContent = false;
+    }
+
+    // Restore cursor/selection, clamped to the new content bounds.
+    if (selections && selections.length) {
+      try {
+        editor.setSelections(selections.map(function (s) {
+          return model.validateRange(s);
+        }));
+      } catch (e) {}
+    }
+    editor.setScrollTop(scrollTop);
+    editor.setScrollLeft(scrollLeft);
+    return true;
+  }
 
   // ── Custom options splitter ───────────────────────────────────────────
   // User-provided overrides may mix Monaco editor options with language
@@ -459,6 +503,16 @@
         lastModifiedState = isModified;
         postMessage("modified-changed", { modified: isModified });
       }
+      // Keep Python holding a recent copy of unsaved text: if the WebKit
+      // render process dies, the tab is rebuilt from this instead of from
+      // the (stale) file on disk.  Debounced to keep IPC traffic sane.
+      if (isModified) {
+        if (snapshotTimer) clearTimeout(snapshotTimer);
+        snapshotTimer = setTimeout(function () {
+          snapshotTimer = null;
+          postMessage("content-snapshot", { content: editor.getValue() });
+        }, 2000);
+      }
     });
 
     // Ctrl+S → save-requested
@@ -496,9 +550,12 @@
     init: function (content, language, theme, fontFamily, fontSize, wordWrap, settings, customOptions) {
       function run() {
         if (content != null) {
+          // Only the initial load may use setValue (fresh model, no history
+          // worth keeping).  Everything else goes through setContent.
           loadingContent = true;
           editor.setValue(content);
           loadingContent = false;
+          reportHistoryReset("init");
           cleanVersionId = editor.getModel().getAlternativeVersionId();
           lastModifiedState = false;
         }
@@ -547,15 +604,45 @@
       else pendingCalls.push(run);
     },
 
+    // Reload content from disk.  Never uses setValue(): the undo stack must
+    // survive a remote-change reload, and an unchanged file must be a no-op.
     setContent: function (content) {
       if (!editor) return;
-      loadingContent = true;
-      editor.setValue(content);
-      loadingContent = false;
+      replaceContentPreservingHistory(content);
       cleanVersionId = editor.getModel().getAlternativeVersionId();
       if (lastModifiedState) {
         lastModifiedState = false;
         postMessage("modified-changed", { modified: false });
+      }
+    },
+
+    // Undo/redo driven from the GTK window accelerators.
+    //
+    // editor.trigger("keyboard", "undo") is *not* reliable here: "undo" is not
+    // an editor action, so it falls through to the command service, whose
+    // implementation resolves via ICodeEditorService.getFocusedCodeEditor().
+    // If the WebView doesn't hold DOM focus the command silently does nothing.
+    // Focus first, then fall back to the model's own edit stack if the
+    // version id didn't move.
+    undo: function () {
+      if (!editor) return;
+      var model = editor.getModel();
+      var before = model.getAlternativeVersionId();
+      editor.focus();
+      editor.trigger("keyboard", "undo");
+      if (model.getAlternativeVersionId() === before && model.undo) {
+        model.undo();
+      }
+    },
+
+    redo: function () {
+      if (!editor) return;
+      var model = editor.getModel();
+      var before = model.getAlternativeVersionId();
+      editor.focus();
+      editor.trigger("keyboard", "redo");
+      if (model.getAlternativeVersionId() === before && model.redo) {
+        model.redo();
       }
     },
 
@@ -691,6 +778,17 @@
       if (lastModifiedState) {
         lastModifiedState = false;
         postMessage("modified-changed", { modified: false });
+      }
+    },
+
+    // Force the dirty flag on — used after crash recovery, where the restored
+    // buffer intentionally differs from the file on disk.
+    markDirty: function () {
+      if (!editor) return;
+      cleanVersionId = null;
+      if (!lastModifiedState) {
+        lastModifiedState = true;
+        postMessage("modified-changed", { modified: true });
       }
     },
 
