@@ -614,15 +614,15 @@ class EdithWindow(Adw.ApplicationWindow):
             def on_response(d, response):
                 if response in ("merge", "replace"):
                     self._finish_import(
-                        servers, folders, response == "replace", kind
+                        servers, folders, response == "replace", kind, path
                     )
 
             choice.connect("response", on_response)
             choice.present(self)
         else:
-            self._finish_import(servers, folders, False, kind)
+            self._finish_import(servers, folders, False, kind, path)
 
-    def _finish_import(self, servers, folders, replace, kind):
+    def _finish_import(self, servers, folders, replace, kind, path):
         from edith.services import servers_transfer
 
         try:
@@ -661,17 +661,118 @@ class EdithWindow(Adw.ApplicationWindow):
                 ).format(n=res.folders_added)
             )
 
+        summary = " ".join(parts)
+        imported_ids = {s.id for s in servers}
+
+        blob = (
+            servers_transfer.read_secrets_blob(path) if kind != "filezilla" else None
+        )
+        if blob:
+            self._ask_import_passphrase(blob, imported_ids, summary)
+            return
+
         if kind == "filezilla":
             note = _("Passwords could not be imported — you'll need to re-enter them.")
         else:
             # Ids survive the round trip, so the keyring lookup still matches.
             note = _(
-                "Passwords are never written to an export. On this machine the "
-                "restored servers still find their saved passwords; on another "
-                "machine you'll need to re-enter them."
+                "This file contains no saved passwords. On this machine the "
+                "restored servers still find any passwords already in your "
+                "keyring; on another machine you'll need to re-enter them."
             )
 
-        self._show_message(_("Import Complete"), " ".join(parts) + "\n\n" + note)
+        self._show_message(_("Import Complete"), summary + "\n\n" + note)
+
+    def _ask_import_passphrase(self, blob, imported_ids, summary, error=None):
+        dialog = Adw.AlertDialog(
+            heading=_("Saved Passwords Found"),
+            body=error or _(
+                "This file includes encrypted passwords. Enter the passphrase "
+                "used when it was exported to add them to your keyring."
+            ),
+        )
+        group = Adw.PreferencesGroup()
+        pass_row = Adw.PasswordEntryRow(title=_("Passphrase"))
+        group.add(pass_row)
+        dialog.set_extra_child(group)
+
+        dialog.add_response("skip", _("Skip"))
+        dialog.add_response("restore", _("Restore Passwords"))
+        dialog.set_response_appearance("restore", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("restore")
+        dialog.set_close_response("skip")
+
+        def on_response(d, response):
+            if response != "restore":
+                self._show_message(
+                    _("Import Complete"),
+                    summary + "\n\n" + _("Saved passwords were skipped."),
+                )
+                return
+            self._do_restore_secrets(
+                blob, pass_row.get_text(), imported_ids, summary
+            )
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
+    def _do_restore_secrets(self, blob, passphrase, imported_ids, summary):
+        from edith.services import servers_transfer
+        from edith.services.async_worker import run_async
+
+        try:
+            secrets = servers_transfer.decrypt_secrets(blob, passphrase)
+        except ValueError as e:
+            # Wrong passphrase is the expected mistake, so ask again in place
+            # rather than making the user redo the whole import.
+            self._ask_import_passphrase(blob, imported_ids, summary, error=str(e))
+            return
+
+        # ~100ms per keyring write puts a few hundred of them well past the
+        # freeze watchdog's 10s threshold, so this runs on a worker with a
+        # progress bar rather than locking the window.
+        progress = Adw.AlertDialog(
+            heading=_("Restoring Passwords"),
+            body=_("Adding saved passwords to your keyring…"),
+        )
+        bar = Gtk.ProgressBar(show_text=True)
+        progress.set_extra_child(bar)
+        progress.present(self)
+
+        def on_progress(done, total):
+            def update():
+                bar.set_fraction(done / total if total else 1.0)
+                bar.set_text(f"{done} / {total}")
+                return GLib.SOURCE_REMOVE
+
+            GLib.idle_add(update)
+
+        def task():
+            return servers_transfer.restore_secrets(
+                secrets, imported_ids, progress=on_progress
+            )
+
+        def on_success(count):
+            progress.close()
+            note = ngettext(
+                "Restored {n} saved password.",
+                "Restored {n} saved passwords.",
+                count,
+            ).format(n=count)
+            skipped = len(secrets) - count
+            if skipped > 0:
+                note += " " + ngettext(
+                    "{n} belonged to a server that wasn't imported.",
+                    "{n} belonged to servers that weren't imported.",
+                    skipped,
+                ).format(n=skipped)
+            self._show_message(_("Import Complete"), summary + "\n\n" + note)
+
+        def on_error(e):
+            progress.close()
+            self._show_message(_("Import Failed"), str(e))
+
+        run_async(task, on_success, on_error)
 
     # --- Export ---
 
@@ -715,22 +816,97 @@ class EdithWindow(Adw.ApplicationWindow):
             )
             return
 
-        servers = ConfigService.load_servers()
-        folders = ConfigService.load_folders()
-        try:
-            servers_transfer.export_servers(Path(local_path), servers, folders)
-        except OSError as e:
-            self._show_message(_("Export Failed"), str(e))
-            return
+        path = Path(local_path)
 
-        self._show_message(
-            _("Export Complete"),
-            ngettext(
-                "Exported {n} server.", "Exported {n} servers.", len(servers)
-            ).format(n=len(servers)) + "\n\n" + _(
-                "Passwords are not included — they stay in your system keyring."
+        # The keyring is local to this machine, so an export without passwords
+        # migrates a server list that cannot connect to anything. Offer to
+        # bring them along, encrypted — there is no option to write them in
+        # plain text.
+        dialog = Adw.AlertDialog(
+            heading=_("Include Saved Passwords?"),
+            body=_(
+                "Passwords live in your system keyring and don't travel with a "
+                "plain export. They can be included, encrypted with a "
+                "passphrase you choose — you'll need that same passphrase to "
+                "import them on the other machine."
             ),
         )
+
+        group = Adw.PreferencesGroup()
+        pass_row = Adw.PasswordEntryRow(title=_("Passphrase"))
+        confirm_row = Adw.PasswordEntryRow(title=_("Confirm Passphrase"))
+        group.add(pass_row)
+        group.add(confirm_row)
+        dialog.set_extra_child(group)
+
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("skip", _("Without Passwords"))
+        dialog.add_response("include", _("Include Passwords"))
+        dialog.set_response_appearance("include", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("include")
+        dialog.set_close_response("cancel")
+        # A mistyped passphrase would produce a file nobody can ever open, so
+        # the action stays disabled until both entries agree.
+        dialog.set_response_enabled("include", False)
+
+        def on_changed(*_args):
+            text = pass_row.get_text()
+            dialog.set_response_enabled(
+                "include", bool(text) and text == confirm_row.get_text()
+            )
+
+        pass_row.connect("changed", on_changed)
+        confirm_row.connect("changed", on_changed)
+
+        def on_response(d, response):
+            if response == "cancel":
+                return
+            passphrase = pass_row.get_text() if response == "include" else None
+            self._do_export(path, passphrase)
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
+    def _do_export(self, path, passphrase):
+        from edith.services import servers_transfer
+        from edith.services.async_worker import run_async
+
+        servers = ConfigService.load_servers()
+        folders = ConfigService.load_folders()
+
+        # Reading a few hundred passwords out of the keyring costs seconds, so
+        # it does not belong on the main loop.
+        def task():
+            blob = None
+            count = 0
+            if passphrase:
+                secrets = servers_transfer.collect_secrets(servers)
+                count = len(secrets)
+                if secrets:
+                    blob = servers_transfer.encrypt_secrets(secrets, passphrase)
+            servers_transfer.export_servers(path, servers, folders, secrets=blob)
+            return count
+
+        def on_success(count):
+            summary = ngettext(
+                "Exported {n} server.", "Exported {n} servers.", len(servers)
+            ).format(n=len(servers))
+            if count:
+                note = ngettext(
+                    "{n} saved password was included, encrypted.",
+                    "{n} saved passwords were included, encrypted.",
+                    count,
+                ).format(n=count)
+            elif passphrase:
+                note = _("No saved passwords were found to include.")
+            else:
+                note = _("Passwords are not included — they stay in your system keyring.")
+            self._show_message(_("Export Complete"), summary + "\n\n" + note)
+
+        def on_error(e):
+            self._show_message(_("Export Failed"), str(e))
+
+        run_async(task, on_success, on_error)
 
     def _on_add_server_to_folder(self, server_list, folder_id):
         self._server_panel.show_add_dialog(folder_id=folder_id)

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-06 17:18+0300\n"
+"POT-Creation-Date: 2026-08-06 17:36+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -173,7 +173,7 @@ msgstr ""
 msgid "Find and Replace"
 msgstr ""
 
-#: edith/application.py:257 edith/window.py:759
+#: edith/application.py:257 edith/window.py:959
 msgid "Go to Line"
 msgstr ""
 
@@ -232,7 +232,7 @@ msgstr ""
 msgid "Disconnected"
 msgstr ""
 
-#: edith/window.py:175 edith/window.py:1216 edith/widgets/connect_dialog.py:42
+#: edith/window.py:175 edith/window.py:1416 edith/widgets/connect_dialog.py:42
 #: edith/widgets/server_panel.py:117
 msgid "Connect"
 msgstr ""
@@ -277,12 +277,12 @@ msgstr ""
 msgid "Main Menu"
 msgstr ""
 
-#: edith/window.py:273 edith/window.py:1006
+#: edith/window.py:273 edith/window.py:1206
 msgid "Open a file from the sidebar to start editing."
 msgstr ""
 
-#: edith/window.py:463 edith/window.py:597 edith/window.py:767
-#: edith/window.py:912 edith/widgets/connect_dialog.py:37
+#: edith/window.py:463 edith/window.py:606 edith/window.py:842
+#: edith/window.py:967 edith/window.py:1112 edith/widgets/connect_dialog.py:37
 #: edith/widgets/editor_panel.py:271 edith/widgets/file_browser.py:997
 #: edith/widgets/file_browser.py:1009 edith/widgets/file_browser.py:1722
 #: edith/widgets/file_browser.py:2044 edith/widgets/file_browser.py:2182
@@ -299,13 +299,13 @@ msgstr ""
 msgid "Quit Anyway"
 msgstr ""
 
-#: edith/window.py:529 edith/window.py:898 edith/window.py:1417
+#: edith/window.py:529 edith/window.py:1098 edith/window.py:1617
 #: edith/widgets/preferences_dialog.py:639
 #: edith/widgets/server_edit_dialog.py:367
 msgid "OK"
 msgstr ""
 
-#: edith/window.py:535 edith/window.py:587
+#: edith/window.py:535 edith/window.py:596
 msgid "Import Servers"
 msgstr ""
 
@@ -313,7 +313,7 @@ msgstr ""
 msgid "Server lists"
 msgstr ""
 
-#: edith/window.py:542 edith/window.py:677
+#: edith/window.py:542 edith/window.py:794
 msgid "Edith export (*.json)"
 msgstr ""
 
@@ -321,202 +321,295 @@ msgstr ""
 msgid "FileZilla sites (*.xml)"
 msgstr ""
 
-#: edith/window.py:573 edith/window.py:619
+#: edith/window.py:568 edith/window.py:582 edith/window.py:631
+#: edith/window.py:773
 msgid "Import Failed"
 msgstr ""
 
-#: edith/window.py:578
+#: edith/window.py:569
+msgid ""
+"That location can't be read directly. Copy the file to this computer first."
+msgstr ""
+
+#: edith/window.py:587
 msgid "No Servers Found"
 msgstr ""
 
-#: edith/window.py:579
+#: edith/window.py:588
 msgid "The selected file contained no server entries."
 msgstr ""
 
-#: edith/window.py:589
+#: edith/window.py:598
 #, python-brace-format
 msgid "The file contains {n} server."
 msgid_plural "The file contains {n} servers."
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:593
+#: edith/window.py:602
 msgid ""
 "Merging keeps your current servers and updates any that match. Replacing "
 "discards your current list entirely."
 msgstr ""
 
-#: edith/window.py:598 edith/widgets/file_browser.py:1723
+#: edith/window.py:607 edith/widgets/file_browser.py:1723
 #: edith/widgets/file_browser.py:2045 edith/widgets/file_browser.py:2183
 msgid "Replace"
 msgstr ""
 
-#: edith/window.py:599
+#: edith/window.py:608
 msgid "Merge"
 msgstr ""
 
-#: edith/window.py:629
+#: edith/window.py:646
 #, python-brace-format
 msgid "Imported {n} server."
 msgid_plural "Imported {n} servers."
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:636
+#: edith/window.py:652
 #, python-brace-format
 msgid "Updated {n} existing server."
 msgid_plural "Updated {n} existing servers."
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:644
+#: edith/window.py:660
 #, python-brace-format
 msgid "Added {n} group."
 msgid_plural "Added {n} groups."
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:649
+#: edith/window.py:675
 msgid "Passwords could not be imported — you'll need to re-enter them."
 msgstr ""
 
-#: edith/window.py:653
+#: edith/window.py:679
 msgid ""
-"Passwords are never written to an export. On this machine the restored "
-"servers still find their saved passwords; on another machine you'll need to "
-"re-enter them."
+"This file contains no saved passwords. On this machine the restored servers "
+"still find any passwords already in your keyring; on another machine you'll "
+"need to re-enter them."
 msgstr ""
 
-#: edith/window.py:658
+#: edith/window.py:684 edith/window.py:708 edith/window.py:769
 msgid "Import Complete"
 msgstr ""
 
-#: edith/window.py:665
-msgid "Nothing to Export"
+#: edith/window.py:688
+msgid "Saved Passwords Found"
 msgstr ""
 
-#: edith/window.py:666
-msgid "You have no saved servers yet."
+#: edith/window.py:690
+msgid ""
+"This file includes encrypted passwords. Enter the passphrase used when it "
+"was exported to add them to your keyring."
 msgstr ""
 
-#: edith/window.py:673
-msgid "Export Servers"
+#: edith/window.py:695 edith/window.py:836
+msgid "Passphrase"
 msgstr ""
 
 #: edith/window.py:699
+msgid "Skip"
+msgstr ""
+
+#: edith/window.py:700
+msgid "Restore Passwords"
+msgstr ""
+
+#: edith/window.py:709
+msgid "Saved passwords were skipped."
+msgstr ""
+
+#: edith/window.py:735
+msgid "Restoring Passwords"
+msgstr ""
+
+#: edith/window.py:736
+msgid "Adding saved passwords to your keyring…"
+msgstr ""
+
+#: edith/window.py:758
+#, python-brace-format
+msgid "Restored {n} saved password."
+msgid_plural "Restored {n} saved passwords."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:765
+#, python-brace-format
+msgid "{n} belonged to a server that wasn't imported."
+msgid_plural "{n} belonged to servers that weren't imported."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:782
+msgid "Nothing to Export"
+msgstr ""
+
+#: edith/window.py:783
+msgid "You have no saved servers yet."
+msgstr ""
+
+#: edith/window.py:790
+msgid "Export Servers"
+msgstr ""
+
+#: edith/window.py:814 edith/window.py:907
 msgid "Export Failed"
 msgstr ""
 
-#: edith/window.py:703
-msgid "Export Complete"
+#: edith/window.py:815
+msgid ""
+"That location can't be written to directly. Choose a folder on this computer."
 msgstr ""
 
-#: edith/window.py:705
+#: edith/window.py:826
+msgid "Include Saved Passwords?"
+msgstr ""
+
+#: edith/window.py:828
+msgid ""
+"Passwords live in your system keyring and don't travel with a plain export. "
+"They can be included, encrypted with a passphrase you choose — you'll need "
+"that same passphrase to import them on the other machine."
+msgstr ""
+
+#: edith/window.py:837
+msgid "Confirm Passphrase"
+msgstr ""
+
+#: edith/window.py:843
+msgid "Without Passwords"
+msgstr ""
+
+#: edith/window.py:844
+msgid "Include Passwords"
+msgstr ""
+
+#: edith/window.py:892
 #, python-brace-format
 msgid "Exported {n} server."
 msgid_plural "Exported {n} servers."
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:707
+#: edith/window.py:896
+#, python-brace-format
+msgid "{n} saved password was included, encrypted."
+msgid_plural "{n} saved passwords were included, encrypted."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:901
+msgid "No saved passwords were found to include."
+msgstr ""
+
+#: edith/window.py:903
 msgid "Passwords are not included — they stay in your system keyring."
 msgstr ""
 
-#: edith/window.py:762
+#: edith/window.py:904
+msgid "Export Complete"
+msgstr ""
+
+#: edith/window.py:962
 msgid "Line number…"
 msgstr ""
 
-#: edith/window.py:768
+#: edith/window.py:968
 msgid "Go"
 msgstr ""
 
-#: edith/window.py:895
+#: edith/window.py:1095
 msgid "Connection Failed"
 msgstr ""
 
-#: edith/window.py:909
+#: edith/window.py:1109
 msgid "Disconnect with unsaved changes?"
 msgstr ""
 
-#: edith/window.py:913
+#: edith/window.py:1113
 msgid "Discard & Disconnect"
 msgstr ""
 
-#: edith/window.py:959
+#: edith/window.py:1159
 msgid "Disconnect (Ctrl+D)"
 msgstr ""
 
-#: edith/window.py:995 edith/window.py:1000
+#: edith/window.py:1195 edith/window.py:1200
 #, python-brace-format
 msgid "Connected to {server}"
 msgstr ""
 
-#: edith/window.py:1024
+#: edith/window.py:1224
 msgid "Remove from List"
 msgstr ""
 
-#: edith/window.py:1104 edith/widgets/server_panel.py:187
+#: edith/window.py:1304 edith/widgets/server_panel.py:187
 #: edith/widgets/server_row.py:69
 msgid "Unpin"
 msgstr ""
 
-#: edith/window.py:1277 edith/window.py:1304 edith/window.py:1335
+#: edith/window.py:1477 edith/window.py:1504 edith/window.py:1535
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr ""
 
-#: edith/window.py:1278
+#: edith/window.py:1478
 #, python-brace-format
 msgid "Failed to download: {error}"
 msgstr ""
 
-#: edith/window.py:1299 edith/window.py:1330
+#: edith/window.py:1499 edith/window.py:1530
 #, python-brace-format
 msgid "Downloaded {name}"
 msgstr ""
 
-#: edith/window.py:1319
+#: edith/window.py:1519
 #, python-brace-format
 msgid "{n} file"
 msgid_plural "{n} files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:1380
+#: edith/window.py:1580
 #, python-brace-format
 msgid "Uploaded {name}"
 msgstr ""
 
-#: edith/window.py:1389
+#: edith/window.py:1589
 #, python-brace-format
 msgid "Failed to upload {name}: {error}"
 msgstr ""
 
-#: edith/window.py:1409
+#: edith/window.py:1609
 #, python-brace-format
 msgid "Saved {name}"
 msgstr ""
 
-#: edith/window.py:1414
+#: edith/window.py:1614
 msgid "Upload Failed"
 msgstr ""
 
-#: edith/window.py:1546
+#: edith/window.py:1746
 msgid "File Changed on Server"
 msgstr ""
 
-#: edith/window.py:1548
+#: edith/window.py:1748
 #, python-brace-format
 msgid ""
 "“{filename}” has been modified on the server.\n"
 "Do you want to reload it? Your unsaved changes will be lost."
 msgstr ""
 
-#: edith/window.py:1552
+#: edith/window.py:1752
 msgid "Keep Local"
 msgstr ""
 
-#: edith/window.py:1553
+#: edith/window.py:1753
 msgid "Reload"
 msgstr ""
 
@@ -542,22 +635,35 @@ msgstr ""
 msgid "Drag failed: {message}"
 msgstr ""
 
-#: edith/services/servers_transfer.py:64
+#: edith/services/servers_transfer.py:116
+msgid "This file's saved passwords are in a format this version can't read."
+msgstr ""
+
+#: edith/services/servers_transfer.py:124
+msgid "Wrong passphrase."
+msgstr ""
+
+#: edith/services/servers_transfer.py:126
+#: edith/services/servers_transfer.py:130
+msgid "The saved passwords in this file are damaged."
+msgstr ""
+
+#: edith/services/servers_transfer.py:199
 msgid ""
 "Unrecognised file format — expected an Edith export or a FileZilla "
 "sitemanager.xml."
 msgstr ""
 
-#: edith/services/servers_transfer.py:72
+#: edith/services/servers_transfer.py:207
 #, python-brace-format
 msgid "This file is not valid JSON: {error}"
 msgstr ""
 
-#: edith/services/servers_transfer.py:75
+#: edith/services/servers_transfer.py:210
 msgid "This file does not contain an Edith server list."
 msgstr ""
 
-#: edith/services/servers_transfer.py:80
+#: edith/services/servers_transfer.py:215
 msgid "This file's server list is malformed."
 msgstr ""
 

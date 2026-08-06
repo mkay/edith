@@ -18,11 +18,13 @@ credential it already had. Writing secrets into a plain file would buy nothing
 there and would be actively unsafe for the case where the file does travel.
 """
 
+import base64
 import json
+import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 from edith.i18n import _
 from edith.models.server import ServerInfo, FolderInfo
@@ -30,20 +32,153 @@ from edith.services.config import ConfigService
 
 EXPORT_VERSION = 1
 
+# scrypt parameters. n=2**15 costs roughly 100ms per derivation here, which is
+# irrelevant once per file and expensive enough to make guessing a weak
+# passphrase unattractive. They travel in the file so raising them later does
+# not strand existing exports.
+KDF_N = 2 ** 15
+KDF_R = 8
+KDF_P = 1
+
 
 def default_export_name() -> str:
     return f"edith-servers-{time.strftime('%Y%m%d')}.json"
 
 
-def export_servers(path: Path, servers: List[ServerInfo], folders: List[FolderInfo]):
-    """Write servers and folders to [path]. Never includes credentials."""
+def export_servers(
+    path: Path,
+    servers: List[ServerInfo],
+    folders: List[FolderInfo],
+    secrets: Optional[dict] = None,
+):
+    """Write servers and folders to [path].
+
+    [secrets] is an already-encrypted blob from encrypt_secrets(); this
+    function has no way to write plaintext credentials, which is deliberate.
+    """
     data = {
         "edith_export": EXPORT_VERSION,
         "exported": time.strftime("%Y-%m-%d %H:%M:%S"),
         "servers": [s.to_dict() for s in servers],
         "folders": [f.to_dict() for f in folders],
     }
+    if secrets:
+        data["secrets"] = secrets
+
     path.write_text(json.dumps(data, indent=2))
+    if secrets:
+        # The chooser usually lands this in Downloads. Even encrypted, there is
+        # no reason for it to be world-readable.
+        try:
+            path.chmod(0o600)
+        except OSError:
+            pass
+
+
+# --- Credential transfer -------------------------------------------------
+#
+# Passwords are keyed by (credential_store.SERVICE_NAME, server.id), and import
+# preserves ids, so a restored secret lands back on the right server. The
+# keyring is local to a machine, which is the entire reason these functions
+# exist: without them a migration hands you a complete server list that cannot
+# connect to anything.
+
+
+def _derive_key(passphrase: str, salt: bytes, n: int, r: int, p: int) -> bytes:
+    from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+
+    kdf = Scrypt(salt=salt, length=32, n=n, r=r, p=p)
+    return base64.urlsafe_b64encode(kdf.derive(passphrase.encode("utf-8")))
+
+
+def encrypt_secrets(secrets: Dict[str, str], passphrase: str) -> dict:
+    """Encrypt {server_id: password} into a self-describing blob."""
+    from cryptography.fernet import Fernet
+
+    salt = os.urandom(16)
+    key = _derive_key(passphrase, salt, KDF_N, KDF_R, KDF_P)
+    token = Fernet(key).encrypt(json.dumps(secrets).encode("utf-8"))
+    return {
+        "kdf": "scrypt",
+        "n": KDF_N,
+        "r": KDF_R,
+        "p": KDF_P,
+        "salt": base64.b64encode(salt).decode("ascii"),
+        "data": token.decode("ascii"),
+    }
+
+
+def decrypt_secrets(blob: dict, passphrase: str) -> Dict[str, str]:
+    """Reverse encrypt_secrets. Raises ValueError on a wrong passphrase."""
+    from cryptography.fernet import Fernet, InvalidToken
+
+    if not isinstance(blob, dict) or blob.get("kdf") != "scrypt":
+        raise ValueError(_("This file's saved passwords are in a format this version can't read."))
+    try:
+        salt = base64.b64decode(blob["salt"])
+        key = _derive_key(
+            passphrase, salt, int(blob["n"]), int(blob["r"]), int(blob["p"])
+        )
+        plain = Fernet(key).decrypt(blob["data"].encode("ascii"))
+    except InvalidToken:
+        raise ValueError(_("Wrong passphrase."))
+    except (KeyError, ValueError, TypeError):
+        raise ValueError(_("The saved passwords in this file are damaged."))
+
+    secrets = json.loads(plain)
+    if not isinstance(secrets, dict):
+        raise ValueError(_("The saved passwords in this file are damaged."))
+    return secrets
+
+
+def read_secrets_blob(path: Path) -> Optional[dict]:
+    """Return the encrypted blob from an export, or None if it carries none."""
+    try:
+        data = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return None
+    blob = data.get("secrets") if isinstance(data, dict) else None
+    return blob if isinstance(blob, dict) else None
+
+
+def collect_secrets(servers: List[ServerInfo]) -> Dict[str, str]:
+    """Read every stored password. Blocking — call from a worker thread.
+
+    Measured at ~11ms per lookup, so a few hundred servers is seconds, not
+    milliseconds.
+    """
+    from edith.services import credential_store
+
+    found = {}
+    for server in servers:
+        secret = credential_store.get_password(server.id)
+        if secret:
+            found[server.id] = secret
+    return found
+
+
+def restore_secrets(
+    secrets: Dict[str, str],
+    known_ids: set,
+    progress: Optional[Callable[[int, int], None]] = None,
+) -> int:
+    """Write secrets back into the keyring. Blocking — use a worker thread.
+
+    Keyring writes cost ~100ms each, so a few hundred of them runs well past
+    the freeze watchdog's threshold if done on the main loop.
+
+    Only ids that actually got imported are restored, so a stale entry for a
+    server the user chose not to import does not leave an orphan credential
+    behind.
+    """
+    from edith.services import credential_store
+
+    wanted = [(k, v) for k, v in secrets.items() if k in known_ids]
+    for i, (server_id, secret) in enumerate(wanted, start=1):
+        credential_store.store_password(server_id, secret)
+        if progress:
+            progress(i, len(wanted))
+    return len(wanted)
 
 
 def detect_format(path: Path) -> str:
