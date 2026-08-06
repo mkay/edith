@@ -108,11 +108,12 @@ So the valuable part isn't producing the text — it's you vouching for it.
 
 ## License
 
-MIT
+GPL-3.0-or-later
 
 ## Credits
 
-Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT)
+Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT) and bundles the
+[Monaco Editor](https://microsoft.github.io/monaco-editor/) (MIT).
 
 ## Screenshots
 

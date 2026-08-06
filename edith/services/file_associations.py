@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Map file extensions to the local application that should open them.
 
 `Open Locally` hands a downloaded file to an application. By default that's

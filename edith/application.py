@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import gi
 
 gi.require_version("Gtk", "4.0")
@@ -187,7 +190,7 @@ label.error { color: @error_color; }
             version=VERSION,
             developer_name="Kreuder <mk@singular.de>",
             website="https://github.com/mkay/edith",
-            license_type=Gtk.License.MIT_X11,
+            license_type=Gtk.License.GPL_3_0,
         )
         # Translators: replace this with your name(s); it is shown in the
         # About dialog. Untranslated, the placeholder is hidden rather than

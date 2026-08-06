@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """FTP/FTPS client with the same interface as SftpClient."""
 
 import os

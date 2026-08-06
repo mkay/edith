@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Watch local copies of remote files opened in external applications.
 
 `Open Locally` downloads a remote file to a temp directory and hands it to the

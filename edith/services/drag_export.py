@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Expose remote files to other applications as a drag payload.
 
 Dragging a row out of the file browser has to hand the receiving application

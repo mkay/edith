@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Precompile Edith's Python sources at install time.
 
 Without this there is no __pycache__ under the install prefix, which is

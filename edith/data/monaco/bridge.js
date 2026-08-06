@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+// SPDX-License-Identifier: GPL-3.0-or-later
+//
 // Edith ↔ Monaco bridge
 // Communicates with Python via window.webkit.messageHandlers.edith.postMessage()
 (function () {

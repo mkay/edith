@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Catch main-loop freezes without needing anyone to be watching.
 
 An intermittent deadlock is close to impossible to debug by hand: by the time

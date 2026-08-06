@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 import defusedxml.ElementTree as ET
 from pathlib import Path
 from typing import List, Tuple

@@ -6,7 +6,7 @@ pkgver=0.6.0
 pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
-license=('MIT')
+license=('GPL-3.0-or-later')
 depends=(
   'python'
   'python-gobject'

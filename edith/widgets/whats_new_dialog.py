@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
 """Release notes shown once after an update, and again on demand from About.
 
 The notes themselves live in data/whatsnew.md and are bundled into the GResource,
