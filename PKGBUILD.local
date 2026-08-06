@@ -16,6 +16,8 @@ depends=(
   'python-paramiko'
   'python-keyring'
   'python-defusedxml'
+  # Used directly for encrypted credential export, not just via paramiko.
+  'python-cryptography'
 )
 makedepends=('meson' 'ninja' 'npm')
 source=()

@@ -57,6 +57,7 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 - python-gobject
 - python-keyring
 - python-defusedxml
+- python-cryptography
 
 ## Building (Arch Linux)
 
