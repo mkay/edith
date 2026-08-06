@@ -390,11 +390,9 @@ class MonacoEditor(Gtk.Box):
         return "plaintext"
 
     def _resolve_theme(self):
-        saved = ConfigService.get_preference("syntax_scheme", "")
-        if saved:
-            return saved
-        style_manager = Adw.StyleManager.get_default()
-        return "vs-dark" if style_manager.get_dark() else "vs"
+        from edith.monaco_languages import resolve_theme
+
+        return resolve_theme(ConfigService.get_preference("syntax_scheme", ""))
 
     def _on_preview_toggled(self, btn):
         visible = btn.get_active()

@@ -236,3 +236,24 @@ def get_language_name(lang_id: str) -> str:
 def get_theme_name(theme_id: str) -> str:
     """Return display name for a Monaco theme ID, or the ID itself."""
     return _THEME_MAP.get(theme_id, theme_id)
+
+
+# An empty syntax_scheme preference means "follow the system".
+FOLLOW_SYSTEM = ""
+
+
+def resolve_theme(theme_id: str) -> str:
+    """Map a stored syntax_scheme preference to a real Monaco theme.
+
+    "" is a valid preference but not a valid Monaco theme, so it has to become
+    vs/vs-dark before it reaches the bridge. Kept here rather than in either
+    caller so the editor and the theme chooser cannot drift apart.
+    """
+    if theme_id:
+        return theme_id
+
+    # Imported lazily: this module is otherwise plain constants and is pulled
+    # in by code that has no reason to initialise libadwaita.
+    from gi.repository import Adw
+
+    return "vs-dark" if Adw.StyleManager.get_default().get_dark() else "vs"

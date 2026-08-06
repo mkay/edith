@@ -24,6 +24,17 @@ def run_async(task, on_success, on_error):
             GLib.idle_add(_deliver_success, result)
         except Exception as e:
             traceback.print_exc()
+            # Nothing launched from a .desktop file has a stderr anyone reads,
+            # so the traceback above vanishes in exactly the situation where a
+            # user reports "it crashed". Keep a durable copy.
+            try:
+                from edith.services.freeze_watchdog import record
+                record(
+                    f"background task failed: {type(e).__name__}: {e}\n"
+                    + traceback.format_exc()
+                )
+            except Exception:
+                pass
             GLib.idle_add(_deliver_error, e)
 
     def _deliver_success(result):

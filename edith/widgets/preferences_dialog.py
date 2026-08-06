@@ -531,7 +531,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
     def _theme_summary(self):
         from edith.monaco_languages import get_theme_name
         scheme = ConfigService.get_preference("syntax_scheme", "")
-        return get_theme_name(scheme) if scheme else "Default"
+        return get_theme_name(scheme) if scheme else _("Follow System")
 
     def _font_summary(self):
         family = ConfigService.get_preference("editor_font", "") or "Monospace (default)"

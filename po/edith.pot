@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-06 17:36+0300\n"
+"POT-Creation-Date: 2026-08-06 18:43+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -1013,7 +1013,7 @@ msgstr ""
 
 #: edith/widgets/file_dialogs.py:273 edith/widgets/file_dialogs.py:354
 #: edith/widgets/font_chooser_dialog.py:39
-#: edith/widgets/theme_chooser_dialog.py:59
+#: edith/widgets/theme_chooser_dialog.py:63
 #: edith/widgets/whats_new_dialog.py:127
 msgid "Close"
 msgstr ""
@@ -1074,7 +1074,7 @@ msgid "Appearance"
 msgstr ""
 
 #: edith/widgets/preferences_dialog.py:46
-#: edith/widgets/theme_chooser_dialog.py:45
+#: edith/widgets/theme_chooser_dialog.py:49
 msgid "Syntax Theme"
 msgstr ""
 
@@ -1319,6 +1319,11 @@ msgstr ""
 
 #: edith/widgets/preferences_dialog.py:517
 msgid "Height"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:534
+#: edith/widgets/theme_chooser_dialog.py:125
+msgid "Follow System"
 msgstr ""
 
 #: edith/widgets/preferences_dialog.py:612
@@ -1600,6 +1605,10 @@ msgstr ""
 #: edith/widgets/syntax_associations_dialog.py:184
 #, python-brace-format
 msgid "Remove .{ext} association"
+msgstr ""
+
+#: edith/widgets/theme_chooser_dialog.py:125
+msgid "Light or dark, matching your desktop"
 msgstr ""
 
 #: edith/widgets/transfer_panel.py:46

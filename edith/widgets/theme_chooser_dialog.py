@@ -12,7 +12,7 @@ from pathlib import Path
 
 from gi.repository import Adw, Gtk, GObject, WebKit
 
-from edith.monaco_languages import MONACO_THEMES
+from edith.monaco_languages import MONACO_THEMES, FOLLOW_SYSTEM, resolve_theme
 from edith.services.config import ConfigService
 from edith.i18n import _
 
@@ -31,6 +31,10 @@ def fibonacci(n):
 for i in range(10):
     print(f"fib({i}) = {fibonacci(i)}")
 '''
+
+
+# Without a row for FOLLOW_SYSTEM the setting was a one-way door: picking any
+# theme wrote a value, and nothing in the UI could ever clear it again.
 
 
 class ThemeChooserDialog(Adw.Dialog):
@@ -117,8 +121,12 @@ class ThemeChooserDialog(Adw.Dialog):
     def _populate_themes(self):
         current_id = ConfigService.get_preference("syntax_scheme", "")
 
+        entries = [
+            (FOLLOW_SYSTEM, _("Follow System"), _("Light or dark, matching your desktop")),
+        ] + [(tid, name, None) for tid, name in MONACO_THEMES]
+
         select_row = None
-        for theme_id, display_name in MONACO_THEMES:
+        for theme_id, display_name, subtitle in entries:
             row_box = Gtk.Box(
                 orientation=Gtk.Orientation.VERTICAL,
                 spacing=2,
@@ -130,6 +138,15 @@ class ThemeChooserDialog(Adw.Dialog):
                 ellipsize=3,
             )
             row_box.append(name_label)
+            if subtitle:
+                row_box.append(
+                    Gtk.Label(
+                        label=subtitle,
+                        xalign=0,
+                        ellipsize=3,
+                        css_classes=["dim-label", "caption"],
+                    )
+                )
 
             row_box._theme_id = theme_id
             self._list_box.append(row_box)
@@ -180,11 +197,15 @@ class ThemeChooserDialog(Adw.Dialog):
             return
         child = row.get_child()
         theme_id = getattr(child, "_theme_id", None)
-        if not theme_id:
+        # "" is Follow System and a legitimate choice, so test for the
+        # attribute's absence rather than for falsiness.
+        if theme_id is None:
             return
 
-        self._apply_preview_theme(theme_id)
+        resolved = resolve_theme(theme_id)
+        self._apply_preview_theme(resolved)
 
-        # Save and notify
+        # Store the preference as chosen, but hand listeners something Monaco
+        # can actually apply — the bridge has no idea what "" means.
         ConfigService.set_preference("syntax_scheme", theme_id)
-        self.emit("scheme-changed", theme_id)
+        self.emit("scheme-changed", resolved)
