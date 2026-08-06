@@ -21,7 +21,6 @@ flatpak install -y flathub "org.gnome.Sdk//${RUNTIME_VERSION}"
 flatpak-pip-generator \
   --runtime="org.gnome.Sdk//${RUNTIME_VERSION}" \
   --prefer-wheels=cryptography,bcrypt,pynacl,cffi \
-  --ignore-pkg=invoke \
   --cleanup=all \
   --output="${HERE}/python-deps" \
   paramiko keyring defusedxml

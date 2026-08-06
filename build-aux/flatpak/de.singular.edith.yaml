@@ -44,15 +44,26 @@ modules:
     sources:
       - type: dir
         path: ../..
-        # Build artefacts and packaging leftovers must not enter the sandbox
-        # build dir. Monaco is skipped so the pinned archives below always win,
-        # even when a developer tree already has a fetched copy.
+        # Build artefacts, packaging leftovers and local scratch must not enter
+        # the sandbox build dir — .private in particular holds personal notes.
+        # Monaco is skipped so the pinned archives below always win, even when
+        # a developer tree already has a fetched copy.
+        # These are literal paths, not globs; flatpak-builder does not expand
+        # wildcards here, so new release artefacts need adding by name.
         skip:
+          - .git
+          - .private
+          - .claude
           - build
           - builddir
           - pkg
           - src
-          - .git
+          - assets
+          - edith-0.5.0.tar.gz
+          - edith-0.6.0.tar.gz
+          - edith_0.5.0_amd64.deb
+          - edith_0.6.0_amd64.deb
+          - edith-0.6.0-1-any.pkg.tar.zst
           - edith/data/monaco/vs
           - edith/data/monaco/emmet.js
 

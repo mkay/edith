@@ -12,3 +12,4 @@ deb-staging/
 builddir/
 PKGBUILD.local
 edith/__init__.py
+.flatpak-builder/
