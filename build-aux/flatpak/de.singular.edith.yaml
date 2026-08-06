@@ -1,0 +1,81 @@
+id: de.singular.edith
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: edith
+
+finish-args:
+  # SFTP/FTP is the whole point of the app.
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  # WebKitGTK renders the Monaco editor; it wants GPU access.
+  - --device=dri
+  # Credentials live in the system keyring (services/credential_store.py).
+  - --talk-name=org.freedesktop.secrets
+  # paramiko reads ~/.ssh for key auth, and honours a forwarded agent.
+  - --filesystem=~/.ssh:ro
+  - --socket=ssh-auth
+  # "Open Locally" enumerates .desktop files via Gio.AppInfo.get_all().
+  # This exposes user-installed and Flatpak apps; host /usr/share/applications
+  # stays invisible. See the note in this file's companion README.
+  - --filesystem=xdg-data/applications:ro
+  # Upload tools: user scripts. Inside the sandbox the default tools folder is
+  # ~/.var/app/de.singular.edith/data/edith/tools/ — this also allows a plain
+  # ~/.local/share/edith path to keep working if the user points there.
+  - --filesystem=xdg-data/edith:ro
+
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/doc
+  - /share/man
+  - '*.a'
+  - '*.la'
+
+modules:
+  # paramiko / keyring / defusedxml and their transitive deps.
+  # Regenerate with build-aux/flatpak/regen-python-deps.sh
+  - python-deps.json
+
+  - name: edith
+    buildsystem: meson
+    sources:
+      - type: dir
+        path: ../..
+        # Build artefacts and packaging leftovers must not enter the sandbox
+        # build dir. Monaco is skipped so the pinned archives below always win,
+        # even when a developer tree already has a fetched copy.
+        skip:
+          - build
+          - builddir
+          - pkg
+          - src
+          - .git
+          - edith/data/monaco/vs
+          - edith/data/monaco/emmet.js
+
+      # scripts/fetch-monaco.sh shells out to `npm pack`, which cannot run
+      # during a Flatpak build (no network). The same two tarballs are pinned
+      # here. Keep these versions in sync with that script.
+      - type: archive
+        url: https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.52.2.tgz
+        sha256: c280cdcf0b0c13d1a2bf01af958d4387ed06d7f6c918401d00c4adcae1bc72b6
+        strip-components: 1
+        dest: .monaco-src
+
+      - type: archive
+        url: https://registry.npmjs.org/emmet-monaco-es/-/emmet-monaco-es-5.0.0.tgz
+        sha256: 34a5b2916f97bdd0384a3458aa457f5db77c4abf7045304728c6f904cc607c06
+        strip-components: 1
+        dest: .emmet-src
+
+      # Mirrors fetch-monaco.sh: only min/vs ships, and emmet is renamed to the
+      # name editor.html loads (<script src="emmet.js">).
+      - type: shell
+        commands:
+          - mkdir -p edith/data/monaco
+          - mv .monaco-src/min/vs edith/data/monaco/vs
+          - mv .emmet-src/dist/emmet-monaco.min.js edith/data/monaco/emmet.js
+          - rm -rf .monaco-src .emmet-src

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>de.singular.edith</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>Edith</name>
+  <summary>Edit remote files over SFTP and FTP</summary>
+
+  <description>
+    <p>
+      Edith is a GTK4 and libadwaita client for editing files that live on a
+      remote server. Connect over SFTP or FTP, browse the file tree, and open
+      files in a tabbed editor — changes are uploaded back when you save.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>SFTP over SSH, plain FTP, and FTPS with explicit or implicit TLS</li>
+      <li>Saved connections with password or key authentication, organised into drag-and-drop groups</li>
+      <li>A file browser with sortable columns, multi-select, pinned files, and a breadcrumb path bar</li>
+      <li>Syntax highlighting for over 80 languages, Emmet, find and replace, and customisable themes and fonts</li>
+      <li>Live editing: files are downloaded to a temporary location, edited locally, and uploaded on save, with automatic reload when the server copy changes</li>
+      <li>Open any remote file in a local application, with per-file-type associations you choose</li>
+      <li>An image viewer for raster files and a side-by-side preview for SVGs</li>
+      <li>Credentials stored in the system keyring, never in plain text on disk</li>
+      <li>Upload tools: keep frequently used scripts to hand and upload them to any directory from the context menu</li>
+    </ul>
+    <p>
+      Edith is alpha software — early access for the brave and the bug-tolerant.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">de.singular.edith.desktop</launchable>
+
+  <developer id="de.singular">
+    <name translate="no">Kreuder</name>
+  </developer>
+
+  <url type="homepage">https://github.com/mkay/edith</url>
+  <url type="bugtracker">https://github.com/mkay/edith/issues</url>
+  <url type="vcs-browser">https://github.com/mkay/edith</url>
+  <url type="translate">https://github.com/mkay/edith/blob/main/TRANSLATING.md</url>
+
+  <!-- TODO: host these before submitting to Flathub. They must be reachable
+       public URLs (raw.githubusercontent.com is accepted); 16:9 or 4:3 PNGs,
+       at least 620px wide. The first one is the one people actually see. -->
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/mkay/edith/main/data/screenshots/browser.png</image>
+      <caption>Browsing a remote server</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/mkay/edith/main/data/screenshots/editor.png</image>
+      <caption>Editing a remote file with syntax highlighting</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/mkay/edith/main/data/screenshots/servers.png</image>
+      <caption>Saved connections, grouped</caption>
+    </screenshot>
+  </screenshots>
+
+  <content_rating type="oars-1.1"/>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#c0bfbc</color>
+    <color type="primary" scheme_preference="dark">#3d3846</color>
+  </branding>
+
+  <requires>
+    <display_length compare="ge">768</display_length>
+  </requires>
+
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <releases>
+    <release version="0.6.0" date="2026-08-05">
+      <description>
+        <p>
+          Adds a What's New dialog, a German translation, and an invitation for
+          translators. See the project release notes for the full list.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.6.0</url>
+    </release>
+  </releases>
+</component>

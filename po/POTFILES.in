@@ -1,5 +1,6 @@
 # List of source files containing translatable strings.
 data/de.singular.edith.desktop.in.in
+data/de.singular.edith.metainfo.xml.in
 
 edith/application.py
 edith/window.py

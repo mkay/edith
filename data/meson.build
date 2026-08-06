@@ -15,6 +15,15 @@ desktop_file = i18n.merge_file(
   install_dir: datadir / 'applications',
 )
 
+metainfo_file = i18n.merge_file(
+  input: 'de.singular.edith.metainfo.xml.in',
+  output: 'de.singular.edith.metainfo.xml',
+  type: 'xml',
+  po_dir: meson.project_source_root() / 'po',
+  install: true,
+  install_dir: datadir / 'metainfo',
+)
+
 install_data(
   'de.singular.edith.svg',
   'de.singular.edith-symbolic.svg',
