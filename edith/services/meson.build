@@ -7,6 +7,7 @@ services_sources = [
   'external_edit.py',
   'file_associations.py',
   'filezilla_import.py',
+  'servers_transfer.py',
   'freeze_watchdog.py',
   'ftp_client.py',
   'sftp_client.py',

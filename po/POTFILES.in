@@ -5,6 +5,7 @@ data/de.singular.edith.metainfo.xml.in
 edith/application.py
 edith/window.py
 edith/services/drag_export.py
+edith/services/servers_transfer.py
 edith/widgets/connect_dialog.py
 edith/widgets/editor_panel.py
 edith/widgets/file_browser.py

@@ -216,7 +216,8 @@ class EdithWindow(Adw.ApplicationWindow):
         window_section.append(_("New Window"), "app.new-window")
         menu.append_section(None, window_section)
         server_section = Gio.Menu()
-        server_section.append(_("Import from FileZilla\u2026"), "win.import-filezilla")
+        server_section.append(_("Import Servers\u2026"), "win.import-servers")
+        server_section.append(_("Export Servers\u2026"), "win.export-servers")
         menu.append_section(None, server_section)
         prefs_section = Gio.Menu()
         prefs_section.append(_("Preferences\u2026"), "app.preferences")
@@ -344,10 +345,15 @@ class EdithWindow(Adw.ApplicationWindow):
         self.add_action(new_server)
         app.set_accels_for_action("win.new-server", ["<Control>n"])
 
-        # Import from FileZilla
-        import_fz = Gio.SimpleAction.new("import-filezilla", None)
-        import_fz.connect("activate", self._on_import_filezilla)
-        self.add_action(import_fz)
+        # Import servers (Edith export or FileZilla sitemanager)
+        import_servers = Gio.SimpleAction.new("import-servers", None)
+        import_servers.connect("activate", self._on_import_servers)
+        self.add_action(import_servers)
+
+        # Export servers
+        export_servers = Gio.SimpleAction.new("export-servers", None)
+        export_servers.connect("activate", self._on_export_servers)
+        self.add_action(export_servers)
 
         # Disconnect
         disconnect = Gio.SimpleAction.new("disconnect", None)
@@ -518,23 +524,34 @@ class EdithWindow(Adw.ApplicationWindow):
     def _on_new_server(self, action, param):
         self._server_panel.show_add_dialog()
 
-    def _on_import_filezilla(self, action, param):
-        default_path = Path(
-            os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")
-        ) / "filezilla" / "sitemanager.xml"
+    def _show_message(self, heading, body):
+        dialog = Adw.AlertDialog(heading=heading, body=body)
+        dialog.add_response("ok", _("OK"))
+        dialog.present(self)
 
-        dialog = Gtk.FileDialog(title=_("Import FileZilla Sites"))
-        xml_filter = Gtk.FileFilter()
-        xml_filter.set_name("XML files")
-        xml_filter.add_pattern("*.xml")
+    # --- Import ---
+
+    def _on_import_servers(self, action, param):
+        dialog = Gtk.FileDialog(title=_("Import Servers"))
+
+        both = Gtk.FileFilter()
+        both.set_name(_("Server lists"))
+        both.add_pattern("*.json")
+        both.add_pattern("*.xml")
+        edith_filter = Gtk.FileFilter()
+        edith_filter.set_name(_("Edith export (*.json)"))
+        edith_filter.add_pattern("*.json")
+        fz_filter = Gtk.FileFilter()
+        fz_filter.set_name(_("FileZilla sites (*.xml)"))
+        fz_filter.add_pattern("*.xml")
+
         filters = Gio.ListStore.new(Gtk.FileFilter)
-        filters.append(xml_filter)
+        for f in (both, edith_filter, fz_filter):
+            filters.append(f)
         dialog.set_filters(filters)
-        if default_path.exists():
-            dialog.set_initial_file(Gio.File.new_for_path(str(default_path)))
-        dialog.open(self, None, self._on_filezilla_file_chosen)
+        dialog.open(self, None, self._on_import_file_chosen)
 
-    def _on_filezilla_file_chosen(self, dialog, result):
+    def _on_import_file_chosen(self, dialog, result):
         try:
             gfile = dialog.open_finish(result)
         except GLib.Error:
@@ -542,31 +559,77 @@ class EdithWindow(Adw.ApplicationWindow):
         if gfile is None:
             return
 
-        from edith.services.filezilla_import import parse_sitemanager
+        from edith.services import servers_transfer
 
-        path = Path(gfile.get_path())
+        # A non-local pick (gvfs mount, say) has no on-disk path to read.
+        local_path = gfile.get_path()
+        if local_path is None:
+            self._show_message(
+                _("Import Failed"),
+                _("That location can't be read directly. Copy the file to this computer first."),
+            )
+            return
+
+        path = Path(local_path)
         try:
-            servers, folders = parse_sitemanager(path)
+            kind = servers_transfer.detect_format(path)
+            if kind == "filezilla":
+                from edith.services.filezilla_import import parse_sitemanager
+                servers, folders = parse_sitemanager(path)
+            else:
+                servers, folders = servers_transfer.parse_export(path)
         except Exception as e:
-            err = Adw.AlertDialog(heading=_("Import Failed"), body=str(e))
-            err.add_response("ok", _("OK"))
-            err.present(self)
+            self._show_message(_("Import Failed"), str(e))
             return
 
         if not servers:
-            err = Adw.AlertDialog(heading=_("No Servers Found"), body=_("The selected file contained no server entries."))
-            err.add_response("ok", _("OK"))
-            err.present(self)
+            self._show_message(
+                _("No Servers Found"),
+                _("The selected file contained no server entries."),
+            )
             return
 
-        # Add folders first so folder_ids are valid
-        existing_folders = ConfigService.load_folders()
-        for folder in folders:
-            existing_folders.append(folder)
-        ConfigService.save_folders(existing_folders)
+        # Replacing is only a question when there is something to lose, and it
+        # is the destructive answer, so it is never the default.
+        if ConfigService.load_servers():
+            choice = Adw.AlertDialog(
+                heading=_("Import Servers"),
+                body=ngettext(
+                    "The file contains {n} server.",
+                    "The file contains {n} servers.",
+                    len(servers),
+                ).format(n=len(servers)) + "\n\n" + _(
+                    "Merging keeps your current servers and updates any that "
+                    "match. Replacing discards your current list entirely."
+                ),
+            )
+            choice.add_response("cancel", _("Cancel"))
+            choice.add_response("replace", _("Replace"))
+            choice.add_response("merge", _("Merge"))
+            choice.set_response_appearance("replace", Adw.ResponseAppearance.DESTRUCTIVE)
+            choice.set_response_appearance("merge", Adw.ResponseAppearance.SUGGESTED)
+            choice.set_default_response("merge")
+            choice.set_close_response("cancel")
 
-        for server in servers:
-            ConfigService.add_server(server)
+            def on_response(d, response):
+                if response in ("merge", "replace"):
+                    self._finish_import(
+                        servers, folders, response == "replace", kind
+                    )
+
+            choice.connect("response", on_response)
+            choice.present(self)
+        else:
+            self._finish_import(servers, folders, False, kind)
+
+    def _finish_import(self, servers, folders, replace, kind):
+        from edith.services import servers_transfer
+
+        try:
+            res = servers_transfer.apply_import(servers, folders, replace=replace)
+        except Exception as e:
+            self._show_message(_("Import Failed"), str(e))
+            return
 
         self._server_list.load_servers()
         self._server_panel.reload()
@@ -574,24 +637,100 @@ class EdithWindow(Adw.ApplicationWindow):
 
         # Built from whole sentences: a translator can reorder within each one,
         # and every count gets its own plural form.
-        summary = ngettext(
-            "Imported {n} server.", "Imported {n} servers.", len(servers)
-        ).format(n=len(servers))
-        if folders:
-            summary += " " + ngettext(
-                "They were placed in {n} group.",
-                "They were placed in {n} groups.",
-                len(folders),
-            ).format(n=len(folders))
+        # Re-importing the same export updates everything and adds nothing, and
+        # "Imported 0 servers." is a poor way to report that it worked.
+        parts = []
+        if res.added or not res.updated:
+            parts.append(
+                ngettext(
+                    "Imported {n} server.", "Imported {n} servers.", res.added
+                ).format(n=res.added)
+            )
+        if res.updated:
+            parts.append(
+                ngettext(
+                    "Updated {n} existing server.",
+                    "Updated {n} existing servers.",
+                    res.updated,
+                ).format(n=res.updated)
+            )
+        if res.folders_added:
+            parts.append(
+                ngettext(
+                    "Added {n} group.", "Added {n} groups.", res.folders_added
+                ).format(n=res.folders_added)
+            )
 
-        info = Adw.AlertDialog(
-            heading=_("Import Complete"),
-            body=summary + "\n\n" + _(
-                "Passwords could not be imported — you'll need to re-enter them."
+        if kind == "filezilla":
+            note = _("Passwords could not be imported — you'll need to re-enter them.")
+        else:
+            # Ids survive the round trip, so the keyring lookup still matches.
+            note = _(
+                "Passwords are never written to an export. On this machine the "
+                "restored servers still find their saved passwords; on another "
+                "machine you'll need to re-enter them."
+            )
+
+        self._show_message(_("Import Complete"), " ".join(parts) + "\n\n" + note)
+
+    # --- Export ---
+
+    def _on_export_servers(self, action, param):
+        if not ConfigService.load_servers():
+            self._show_message(
+                _("Nothing to Export"),
+                _("You have no saved servers yet."),
+            )
+            return
+
+        from edith.services import servers_transfer
+
+        dialog = Gtk.FileDialog(
+            title=_("Export Servers"),
+            initial_name=servers_transfer.default_export_name(),
+        )
+        json_filter = Gtk.FileFilter()
+        json_filter.set_name(_("Edith export (*.json)"))
+        json_filter.add_pattern("*.json")
+        filters = Gio.ListStore.new(Gtk.FileFilter)
+        filters.append(json_filter)
+        dialog.set_filters(filters)
+        dialog.save(self, None, self._on_export_file_chosen)
+
+    def _on_export_file_chosen(self, dialog, result):
+        try:
+            gfile = dialog.save_finish(result)
+        except GLib.Error:
+            return
+        if gfile is None:
+            return
+
+        from edith.services import servers_transfer
+
+        local_path = gfile.get_path()
+        if local_path is None:
+            self._show_message(
+                _("Export Failed"),
+                _("That location can't be written to directly. Choose a folder on this computer."),
+            )
+            return
+
+        servers = ConfigService.load_servers()
+        folders = ConfigService.load_folders()
+        try:
+            servers_transfer.export_servers(Path(local_path), servers, folders)
+        except OSError as e:
+            self._show_message(_("Export Failed"), str(e))
+            return
+
+        self._show_message(
+            _("Export Complete"),
+            ngettext(
+                "Exported {n} server.", "Exported {n} servers.", len(servers)
+            ).format(n=len(servers)) + "\n\n" + _(
+                "Passwords are not included — they stay in your system keyring."
             ),
         )
-        info.add_response("ok", _("OK"))
-        info.present(self)
 
     def _on_add_server_to_folder(self, server_list, folder_id):
         self._server_panel.show_add_dialog(folder_id=folder_id)
