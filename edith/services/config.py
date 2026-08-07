@@ -17,10 +17,20 @@ class ConfigService:
 
     _servers_file_override = None  # set via set_servers_file()
 
+    #: Last file content read, as (path, mtime_ns, size, text). Every read goes
+    #: through _load_raw, and opening a single editor tab calls it fourteen
+    #: times, so the same file was being opened and read fourteen times per tab.
+    #: Warm that is unmeasurable; with the page cache cold or the disk saturated
+    #: it is not, and it happens on the main thread — a package install
+    #: snapshotting btrfs underneath the app was enough to stall it for tens of
+    #: seconds inside MonacoEditor._build_ui.
+    _raw_cache = None
+
     @classmethod
     def set_servers_file(cls, path: str):
         """Use a custom servers file instead of the default."""
         cls._servers_file_override = Path(path)
+        cls._raw_cache = None
 
     @classmethod
     def _servers_file(cls) -> Path:
@@ -29,12 +39,51 @@ class ConfigService:
     # --- Internal helpers ---
 
     @classmethod
+    def _read_cached(cls, path: Path):
+        """The file's text, re-read only when its stat says it changed.
+
+        Deliberately caches the *text* rather than the parsed dict. Callers
+        treat what they get back as their own — every mutator does
+        _load_raw(), edits in place, then _write_raw() — so handing out a
+        shared dict would let one caller's half-finished edit show up in
+        another's read. Worse, _write_raw's "am I about to drop every server"
+        guard re-reads through _load_raw to compare against what is on disk; if
+        that came back as the very object the caller had just mutated, the
+        comparison would always agree with itself and the guard would quietly
+        stop guarding. Re-parsing per call keeps every caller isolated, and
+        parsing is not what stalls: reading is.
+
+        Copying the parsed dict instead would be both riskier and slower —
+        deepcopy measures ~0.34ms against json.loads' ~0.26ms on this config.
+        """
+        try:
+            st = path.stat()
+        except OSError:
+            cls._raw_cache = None
+            return None
+
+        key = (path, st.st_mtime_ns, st.st_size)
+        if cls._raw_cache is not None and cls._raw_cache[:3] == key:
+            return cls._raw_cache[3]
+
+        # A failed read is left to propagate, as it did before this cache
+        # existed. Returning {} instead would be worse than the exception: the
+        # caller would write that empty dict back, and _write_raw's guard
+        # compares against a _load_raw that just failed the same way, so it
+        # would see no servers to protect and let the write through.
+        text = path.read_text()
+
+        cls._raw_cache = key + (text,)
+        return text
+
+    @classmethod
     def _load_raw(cls) -> dict:
         path = cls._servers_file()
-        if not path.exists():
+        text = cls._read_cached(path)
+        if text is None:
             return {}
         try:
-            return json.loads(path.read_text())
+            return json.loads(text)
         except (json.JSONDecodeError, KeyError):
             return {}
 
@@ -73,6 +122,10 @@ class ConfigService:
 
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(data, indent=2))
+        # Dropped rather than refreshed with what was just written: the stat
+        # check would catch the change anyway, and re-reading once after a
+        # write costs nothing next to trusting that the bytes landed.
+        cls._raw_cache = None
 
     @classmethod
     def _save(cls, servers: List[ServerInfo], folders: List[FolderInfo]):
