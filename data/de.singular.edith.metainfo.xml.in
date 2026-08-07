@@ -41,9 +41,10 @@
   <url type="vcs-browser">https://github.com/mkay/edith</url>
   <url type="translate">https://github.com/mkay/edith/blob/main/TRANSLATING.md</url>
 
-  <!-- TODO: host these before submitting to Flathub. They must be reachable
-       public URLs (raw.githubusercontent.com is accepted); 16:9 or 4:3 PNGs,
-       at least 620px wide. The first one is the one people actually see. -->
+  <!-- Reachable public URLs, pinned to the commit that added the files so a
+       moved branch cannot change what a published listing resolves to; re-pin
+       whenever the screenshots are replaced. 16:9 or 4:3 PNGs, at least 620px
+       wide. The first one is the one people actually see. -->
   <screenshots>
     <screenshot type="default">
       <image>https://raw.githubusercontent.com/mkay/edith/fb0c8d3e0c7459cd876f5f42ef44cb2eaacc493f/data/screenshots/browser.png</image>
