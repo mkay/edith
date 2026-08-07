@@ -91,17 +91,20 @@ class SupportDialog(Adw.AlertDialog):
             url=KOFI_URL,
         ))
 
-        # A cap rather than a request: the content fits on any normal screen,
-        # but a large text setting must not push the buttons off the bottom.
+        # A cap rather than a request: a GtkScrolledWindow still shrinks below
+        # it when the window is short, so the ceiling only costs space where
+        # there is space. Sized for the longest translation rather than the
+        # English — German runs ~70px taller at this width, and a cap that fits
+        # only the source language quietly scrolls the last button out of sight.
         scroller = Gtk.ScrolledWindow(
             propagate_natural_height=True,
-            max_content_height=520,
+            max_content_height=640,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
             child=box,
         )
         # AlertDialog sizes itself to its heading, which would leave the prose
         # wrapping every few words.
-        scroller.set_size_request(380, -1)
+        scroller.set_size_request(420, -1)
         self.set_extra_child(scroller)
 
     def _way(self, title, action, icon, note, url, emphasised=False):

@@ -2,15 +2,17 @@
 # Copyright (C) 2026 Edith contributors
 # This file is distributed under the same license as the edith package.
 #
-# NOTE: machine-generated draft. Every entry is marked fuzzy and therefore
-# NOT shown to users. Clear the fuzzy flag as a native speaker verifies each
-# string. See TRANSLATING.md.
+# NOTE: started as a machine-generated draft, but no fuzzy flags remain, so
+# everything translated here IS shown to users. Strings added since the last
+# catalogue refresh are simply untranslated and fall back to English; run
+# `ninja -C build edith-pot && msgmerge -U po/de.po po/edith.pot` to pick them
+# up. See TRANSLATING.md.
 #
 msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-05 23:29+0300\n"
+"POT-Creation-Date: 2026-08-07 12:00+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -20,7 +22,9 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: data/de.singular.edith.desktop.in.in:3 edith/window.py:31 edith/window.py:57
+#: data/de.singular.edith.desktop.in.in:3
+#: data/de.singular.edith.metainfo.xml.in:7 edith/window.py:34
+#: edith/window.py:60
 msgid "Edith"
 msgstr "Edith"
 
@@ -32,313 +36,587 @@ msgstr "Nativer GTK4-SFTP-Client zum direkten Bearbeiten entfernter Dateien"
 msgid "sftp;ssh;remote;editor;server;"
 msgstr "sftp;ssh;entfernt;Editor;Server;"
 
+#: data/de.singular.edith.metainfo.xml.in:8
+msgid "Edit remote files over SFTP and FTP"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:11
+msgid ""
+"Edith is a GTK4 and libadwaita client for editing files that live on a "
+"remote server. Connect over SFTP or FTP, browse the file tree, and open "
+"files in a tabbed editor — changes are uploaded back when you save."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:16
+msgid "Features:"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:18
+msgid "SFTP over SSH, plain FTP, and FTPS with explicit or implicit TLS"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:19
+msgid ""
+"Saved connections with password or key authentication, organised into drag-"
+"and-drop groups"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:20
+msgid ""
+"A file browser with sortable columns, multi-select, pinned files, and a "
+"breadcrumb path bar"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:21
+msgid ""
+"Syntax highlighting for over 80 languages, Emmet, find and replace, and "
+"customisable themes and fonts"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:22
+msgid ""
+"Live editing: files are downloaded to a temporary location, edited locally, "
+"and uploaded on save, with automatic reload when the server copy changes"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:23
+msgid ""
+"Open any remote file in a local application, with per-file-type associations "
+"you choose"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:24
+msgid "An image viewer for raster files and a side-by-side preview for SVGs"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:25
+msgid "Credentials stored in the system keyring, never in plain text on disk"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:26
+msgid ""
+"Upload tools: keep frequently used scripts to hand and upload them to any "
+"directory from the context menu"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:28
+msgid ""
+"Edith is alpha software — early access for the brave and the bug-tolerant."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:50
+msgid "Browsing a remote server"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:54
+msgid "Editing a remote file with syntax highlighting"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:58
+msgid "Saved connections, grouped"
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:81
+msgid ""
+"Adds a What's New dialog, a German translation, and an invitation for "
+"translators. See the project release notes for the full list."
+msgstr ""
+
 #. Translators: replace this with your name(s); it is shown in the
 #. About dialog. Untranslated, the placeholder is hidden rather than
 #. displayed literally.
-#: edith/application.py:195
+#: edith/application.py:202
 msgid "translator-credits"
 msgstr ""
 
-#: edith/application.py:201
+#: edith/application.py:208
 msgid "Help Translate Edith"
 msgstr "Hilf mit, Edith zu übersetzen"
 
-#: edith/application.py:242 edith/widgets/preferences_dialog.py:440
+#: edith/application.py:214
+msgid "Give Edith a Like"
+msgstr "Edith bewerten"
+
+#: edith/application.py:215
+msgid "Support Edith on Ko-fi"
+msgstr "Edith auf Ko-fi unterstützen"
+
+#: edith/application.py:263 edith/widgets/preferences_dialog.py:443
 msgid "General"
 msgstr "Allgemein"
 
-#: edith/application.py:243
+#: edith/application.py:264
 msgid "Quit"
 msgstr "Beenden"
 
-#: edith/application.py:244 edith/window.py:213
+#: edith/application.py:265 edith/window.py:216
 msgid "New Window"
 msgstr "Neues Fenster"
 
-#: edith/application.py:245 edith/widgets/preferences_dialog.py:24
+#: edith/application.py:266 edith/widgets/preferences_dialog.py:27
 msgid "Preferences"
 msgstr "Einstellungen"
 
-#: edith/application.py:246
+#: edith/application.py:267
 msgid "Toggle sidebar"
 msgstr "Seitenleiste umschalten"
 
-#: edith/application.py:247
+#: edith/application.py:268
 msgid "New server"
 msgstr "Neuer Server"
 
-#: edith/application.py:249 edith/widgets/preferences_dialog.py:91
+#: edith/application.py:270 edith/widgets/preferences_dialog.py:94
 msgid "Editing"
 msgstr "Bearbeiten"
 
-#: edith/application.py:250
+#: edith/application.py:271
 msgid "Save file"
 msgstr "Datei speichern"
 
-#: edith/application.py:251
+#: edith/application.py:272
 msgid "Close tab"
 msgstr "Reiter schließen"
 
-#: edith/application.py:252
+#: edith/application.py:273
 msgid "Find"
 msgstr "Suchen"
 
-#: edith/application.py:253
+#: edith/application.py:274
 msgid "Find and Replace"
 msgstr "Suchen und Ersetzen"
 
-#: edith/application.py:254 edith/window.py:641
+#: edith/application.py:275 edith/window.py:960
 msgid "Go to Line"
 msgstr "Gehe zu Zeile"
 
-#: edith/application.py:255
+#: edith/application.py:276
 msgid "Undo"
 msgstr "Rückgängig"
 
-#: edith/application.py:256
+#: edith/application.py:277
 msgid "Redo"
 msgstr "Wiederholen"
 
-#: edith/application.py:258
+#: edith/application.py:279
 msgid "Connection"
 msgstr "Verbindung"
 
-#: edith/application.py:259
+#: edith/application.py:280
 msgid "Search servers"
 msgstr "Server durchsuchen"
 
-#: edith/application.py:261
+#: edith/application.py:282
 msgid "File Browser"
 msgstr "Dateibrowser"
 
-#: edith/application.py:262 edith/widgets/file_browser.py:565
+#: edith/application.py:283 edith/widgets/file_browser.py:568
 msgid "Rename"
 msgstr "Umbenennen"
 
-#: edith/application.py:263 edith/widgets/file_browser.py:566
-#: edith/widgets/file_browser.py:1007 edith/widgets/server_list.py:168
-#: edith/widgets/server_panel.py:127 edith/widgets/server_panel.py:369
+#: edith/application.py:284 edith/widgets/file_browser.py:569
+#: edith/widgets/file_browser.py:1010 edith/widgets/server_list.py:171
+#: edith/widgets/server_panel.py:130 edith/widgets/server_panel.py:372
 msgid "Delete"
 msgstr "Löschen"
 
-#: edith/application.py:264 edith/widgets/file_browser.py:105
-#: edith/widgets/file_browser.py:582
+#: edith/application.py:285 edith/widgets/file_browser.py:108
+#: edith/widgets/file_browser.py:585
 msgid "Refresh"
 msgstr "Aktualisieren"
 
-#: edith/application.py:265 edith/widgets/file_browser.py:477
+#: edith/application.py:286 edith/widgets/file_browser.py:480
 msgid "Parent directory"
 msgstr "Übergeordneter Ordner"
 
-#: edith/window.py:61
+#: edith/window.py:64
 msgid "Add Server (Ctrl+N)"
 msgstr "Server hinzufügen (Strg+N)"
 
-#: edith/window.py:68
+#: edith/window.py:71
 msgid "New Server Group"
 msgstr "Neue Servergruppe"
 
-#: edith/window.py:115
+#: edith/window.py:118
 msgid "Pinned"
 msgstr "Angeheftet"
 
-#: edith/window.py:136 edith/widgets/status_bar.py:40
+#: edith/window.py:139 edith/widgets/status_bar.py:43
 msgid "Disconnected"
 msgstr "Getrennt"
 
-#: edith/window.py:172 edith/window.py:1098 edith/widgets/connect_dialog.py:39
-#: edith/widgets/server_panel.py:114
+#: edith/window.py:175 edith/window.py:1417 edith/widgets/connect_dialog.py:42
+#: edith/widgets/server_panel.py:117
 msgid "Connect"
 msgstr "Verbinden"
 
-#: edith/window.py:180
+#: edith/window.py:183
 msgid "Back"
 msgstr "Zurück"
 
-#: edith/window.py:189
+#: edith/window.py:192
 msgid "Forward"
 msgstr "Vor"
 
-#: edith/window.py:216
-msgid "Import from FileZilla…"
-msgstr "Aus FileZilla importieren…"
-
 #: edith/window.py:219
+msgid "Import Servers…"
+msgstr ""
+
+#: edith/window.py:220
+msgid "Export Servers…"
+msgstr ""
+
+#: edith/window.py:223
 msgid "Preferences…"
 msgstr "Einstellungen…"
 
-#: edith/window.py:220
+#: edith/window.py:224
 msgid "Keyboard Shortcuts"
 msgstr "Tastenkürzel"
 
-#: edith/window.py:221
+#: edith/window.py:225
+msgid "Support Edith"
+msgstr "Edith unterstützen"
+
+#: edith/window.py:226
 msgid "About Edith"
 msgstr "Info zu Edith"
 
-#: edith/window.py:228 edith/widgets/transfer_panel.py:123
+#: edith/window.py:233 edith/widgets/transfer_panel.py:126
 msgid "Transfers"
 msgstr "Übertragungen"
 
-#: edith/window.py:235
+#: edith/window.py:240
 msgid "Toggle Sidebar (F9)"
 msgstr "Seitenleiste umschalten (F9)"
 
-#: edith/window.py:242
+#: edith/window.py:247
 msgid "Main Menu"
 msgstr "Hauptmenü"
 
-#: edith/window.py:269 edith/window.py:888
+#: edith/window.py:274 edith/window.py:1207
 msgid "Open a file from the sidebar to start editing."
 msgstr ""
 "Öffne eine Datei in der Seitenleiste, um mit dem Bearbeiten zu beginnen."
 
-#: edith/window.py:454 edith/window.py:649 edith/window.py:794
-#: edith/widgets/connect_dialog.py:34 edith/widgets/editor_panel.py:268
-#: edith/widgets/file_browser.py:994 edith/widgets/file_browser.py:1006
-#: edith/widgets/file_browser.py:1719 edith/widgets/file_browser.py:2041
-#: edith/widgets/file_browser.py:2179 edith/widgets/file_dialogs.py:36
-#: edith/widgets/file_dialogs.py:102 edith/widgets/file_dialogs.py:178
-#: edith/widgets/file_dialogs.py:476 edith/widgets/preferences_dialog.py:745
-#: edith/widgets/server_edit_dialog.py:38 edith/widgets/server_list.py:167
-#: edith/widgets/server_panel.py:305 edith/widgets/server_panel.py:368
-#: edith/widgets/transfer_panel.py:53
+#: edith/window.py:464 edith/window.py:607 edith/window.py:843
+#: edith/window.py:968 edith/window.py:1113 edith/widgets/connect_dialog.py:37
+#: edith/widgets/editor_panel.py:271 edith/widgets/file_browser.py:997
+#: edith/widgets/file_browser.py:1009 edith/widgets/file_browser.py:1722
+#: edith/widgets/file_browser.py:2044 edith/widgets/file_browser.py:2182
+#: edith/widgets/file_dialogs.py:39 edith/widgets/file_dialogs.py:105
+#: edith/widgets/file_dialogs.py:181 edith/widgets/file_dialogs.py:479
+#: edith/widgets/preferences_dialog.py:748
+#: edith/widgets/server_edit_dialog.py:41 edith/widgets/server_list.py:170
+#: edith/widgets/server_panel.py:308 edith/widgets/server_panel.py:371
+#: edith/widgets/transfer_panel.py:56
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: edith/window.py:455
+#: edith/window.py:465
 msgid "Quit Anyway"
 msgstr "Trotzdem beenden"
 
-#: edith/window.py:523
-msgid "Import FileZilla Sites"
-msgstr "FileZilla-Server importieren"
-
-#: edith/window.py:548
-msgid "Import Failed"
-msgstr "Import fehlgeschlagen"
-
-#: edith/window.py:549 edith/window.py:555 edith/window.py:590
-#: edith/window.py:780 edith/window.py:1299
-#: edith/widgets/preferences_dialog.py:636
-#: edith/widgets/server_edit_dialog.py:364
+#: edith/window.py:530 edith/window.py:1099 edith/window.py:1618
+#: edith/widgets/preferences_dialog.py:639
+#: edith/widgets/server_edit_dialog.py:367
 msgid "OK"
 msgstr "OK"
 
-#: edith/window.py:554
+#: edith/window.py:536 edith/window.py:597
+msgid "Import Servers"
+msgstr ""
+
+#: edith/window.py:539
+msgid "Server lists"
+msgstr ""
+
+#: edith/window.py:543 edith/window.py:795
+msgid "Edith export (*.json)"
+msgstr ""
+
+#: edith/window.py:546
+msgid "FileZilla sites (*.xml)"
+msgstr ""
+
+#: edith/window.py:569 edith/window.py:583 edith/window.py:632
+#: edith/window.py:774
+msgid "Import Failed"
+msgstr "Import fehlgeschlagen"
+
+#: edith/window.py:570
+msgid ""
+"That location can't be read directly. Copy the file to this computer first."
+msgstr ""
+
+#: edith/window.py:588
 msgid "No Servers Found"
 msgstr "Keine Server gefunden"
 
-#: edith/window.py:554
+#: edith/window.py:589
 msgid "The selected file contained no server entries."
 msgstr "Die gewählte Datei enthielt keine Servereinträge."
 
-#: edith/window.py:575
+#: edith/window.py:599
+#, python-brace-format
+msgid "The file contains {n} server."
+msgid_plural "The file contains {n} servers."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:603
+msgid ""
+"Merging keeps your current servers and updates any that match. Replacing "
+"discards your current list entirely."
+msgstr ""
+
+#: edith/window.py:608 edith/widgets/file_browser.py:1723
+#: edith/widgets/file_browser.py:2045 edith/widgets/file_browser.py:2183
+msgid "Replace"
+msgstr "Ersetzen"
+
+#: edith/window.py:609
+msgid "Merge"
+msgstr ""
+
+#: edith/window.py:647
 #, python-brace-format
 msgid "Imported {n} server."
 msgid_plural "Imported {n} servers."
 msgstr[0] "{n} Server importiert."
 msgstr[1] "{n} Server importiert."
 
-#: edith/window.py:579
+#: edith/window.py:653
 #, python-brace-format
-msgid "They were placed in {n} group."
-msgid_plural "They were placed in {n} groups."
-msgstr[0] "Sie wurden in {n} Gruppe eingeordnet."
-msgstr[1] "Sie wurden in {n} Gruppen eingeordnet."
+msgid "Updated {n} existing server."
+msgid_plural "Updated {n} existing servers."
+msgstr[0] ""
+msgstr[1] ""
 
-#: edith/window.py:585
-msgid "Import Complete"
-msgstr "Import abgeschlossen"
+#: edith/window.py:661
+#, python-brace-format
+msgid "Added {n} group."
+msgid_plural "Added {n} groups."
+msgstr[0] ""
+msgstr[1] ""
 
-#: edith/window.py:587
+#: edith/window.py:676
 msgid "Passwords could not be imported — you'll need to re-enter them."
 msgstr ""
 "Passwörter konnten nicht importiert werden – du musst sie erneut eingeben."
 
-#: edith/window.py:644
+#: edith/window.py:680
+msgid ""
+"This file contains no saved passwords. On this machine the restored servers "
+"still find any passwords already in your keyring; on another machine you'll "
+"need to re-enter them."
+msgstr ""
+
+#: edith/window.py:685 edith/window.py:709 edith/window.py:770
+msgid "Import Complete"
+msgstr "Import abgeschlossen"
+
+#: edith/window.py:689
+msgid "Saved Passwords Found"
+msgstr ""
+
+#: edith/window.py:691
+msgid ""
+"This file includes encrypted passwords. Enter the passphrase used when it "
+"was exported to add them to your keyring."
+msgstr ""
+
+#: edith/window.py:696 edith/window.py:837
+msgid "Passphrase"
+msgstr ""
+
+#: edith/window.py:700
+msgid "Skip"
+msgstr ""
+
+#: edith/window.py:701
+msgid "Restore Passwords"
+msgstr ""
+
+#: edith/window.py:710
+msgid "Saved passwords were skipped."
+msgstr ""
+
+#: edith/window.py:736
+msgid "Restoring Passwords"
+msgstr ""
+
+#: edith/window.py:737
+msgid "Adding saved passwords to your keyring…"
+msgstr ""
+
+#: edith/window.py:759
+#, python-brace-format
+msgid "Restored {n} saved password."
+msgid_plural "Restored {n} saved passwords."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:766
+#, python-brace-format
+msgid "{n} belonged to a server that wasn't imported."
+msgid_plural "{n} belonged to servers that weren't imported."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:783
+msgid "Nothing to Export"
+msgstr ""
+
+#: edith/window.py:784
+msgid "You have no saved servers yet."
+msgstr ""
+
+#: edith/window.py:791
+msgid "Export Servers"
+msgstr ""
+
+#: edith/window.py:815 edith/window.py:908
+msgid "Export Failed"
+msgstr ""
+
+#: edith/window.py:816
+msgid ""
+"That location can't be written to directly. Choose a folder on this computer."
+msgstr ""
+
+#: edith/window.py:827
+msgid "Include Saved Passwords?"
+msgstr ""
+
+#: edith/window.py:829
+msgid ""
+"Passwords live in your system keyring and don't travel with a plain export. "
+"They can be included, encrypted with a passphrase you choose — you'll need "
+"that same passphrase to import them on the other machine."
+msgstr ""
+
+#: edith/window.py:838
+msgid "Confirm Passphrase"
+msgstr ""
+
+#: edith/window.py:844
+msgid "Without Passwords"
+msgstr ""
+
+#: edith/window.py:845
+msgid "Include Passwords"
+msgstr ""
+
+#: edith/window.py:893
+#, python-brace-format
+msgid "Exported {n} server."
+msgid_plural "Exported {n} servers."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:897
+#, python-brace-format
+msgid "{n} saved password was included, encrypted."
+msgid_plural "{n} saved passwords were included, encrypted."
+msgstr[0] ""
+msgstr[1] ""
+
+#: edith/window.py:902
+msgid "No saved passwords were found to include."
+msgstr ""
+
+#: edith/window.py:904
+msgid "Passwords are not included — they stay in your system keyring."
+msgstr ""
+
+#: edith/window.py:905
+msgid "Export Complete"
+msgstr ""
+
+#: edith/window.py:963
 msgid "Line number…"
 msgstr "Zeilennummer…"
 
-#: edith/window.py:650
+#: edith/window.py:969
 msgid "Go"
 msgstr "Gehe zu"
 
-#: edith/window.py:777
+#: edith/window.py:1096
 msgid "Connection Failed"
 msgstr "Verbindung fehlgeschlagen"
 
-#: edith/window.py:791
+#: edith/window.py:1110
 msgid "Disconnect with unsaved changes?"
 msgstr "Trennen trotz ungespeicherter Änderungen?"
 
-#: edith/window.py:795
+#: edith/window.py:1114
 msgid "Discard & Disconnect"
 msgstr "Verwerfen und trennen"
 
-#: edith/window.py:841
+#: edith/window.py:1160
 msgid "Disconnect (Ctrl+D)"
 msgstr "Trennen (Strg+D)"
 
-#: edith/window.py:877 edith/window.py:882
+#: edith/window.py:1196 edith/window.py:1201
 #, python-brace-format
 msgid "Connected to {server}"
 msgstr "Mit {server} verbunden"
 
-#: edith/window.py:906
+#: edith/window.py:1225
 msgid "Remove from List"
 msgstr "Aus Liste entfernen"
 
-#: edith/window.py:986 edith/widgets/server_panel.py:184
-#: edith/widgets/server_row.py:66
+#: edith/window.py:1305 edith/widgets/server_panel.py:187
+#: edith/widgets/server_row.py:69
 msgid "Unpin"
 msgstr "Lösen"
 
-#: edith/window.py:1159 edith/window.py:1186 edith/window.py:1217
+#: edith/window.py:1478 edith/window.py:1505 edith/window.py:1536
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr "Herunterladen fehlgeschlagen: {error}"
 
-#: edith/window.py:1160
+#: edith/window.py:1479
 #, python-brace-format
 msgid "Failed to download: {error}"
 msgstr "Herunterladen fehlgeschlagen: {error}"
 
-#: edith/window.py:1181 edith/window.py:1212
+#: edith/window.py:1500 edith/window.py:1531
 #, python-brace-format
 msgid "Downloaded {name}"
 msgstr "{name} heruntergeladen"
 
-#: edith/window.py:1201
+#: edith/window.py:1520
 #, python-brace-format
 msgid "{n} file"
 msgid_plural "{n} files"
 msgstr[0] "{n} Datei"
 msgstr[1] "{n} Dateien"
 
-#: edith/window.py:1262
+#: edith/window.py:1581
 #, python-brace-format
 msgid "Uploaded {name}"
 msgstr "{name} hochgeladen"
 
-#: edith/window.py:1271
+#: edith/window.py:1590
 #, python-brace-format
 msgid "Failed to upload {name}: {error}"
 msgstr "Hochladen von {name} fehlgeschlagen: {error}"
 
-#: edith/window.py:1291
+#: edith/window.py:1610
 #, python-brace-format
 msgid "Saved {name}"
 msgstr "{name} gespeichert"
 
-#: edith/window.py:1296
+#: edith/window.py:1615
 msgid "Upload Failed"
 msgstr "Hochladen fehlgeschlagen"
 
-#: edith/window.py:1428
+#: edith/window.py:1747
 msgid "File Changed on Server"
 msgstr "Datei auf dem Server geändert"
 
-#: edith/window.py:1430
+#: edith/window.py:1749
 #, python-brace-format
 msgid ""
 "“{filename}” has been modified on the server.\n"
@@ -347,261 +625,293 @@ msgstr ""
 "„{filename}“ wurde auf dem Server geändert.\n"
 "Möchtest du sie neu laden? Deine ungespeicherten Änderungen gehen verloren."
 
-#: edith/window.py:1434
+#: edith/window.py:1753
 msgid "Keep Local"
 msgstr "Lokale behalten"
 
-#: edith/window.py:1435
+#: edith/window.py:1754
 msgid "Reload"
 msgstr "Neu laden"
 
-#: edith/services/drag_export.py:71
+#: edith/services/drag_export.py:74
 #, python-brace-format
 msgid "Preparing {what} for drop…"
 msgstr "{what} wird zum Ablegen vorbereitet…"
 
-#: edith/services/drag_export.py:82 edith/widgets/file_browser.py:416
+#: edith/services/drag_export.py:85 edith/widgets/file_browser.py:419
 #, python-brace-format
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} Objekt"
 msgstr[1] "{n} Objekte"
 
-#: edith/services/drag_export.py:108
+#: edith/services/drag_export.py:111
 #, python-brace-format
 msgid "Dropped {what}"
 msgstr "{what} abgelegt"
 
-#: edith/services/drag_export.py:113
+#: edith/services/drag_export.py:116
 #, python-brace-format
 msgid "Drag failed: {message}"
 msgstr "Ziehen fehlgeschlagen: {message}"
 
-#: edith/widgets/connect_dialog.py:21
+#: edith/services/servers_transfer.py:116
+msgid "This file's saved passwords are in a format this version can't read."
+msgstr ""
+
+#: edith/services/servers_transfer.py:124
+msgid "Wrong passphrase."
+msgstr ""
+
+#: edith/services/servers_transfer.py:126
+#: edith/services/servers_transfer.py:130
+msgid "The saved passwords in this file are damaged."
+msgstr ""
+
+#: edith/services/servers_transfer.py:199
+msgid ""
+"Unrecognised file format — expected an Edith export or a FileZilla "
+"sitemanager.xml."
+msgstr ""
+
+#: edith/services/servers_transfer.py:207
+#, python-brace-format
+msgid "This file is not valid JSON: {error}"
+msgstr ""
+
+#: edith/services/servers_transfer.py:210
+msgid "This file does not contain an Edith server list."
+msgstr ""
+
+#: edith/services/servers_transfer.py:215
+msgid "This file's server list is malformed."
+msgstr ""
+
+#: edith/widgets/connect_dialog.py:24
 #, python-brace-format
 msgid "Connect to {server}"
 msgstr "Mit {server} verbinden"
 
-#: edith/widgets/connect_dialog.py:59 edith/widgets/server_edit_dialog.py:108
-#: edith/widgets/server_panel.py:317
+#: edith/widgets/connect_dialog.py:62 edith/widgets/server_edit_dialog.py:111
+#: edith/widgets/server_panel.py:320
 msgid "Password"
 msgstr "Passwort"
 
-#: edith/widgets/connect_dialog.py:64 edith/widgets/server_panel.py:316
+#: edith/widgets/connect_dialog.py:67 edith/widgets/server_panel.py:319
 msgid "Key Passphrase"
 msgstr "Schlüssel-Passphrase"
 
-#: edith/widgets/connect_dialog.py:68
+#: edith/widgets/connect_dialog.py:71
 msgid "Remember credential"
 msgstr "Zugangsdaten merken"
 
-#: edith/widgets/connect_dialog.py:74
+#: edith/widgets/connect_dialog.py:77
 #, python-brace-format
 msgid "Connecting as {user}@{host}:{port}"
 msgstr "Verbindung als {user}@{host}:{port}"
 
-#: edith/widgets/editor_panel.py:48
+#: edith/widgets/editor_panel.py:51
 msgid "Show in Sidebar"
 msgstr "In Seitenleiste anzeigen"
 
-#: edith/widgets/editor_panel.py:49 edith/widgets/file_browser.py:580
-#: edith/widgets/server_panel.py:118 edith/widgets/server_panel.py:185
+#: edith/widgets/editor_panel.py:52 edith/widgets/file_browser.py:583
+#: edith/widgets/server_panel.py:121 edith/widgets/server_panel.py:188
 msgid "Pin"
 msgstr "Anheften"
 
-#: edith/widgets/editor_panel.py:50 edith/widgets/file_browser.py:572
+#: edith/widgets/editor_panel.py:53 edith/widgets/file_browser.py:575
 msgid "Copy Path"
 msgstr "Pfad kopieren"
 
-#: edith/widgets/editor_panel.py:54
+#: edith/widgets/editor_panel.py:57
 msgid "Close Others"
 msgstr "Andere schließen"
 
-#: edith/widgets/editor_panel.py:55
+#: edith/widgets/editor_panel.py:58
 msgid "Close to Right"
 msgstr "Rechts davon schließen"
 
-#: edith/widgets/editor_panel.py:264
+#: edith/widgets/editor_panel.py:267
 msgid "Save Changes?"
 msgstr "Änderungen speichern?"
 
-#: edith/widgets/editor_panel.py:265
+#: edith/widgets/editor_panel.py:268
 #, python-brace-format
 msgid "“{name}” has unsaved changes."
 msgstr "„{name}“ hat ungespeicherte Änderungen."
 
-#: edith/widgets/editor_panel.py:267
+#: edith/widgets/editor_panel.py:270
 msgid "Discard"
 msgstr "Verwerfen"
 
-#: edith/widgets/editor_panel.py:269 edith/widgets/preferences_dialog.py:115
-#: edith/widgets/server_edit_dialog.py:43 edith/widgets/server_panel.py:309
+#: edith/widgets/editor_panel.py:272 edith/widgets/preferences_dialog.py:118
+#: edith/widgets/server_edit_dialog.py:46 edith/widgets/server_panel.py:312
 msgid "Save"
 msgstr "Speichern"
 
-#: edith/widgets/file_browser.py:97 edith/widgets/file_browser.py:1638
+#: edith/widgets/file_browser.py:100 edith/widgets/file_browser.py:1641
 msgid "Upload Files"
 msgstr "Dateien hochladen"
 
-#: edith/widgets/file_browser.py:113
+#: edith/widgets/file_browser.py:116
 msgid "Show Hidden Files"
 msgstr "Verborgene Dateien anzeigen"
 
-#: edith/widgets/file_browser.py:125
+#: edith/widgets/file_browser.py:128
 msgid "Show File Details"
 msgstr "Dateidetails anzeigen"
 
-#: edith/widgets/file_browser.py:137
+#: edith/widgets/file_browser.py:140
 msgid "Filter files…"
 msgstr "Dateien filtern…"
 
-#: edith/widgets/file_browser.py:259
+#: edith/widgets/file_browser.py:262
 msgid "Name"
 msgstr "Name"
 
-#: edith/widgets/file_browser.py:275 edith/widgets/font_chooser_dialog.py:46
+#: edith/widgets/file_browser.py:278 edith/widgets/font_chooser_dialog.py:49
 msgid "Size"
 msgstr "Größe"
 
-#: edith/widgets/file_browser.py:293 edith/widgets/file_dialogs.py:385
+#: edith/widgets/file_browser.py:296 edith/widgets/file_dialogs.py:388
 msgid "Permissions"
 msgstr "Zugriffsrechte"
 
-#: edith/widgets/file_browser.py:310
+#: edith/widgets/file_browser.py:313
 msgid "Owner"
 msgstr "Besitzer"
 
-#: edith/widgets/file_browser.py:327 edith/widgets/server_edit_dialog.py:153
+#: edith/widgets/file_browser.py:330 edith/widgets/server_edit_dialog.py:156
 msgid "Group"
 msgstr "Gruppe"
 
-#: edith/widgets/file_browser.py:344
+#: edith/widgets/file_browser.py:347
 msgid "Modified"
 msgstr "Geändert"
 
-#: edith/widgets/file_browser.py:550
+#: edith/widgets/file_browser.py:553
 msgid "New File"
 msgstr "Neue Datei"
 
-#: edith/widgets/file_browser.py:551
+#: edith/widgets/file_browser.py:554
 msgid "New Folder"
 msgstr "Neuer Ordner"
 
-#: edith/widgets/file_browser.py:556
+#: edith/widgets/file_browser.py:559
 msgid "Move to"
 msgstr "Verschieben nach"
 
-#: edith/widgets/file_browser.py:557
+#: edith/widgets/file_browser.py:560
 msgid "Copy to"
 msgstr "Kopieren nach"
 
-#: edith/widgets/file_browser.py:558
+#: edith/widgets/file_browser.py:561
 msgid "Duplicate"
 msgstr "Duplizieren"
 
-#: edith/widgets/file_browser.py:563
+#: edith/widgets/file_browser.py:566
 msgid "Actions"
 msgstr "Aktionen"
 
-#: edith/widgets/file_browser.py:564
+#: edith/widgets/file_browser.py:567
 msgid "Upload Tool"
 msgstr "Upload-Werkzeug"
 
-#: edith/widgets/file_browser.py:571
+#: edith/widgets/file_browser.py:574
 msgid "Download"
 msgstr "Herunterladen"
 
-#: edith/widgets/file_browser.py:581 edith/widgets/file_dialogs.py:336
+#: edith/widgets/file_browser.py:584 edith/widgets/file_dialogs.py:339
 msgid "Information"
 msgstr "Informationen"
 
-#: edith/widgets/file_browser.py:762
+#: edith/widgets/file_browser.py:765
 msgid "(empty)"
 msgstr "(leer)"
 
-#: edith/widgets/file_browser.py:991
+#: edith/widgets/file_browser.py:994
 #, python-brace-format
 msgid "Delete {n} items?"
 msgstr "{n} Objekte löschen?"
 
-#: edith/widgets/file_browser.py:992
+#: edith/widgets/file_browser.py:995
 msgid "This will permanently delete the selected files and folders."
 msgstr "Dies löscht die gewählten Dateien und Ordner dauerhaft."
 
-#: edith/widgets/file_browser.py:1003
+#: edith/widgets/file_browser.py:1006
 #, python-brace-format
 msgid "Delete {kind}?"
 msgstr "{kind} löschen?"
 
-#: edith/widgets/file_browser.py:1004
+#: edith/widgets/file_browser.py:1007
 #, python-brace-format
 msgid "Permanently delete “{name}”?"
 msgstr "„{name}“ dauerhaft löschen?"
 
-#: edith/widgets/file_browser.py:1024
+#: edith/widgets/file_browser.py:1027
 #, python-brace-format
 msgid "Deleted “{name}”"
 msgstr "„{name}“ gelöscht"
 
-#: edith/widgets/file_browser.py:1079
+#: edith/widgets/file_browser.py:1082
 #, python-brace-format
 msgid "Move {n} item to…"
 msgid_plural "Move {n} items to…"
 msgstr[0] "{n} Objekt verschieben nach…"
 msgstr[1] "{n} Objekte verschieben nach…"
 
-#: edith/widgets/file_browser.py:1088
+#: edith/widgets/file_browser.py:1091
 #, python-brace-format
 msgid "Move “{name}” to…"
 msgstr "„{name}“ verschieben nach…"
 
-#: edith/widgets/file_browser.py:1109 edith/widgets/file_browser.py:2081
+#: edith/widgets/file_browser.py:1112 edith/widgets/file_browser.py:2084
 #, python-brace-format
 msgid "Moved “{name}” to “{dest}”"
 msgstr "„{name}“ nach „{dest}“ verschoben"
 
-#: edith/widgets/file_browser.py:1121
+#: edith/widgets/file_browser.py:1124
 #, python-brace-format
 msgid "Copy {n} item to…"
 msgid_plural "Copy {n} items to…"
 msgstr[0] "{n} Objekt kopieren nach…"
 msgstr[1] "{n} Objekte kopieren nach…"
 
-#: edith/widgets/file_browser.py:1130
+#: edith/widgets/file_browser.py:1133
 #, python-brace-format
 msgid "Copy “{name}” to…"
 msgstr "„{name}“ kopieren nach…"
 
-#: edith/widgets/file_browser.py:1284
+#: edith/widgets/file_browser.py:1287
 #, python-brace-format
 msgid "Created “{name}”"
 msgstr "„{name}“ erstellt"
 
-#: edith/widgets/file_browser.py:1436
+#: edith/widgets/file_browser.py:1439
 msgid "Empty directory"
 msgstr "Leerer Ordner"
 
-#: edith/widgets/file_browser.py:1458 edith/widgets/file_browser.py:1464
+#: edith/widgets/file_browser.py:1461 edith/widgets/file_browser.py:1467
 #, python-brace-format
 msgid "Error: {message}"
 msgstr "Fehler: {message}"
 
-#: edith/widgets/file_browser.py:1556
+#: edith/widgets/file_browser.py:1559
 #, python-brace-format
 msgid "Deleted {n} item"
 msgid_plural "Deleted {n} items"
 msgstr[0] "{n} Objekt gelöscht"
 msgstr[1] "{n} Objekte gelöscht"
 
-#: edith/widgets/file_browser.py:1703
+#: edith/widgets/file_browser.py:1706
 msgid "Folder already exists"
 msgstr "Ordner existiert bereits"
 
-#: edith/widgets/file_browser.py:1703
+#: edith/widgets/file_browser.py:1706
 msgid "File already exists"
 msgstr "Datei existiert bereits"
 
-#: edith/widgets/file_browser.py:1705
+#: edith/widgets/file_browser.py:1708
 #, python-brace-format
 msgid ""
 "“{name}” already exists in the current directory. Do you want to replace it?"
@@ -609,19 +919,19 @@ msgstr ""
 "„{name}“ existiert bereits im aktuellen Ordner. Möchtest du den vorhandenen "
 "Eintrag ersetzen?"
 
-#: edith/widgets/file_browser.py:1711 edith/widgets/file_browser.py:2033
-#: edith/widgets/file_browser.py:2171 edith/widgets/preferences_dialog.py:627
+#: edith/widgets/file_browser.py:1714 edith/widgets/file_browser.py:2036
+#: edith/widgets/file_browser.py:2174 edith/widgets/preferences_dialog.py:630
 #, python-brace-format
 msgid " and {n} more"
 msgstr " und {n} weitere"
 
-#: edith/widgets/file_browser.py:1712 edith/widgets/file_browser.py:2034
-#: edith/widgets/file_browser.py:2172
+#: edith/widgets/file_browser.py:1715 edith/widgets/file_browser.py:2037
+#: edith/widgets/file_browser.py:2175
 #, python-brace-format
 msgid "{n} items already exist"
 msgstr "{n} Objekte existieren bereits"
 
-#: edith/widgets/file_browser.py:1714
+#: edith/widgets/file_browser.py:1717
 #, python-brace-format
 msgid ""
 "{listing} already exist in the current directory. Do you want to replace "
@@ -630,153 +940,148 @@ msgstr ""
 "{listing} existieren bereits im aktuellen Ordner. Möchtest du die "
 "vorhandenen Einträge ersetzen?"
 
-#: edith/widgets/file_browser.py:1720 edith/widgets/file_browser.py:2042
-#: edith/widgets/file_browser.py:2180
-msgid "Replace"
-msgstr "Ersetzen"
-
-#: edith/widgets/file_browser.py:1744
+#: edith/widgets/file_browser.py:1747
 #, python-brace-format
 msgid "Download {n} item to…"
 msgid_plural "Download {n} items to…"
 msgstr[0] "{n} Objekt herunterladen nach…"
 msgstr[1] "{n} Objekte herunterladen nach…"
 
-#: edith/widgets/file_browser.py:1750
+#: edith/widgets/file_browser.py:1753
 #, python-brace-format
 msgid "Download “{name}” to"
 msgstr "„{name}“ herunterladen nach"
 
-#: edith/widgets/file_browser.py:1753
+#: edith/widgets/file_browser.py:1756
 msgid "Save File"
 msgstr "Datei speichern"
 
-#: edith/widgets/file_browser.py:1790 edith/widgets/file_browser.py:1795
+#: edith/widgets/file_browser.py:1793 edith/widgets/file_browser.py:1798
 msgid "Open Locally"
 msgstr "Lokal öffnen"
 
-#: edith/widgets/file_browser.py:1794
+#: edith/widgets/file_browser.py:1797
 #, python-brace-format
 msgid "Open with {app}"
 msgstr "Mit {app} öffnen"
 
-#: edith/widgets/file_browser.py:1809 edith/widgets/preferences_dialog.py:170
+#: edith/widgets/file_browser.py:1812 edith/widgets/preferences_dialog.py:173
 msgid "Open With"
 msgstr "Öffnen mit"
 
-#: edith/widgets/file_browser.py:1969
+#: edith/widgets/file_browser.py:1972
 msgid "Can't move these files: the source connection is no longer open."
 msgstr ""
 "Diese Dateien können nicht verschoben werden: Die Quellverbindung ist nicht "
 "mehr geöffnet."
 
-#: edith/widgets/file_browser.py:2025 edith/widgets/file_browser.py:2163
+#: edith/widgets/file_browser.py:2028 edith/widgets/file_browser.py:2166
 msgid "Item already exists"
 msgstr "Objekt existiert bereits"
 
-#: edith/widgets/file_browser.py:2027 edith/widgets/file_browser.py:2165
+#: edith/widgets/file_browser.py:2030 edith/widgets/file_browser.py:2168
 #, python-brace-format
 msgid "“{name}” already exists in “{dest}”. Do you want to replace it?"
 msgstr ""
 "„{name}“ existiert bereits in „{dest}“. Möchtest du den vorhandenen Eintrag "
 "ersetzen?"
 
-#: edith/widgets/file_browser.py:2036 edith/widgets/file_browser.py:2174
+#: edith/widgets/file_browser.py:2039 edith/widgets/file_browser.py:2177
 #, python-brace-format
 msgid "{listing} already exist in “{dest}”. Do you want to replace them?"
 msgstr ""
 "{listing} existieren bereits in „{dest}“. Möchtest du die vorhandenen "
 "Einträge ersetzen?"
 
-#: edith/widgets/file_browser.py:2083
+#: edith/widgets/file_browser.py:2086
 #, python-brace-format
 msgid "Moved {n} item to “{dest}”"
 msgid_plural "Moved {n} items to “{dest}”"
 msgstr[0] "{n} Objekt nach „{dest}“ verschoben"
 msgstr[1] "{n} Objekte nach „{dest}“ verschoben"
 
-#: edith/widgets/file_browser.py:2134
+#: edith/widgets/file_browser.py:2137
 #, python-brace-format
 msgid "Copied {n} item to “{dest}”"
 msgid_plural "Copied {n} items to “{dest}”"
 msgstr[0] "{n} Objekt nach „{dest}“ kopiert"
 msgstr[1] "{n} Objekte nach „{dest}“ kopiert"
 
-#: edith/widgets/file_browser.py:2142
+#: edith/widgets/file_browser.py:2145
 #, python-brace-format
 msgid "Copying to “{dest}”…"
 msgstr "Wird nach „{dest}“ kopiert …"
 
-#: edith/widgets/file_dialogs.py:40 edith/widgets/file_dialogs.py:182
-#: edith/widgets/file_dialogs.py:356 edith/widgets/preferences_dialog.py:749
+#: edith/widgets/file_dialogs.py:43 edith/widgets/file_dialogs.py:185
+#: edith/widgets/file_dialogs.py:359 edith/widgets/preferences_dialog.py:752
 msgid "Apply"
 msgstr "Anwenden"
 
-#: edith/widgets/file_dialogs.py:91
+#: edith/widgets/file_dialogs.py:94
 msgid "Create Archive"
 msgstr "Archiv erstellen"
 
-#: edith/widgets/file_dialogs.py:106
+#: edith/widgets/file_dialogs.py:109
 msgid "Create"
 msgstr "Erstellen"
 
-#: edith/widgets/file_dialogs.py:122
+#: edith/widgets/file_dialogs.py:125
 msgid "Archive name"
 msgstr "Archivname"
 
-#: edith/widgets/file_dialogs.py:130
+#: edith/widgets/file_dialogs.py:133
 msgid "Format"
 msgstr "Format"
 
-#: edith/widgets/file_dialogs.py:164
+#: edith/widgets/file_dialogs.py:167
 msgid "Change Permissions"
 msgstr "Zugriffsrechte ändern"
 
-#: edith/widgets/file_dialogs.py:258 edith/widgets/file_dialogs.py:374
+#: edith/widgets/file_dialogs.py:261 edith/widgets/file_dialogs.py:377
 msgid "Properties"
 msgstr "Eigenschaften"
 
-#: edith/widgets/file_dialogs.py:270 edith/widgets/file_dialogs.py:351
-#: edith/widgets/font_chooser_dialog.py:36
-#: edith/widgets/theme_chooser_dialog.py:56
-#: edith/widgets/whats_new_dialog.py:124
+#: edith/widgets/file_dialogs.py:273 edith/widgets/file_dialogs.py:354
+#: edith/widgets/font_chooser_dialog.py:39 edith/widgets/support_dialog.py:49
+#: edith/widgets/theme_chooser_dialog.py:63
+#: edith/widgets/whats_new_dialog.py:127
 msgid "Close"
 msgstr "Schließen"
 
-#: edith/widgets/file_dialogs.py:480
+#: edith/widgets/file_dialogs.py:483
 msgid "Select"
 msgstr "Auswählen"
 
-#: edith/widgets/file_dialogs.py:503
+#: edith/widgets/file_dialogs.py:506
 msgid "Parent Directory"
 msgstr "Übergeordneter Ordner"
 
-#: edith/widgets/file_dialogs.py:575
+#: edith/widgets/file_dialogs.py:578
 msgid "No subdirectories"
 msgstr "Keine Unterordner"
 
-#: edith/widgets/font_chooser_dialog.py:24
-#: edith/widgets/preferences_dialog.py:52
+#: edith/widgets/font_chooser_dialog.py:27
+#: edith/widgets/preferences_dialog.py:55
 msgid "Editor Font"
 msgstr "Editor-Schrift"
 
-#: edith/widgets/font_chooser_dialog.py:48
+#: edith/widgets/font_chooser_dialog.py:51
 msgid "Font size (pt)"
 msgstr "Schriftgröße (pt)"
 
-#: edith/widgets/font_chooser_dialog.py:56
+#: edith/widgets/font_chooser_dialog.py:59
 msgid "Font Family"
 msgstr "Schriftfamilie"
 
-#: edith/widgets/font_chooser_dialog.py:61
+#: edith/widgets/font_chooser_dialog.py:64
 msgid "Search fonts…"
 msgstr "Schriften suchen…"
 
-#: edith/widgets/font_chooser_dialog.py:82 edith/widgets/monaco_editor.py:99
+#: edith/widgets/font_chooser_dialog.py:85 edith/widgets/monaco_editor.py:102
 msgid "Preview"
 msgstr "Vorschau"
 
-#: edith/widgets/monaco_editor.py:301
+#: edith/widgets/monaco_editor.py:304
 #, python-brace-format
 msgid ""
 "The editor for “{filename}” crashed and was restored with your unsaved "
@@ -786,7 +1091,7 @@ msgstr ""
 "ungespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging "
 "dabei verloren."
 
-#: edith/widgets/monaco_editor.py:306
+#: edith/widgets/monaco_editor.py:309
 #, python-brace-format
 msgid ""
 "The editor for “{filename}” crashed and was reloaded. Undo history was lost."
@@ -794,97 +1099,97 @@ msgstr ""
 "Der Editor für „{filename}“ ist abgestürzt und wurde neu geladen. Die "
 "Rückgängig-Chronik ging dabei verloren."
 
-#: edith/widgets/preferences_dialog.py:36
+#: edith/widgets/preferences_dialog.py:39
 msgid "Editor"
 msgstr "Editor"
 
-#: edith/widgets/preferences_dialog.py:40
-#: edith/widgets/preferences_dialog.py:444
+#: edith/widgets/preferences_dialog.py:43
+#: edith/widgets/preferences_dialog.py:447
 msgid "Appearance"
 msgstr "Erscheinungsbild"
 
-#: edith/widgets/preferences_dialog.py:43
-#: edith/widgets/theme_chooser_dialog.py:42
+#: edith/widgets/preferences_dialog.py:46
+#: edith/widgets/theme_chooser_dialog.py:49
 msgid "Syntax Theme"
 msgstr "Syntax-Thema"
 
-#: edith/widgets/preferences_dialog.py:60
+#: edith/widgets/preferences_dialog.py:63
 msgid "Line Numbers"
 msgstr "Zeilennummern"
 
-#: edith/widgets/preferences_dialog.py:61
+#: edith/widgets/preferences_dialog.py:64
 msgid "On"
 msgstr "An"
 
-#: edith/widgets/preferences_dialog.py:61
+#: edith/widgets/preferences_dialog.py:64
 msgid "Off"
 msgstr "Aus"
 
-#: edith/widgets/preferences_dialog.py:61
+#: edith/widgets/preferences_dialog.py:64
 msgid "Relative"
 msgstr "Relativ"
 
-#: edith/widgets/preferences_dialog.py:68
+#: edith/widgets/preferences_dialog.py:71
 msgid "Minimap"
 msgstr "Minikarte"
 
-#: edith/widgets/preferences_dialog.py:69
+#: edith/widgets/preferences_dialog.py:72
 msgid "Show code overview on the right edge"
 msgstr "Code-Übersicht am rechten Rand anzeigen"
 
-#: edith/widgets/preferences_dialog.py:76
+#: edith/widgets/preferences_dialog.py:79
 msgid "Render Whitespace"
 msgstr "Leerzeichen darstellen"
 
-#: edith/widgets/preferences_dialog.py:77
+#: edith/widgets/preferences_dialog.py:80
 msgid "When to draw spaces and tabs"
 msgstr "Wann Leerzeichen und Tabulatoren gezeichnet werden"
 
-#: edith/widgets/preferences_dialog.py:80
+#: edith/widgets/preferences_dialog.py:83
 msgid "None"
 msgstr "Keine"
 
-#: edith/widgets/preferences_dialog.py:80
+#: edith/widgets/preferences_dialog.py:83
 msgid "Boundary"
 msgstr "Grenzen"
 
-#: edith/widgets/preferences_dialog.py:80
+#: edith/widgets/preferences_dialog.py:83
 msgid "Selection"
 msgstr "Auswahl"
 
-#: edith/widgets/preferences_dialog.py:80
+#: edith/widgets/preferences_dialog.py:83
 msgid "All"
 msgstr "Alle"
 
-#: edith/widgets/preferences_dialog.py:94
+#: edith/widgets/preferences_dialog.py:97
 msgid "Sticky Scroll"
 msgstr "Fixierter Bildlauf"
 
-#: edith/widgets/preferences_dialog.py:95
+#: edith/widgets/preferences_dialog.py:98
 msgid "Pin current scope (function / class) at top"
 msgstr "Aktuellen Gültigkeitsbereich (Funktion / Klasse) oben anheften"
 
-#: edith/widgets/preferences_dialog.py:104
+#: edith/widgets/preferences_dialog.py:107
 msgid "Font Ligatures"
 msgstr "Schriftligaturen"
 
-#: edith/widgets/preferences_dialog.py:105
+#: edith/widgets/preferences_dialog.py:108
 msgid "Requires a ligature font (Fira Code, JetBrains Mono…)"
 msgstr "Erfordert eine Ligaturschrift (Fira Code, JetBrains Mono…)"
 
-#: edith/widgets/preferences_dialog.py:118
+#: edith/widgets/preferences_dialog.py:121
 msgid "Format on Save"
 msgstr "Beim Speichern formatieren"
 
-#: edith/widgets/preferences_dialog.py:119
+#: edith/widgets/preferences_dialog.py:122
 msgid "Auto-format HTML, CSS, JSON and JS/TS before saving"
 msgstr "HTML, CSS, JSON und JS/TS vor dem Speichern automatisch formatieren"
 
-#: edith/widgets/preferences_dialog.py:130
+#: edith/widgets/preferences_dialog.py:133
 msgid "Advanced"
 msgstr "Erweitert"
 
-#: edith/widgets/preferences_dialog.py:132
+#: edith/widgets/preferences_dialog.py:135
 msgid ""
 "Raw Monaco editor options as JSON. These are merged on top of all other "
 "settings. See the Monaco Editor API docs for available options."
@@ -893,29 +1198,29 @@ msgstr ""
 "Einstellungen gelegt. Verfügbare Optionen findest du in der Monaco-Editor-"
 "API-Dokumentation."
 
-#: edith/widgets/preferences_dialog.py:138
-#: edith/widgets/syntax_associations_dialog.py:17
+#: edith/widgets/preferences_dialog.py:141
+#: edith/widgets/syntax_associations_dialog.py:20
 msgid "Syntax Associations"
 msgstr "Syntax-Zuordnungen"
 
-#: edith/widgets/preferences_dialog.py:139
+#: edith/widgets/preferences_dialog.py:142
 msgid "Map file extensions to a language"
 msgstr "Dateiendungen einer Sprache zuordnen"
 
-#: edith/widgets/preferences_dialog.py:147
-#: edith/widgets/preferences_dialog.py:734
+#: edith/widgets/preferences_dialog.py:150
+#: edith/widgets/preferences_dialog.py:737
 msgid "Editor Overrides"
 msgstr "Editor-Overrides"
 
-#: edith/widgets/preferences_dialog.py:148
+#: edith/widgets/preferences_dialog.py:151
 msgid "Edit raw Monaco options (JSON)"
 msgstr "Rohe Monaco-Optionen bearbeiten (JSON)"
 
-#: edith/widgets/preferences_dialog.py:162
+#: edith/widgets/preferences_dialog.py:165
 msgid "Files"
 msgstr "Dateien"
 
-#: edith/widgets/preferences_dialog.py:172
+#: edith/widgets/preferences_dialog.py:175
 msgid ""
 "Choose which local application opens a file type when you use “Open with…” "
 "in the file browser. Without an entry here, the system default is used."
@@ -924,34 +1229,34 @@ msgstr ""
 "mit…“ im Dateibrowser verwendest. Ohne Eintrag hier wird die Systemvorgabe "
 "verwendet."
 
-#: edith/widgets/preferences_dialog.py:179
-#: edith/widgets/syntax_associations_dialog.py:30
+#: edith/widgets/preferences_dialog.py:182
+#: edith/widgets/syntax_associations_dialog.py:33
 msgid "Add"
 msgstr "Hinzufügen"
 
-#: edith/widgets/preferences_dialog.py:187
+#: edith/widgets/preferences_dialog.py:190
 msgid "Extensions (comma-separated, e.g. txt, md, html)"
 msgstr "Endungen (kommagetrennt, z. B. txt, md, html)"
 
-#: edith/widgets/preferences_dialog.py:192
-#: edith/widgets/preferences_dialog.py:323
+#: edith/widgets/preferences_dialog.py:195
+#: edith/widgets/preferences_dialog.py:326
 msgid "Select application…"
 msgstr "Anwendung auswählen…"
 
-#: edith/widgets/preferences_dialog.py:197
+#: edith/widgets/preferences_dialog.py:200
 msgid "Application"
 msgstr "Anwendung"
 
-#: edith/widgets/preferences_dialog.py:204
-#: edith/widgets/syntax_associations_dialog.py:54
+#: edith/widgets/preferences_dialog.py:207
+#: edith/widgets/syntax_associations_dialog.py:57
 msgid "Current Associations"
 msgstr "Aktuelle Zuordnungen"
 
-#: edith/widgets/preferences_dialog.py:211
+#: edith/widgets/preferences_dialog.py:214
 msgid "Upload Tools"
 msgstr "Upload-Werkzeuge"
 
-#: edith/widgets/preferences_dialog.py:213
+#: edith/widgets/preferences_dialog.py:216
 #, python-brace-format
 msgid ""
 "Scripts in this folder appear in the file browser's “Upload Tool” menu. "
@@ -960,128 +1265,133 @@ msgstr ""
 "Skripte in diesem Ordner erscheinen im Menü „Upload-Werkzeug“ des "
 "Dateibrowsers. Leer lassen, um die Vorgabe ({path}) zu verwenden."
 
-#: edith/widgets/preferences_dialog.py:219
+#: edith/widgets/preferences_dialog.py:222
 msgid "Tools folder"
 msgstr "Upload-Werkzeug Ordner"
 
-#: edith/widgets/preferences_dialog.py:227
+#: edith/widgets/preferences_dialog.py:230
 msgid "Browse…"
 msgstr "Durchsuchen…"
 
-#: edith/widgets/preferences_dialog.py:243 edith/widgets/status_bar.py:126
-#: edith/widgets/syntax_associations_dialog.py:64
+#: edith/widgets/preferences_dialog.py:246 edith/widgets/status_bar.py:129
+#: edith/widgets/syntax_associations_dialog.py:67
 msgid "Filter…"
 msgstr "Filtern…"
 
-#: edith/widgets/preferences_dialog.py:336
+#: edith/widgets/preferences_dialog.py:339
 msgid "No associations"
 msgstr "Keine Zuordnungen"
 
-#: edith/widgets/preferences_dialog.py:337
+#: edith/widgets/preferences_dialog.py:340
 msgid "Files open with the system default application"
 msgstr "Dateien werden mit der Systemvorgabe geöffnet"
 
-#: edith/widgets/preferences_dialog.py:367
+#: edith/widgets/preferences_dialog.py:370
 #, python-brace-format
 msgid "Add an extension for {name}"
 msgstr "Eine Endung für {name} hinzufügen"
 
-#: edith/widgets/preferences_dialog.py:376
+#: edith/widgets/preferences_dialog.py:379
 #, python-brace-format
 msgid "Remove {n} association"
 msgid_plural "Remove all {n} associations"
 msgstr[0] "{n} Zuordnung entfernen"
 msgstr[1] "Alle {n} Zuordnungen entfernen"
 
-#: edith/widgets/preferences_dialog.py:388
+#: edith/widgets/preferences_dialog.py:391
 #, python-brace-format
 msgid "Remove .{ext}"
 msgstr ".{ext} entfernen"
 
-#: edith/widgets/preferences_dialog.py:395
+#: edith/widgets/preferences_dialog.py:398
 msgid "Add extensions…"
 msgstr "Endungen hinzufügen…"
 
-#: edith/widgets/preferences_dialog.py:450
+#: edith/widgets/preferences_dialog.py:453
 msgid "System default"
 msgstr "Systemvorgabe"
 
-#: edith/widgets/preferences_dialog.py:453
-#: edith/widgets/syntax_associations_dialog.py:46
+#: edith/widgets/preferences_dialog.py:456
+#: edith/widgets/syntax_associations_dialog.py:49
 msgid "Language"
 msgstr "Sprache"
 
-#: edith/widgets/preferences_dialog.py:454
+#: edith/widgets/preferences_dialog.py:457
 msgid "Applied when Edith restarts"
 msgstr "Wird beim Neustart von Edith angewendet"
 
-#: edith/widgets/preferences_dialog.py:469
+#: edith/widgets/preferences_dialog.py:472
 msgid "Your language missing?"
 msgstr "Fehlt deine Sprache?"
 
-#: edith/widgets/preferences_dialog.py:470
+#: edith/widgets/preferences_dialog.py:473
 msgid "Edith can be translated into any language — it's a text file, not code."
 msgstr ""
 "Edith kann in jede Sprache übersetzt werden – es ist eine Textdatei, kein "
 "Code."
 
-#: edith/widgets/preferences_dialog.py:483
+#: edith/widgets/preferences_dialog.py:486
 msgid "Navigation"
 msgstr "Navigation"
 
-#: edith/widgets/preferences_dialog.py:486
+#: edith/widgets/preferences_dialog.py:489
 msgid "Open Items With"
 msgstr "Objekte öffnen mit"
 
-#: edith/widgets/preferences_dialog.py:487
+#: edith/widgets/preferences_dialog.py:490
 msgid "How files, folders and servers are opened"
 msgstr "Wie Dateien, Ordner und Server geöffnet werden"
 
-#: edith/widgets/preferences_dialog.py:489
+#: edith/widgets/preferences_dialog.py:492
 msgid "Double Click"
 msgstr "Doppelklick"
 
-#: edith/widgets/preferences_dialog.py:489
+#: edith/widgets/preferences_dialog.py:492
 msgid "Single Click"
 msgstr "Einfachklick"
 
-#: edith/widgets/preferences_dialog.py:499
+#: edith/widgets/preferences_dialog.py:502
 msgid "Window"
 msgstr "Fenster"
 
-#: edith/widgets/preferences_dialog.py:500
+#: edith/widgets/preferences_dialog.py:503
 msgid "Size used for newly opened windows."
 msgstr "Größe für neu geöffnete Fenster."
 
-#: edith/widgets/preferences_dialog.py:504
+#: edith/widgets/preferences_dialog.py:507
 msgid "Width"
 msgstr "Breite"
 
-#: edith/widgets/preferences_dialog.py:514
+#: edith/widgets/preferences_dialog.py:517
 msgid "Height"
 msgstr "Höhe"
 
-#: edith/widgets/preferences_dialog.py:609
+#: edith/widgets/preferences_dialog.py:534
+#: edith/widgets/theme_chooser_dialog.py:125
+msgid "Follow System"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py:612
 msgid "Restart Edith?"
 msgstr "Edith neu starten?"
 
-#: edith/widgets/preferences_dialog.py:610
+#: edith/widgets/preferences_dialog.py:613
 msgid "The new language takes effect after Edith restarts."
 msgstr "Die neue Sprache wird nach einem Neustart von Edith verwendet."
 
-#: edith/widgets/preferences_dialog.py:612
+#: edith/widgets/preferences_dialog.py:615
 msgid "Later"
 msgstr "Später"
 
-#: edith/widgets/preferences_dialog.py:613
+#: edith/widgets/preferences_dialog.py:616
 msgid "Restart Now"
 msgstr "Jetzt neu starten"
 
-#: edith/widgets/preferences_dialog.py:629
+#: edith/widgets/preferences_dialog.py:632
 msgid "Unsaved Changes"
 msgstr "Ungespeicherte Änderungen"
 
-#: edith/widgets/preferences_dialog.py:631
+#: edith/widgets/preferences_dialog.py:634
 #, python-brace-format
 msgid "{listing} has unsaved changes. Save it before restarting."
 msgid_plural "{listing} have unsaved changes. Save them before restarting."
@@ -1090,312 +1400,381 @@ msgstr[0] ""
 msgstr[1] ""
 "{listing} haben ungespeicherte Änderungen. Bitte vor dem Neustart speichern."
 
-#: edith/widgets/preferences_dialog.py:691
+#: edith/widgets/preferences_dialog.py:694
 msgid "Choose Tools Folder"
 msgstr "Upload-Werkzeug Ordner wählen"
 
-#: edith/widgets/preferences_dialog.py:795
+#: edith/widgets/preferences_dialog.py:798
 #, python-brace-format
 msgid "Invalid JSON: {error}"
 msgstr "Ungültiges JSON: {error}"
 
-#: edith/widgets/preferences_dialog.py:799
+#: edith/widgets/preferences_dialog.py:802
 #, python-brace-format
 msgid "Top level must be a JSON object {}"
 msgstr "Die oberste Ebene muss ein JSON-Objekt {} sein"
 
-#: edith/widgets/server_edit_dialog.py:22
+#: edith/widgets/server_edit_dialog.py:25
 msgid "Add Server"
 msgstr "Server hinzufügen"
 
-#: edith/widgets/server_edit_dialog.py:63
+#: edith/widgets/server_edit_dialog.py:66
 msgid "Name (optional)"
 msgstr "Name (optional)"
 
-#: edith/widgets/server_edit_dialog.py:67
+#: edith/widgets/server_edit_dialog.py:70
 msgid "Protocol"
 msgstr "Protokoll"
 
-#: edith/widgets/server_edit_dialog.py:68
+#: edith/widgets/server_edit_dialog.py:71
 msgid "SFTP"
 msgstr "SFTP"
 
-#: edith/widgets/server_edit_dialog.py:68
+#: edith/widgets/server_edit_dialog.py:71
 msgid "FTP"
 msgstr "FTP"
 
-#: edith/widgets/server_edit_dialog.py:75
+#: edith/widgets/server_edit_dialog.py:78
 msgid "Encryption"
 msgstr "Verschlüsselung"
 
-#: edith/widgets/server_edit_dialog.py:76
+#: edith/widgets/server_edit_dialog.py:79
 msgid "None (insecure)"
 msgstr "Keine (unsicher)"
 
-#: edith/widgets/server_edit_dialog.py:76
+#: edith/widgets/server_edit_dialog.py:79
 msgid "Explicit TLS (if available)"
 msgstr "Explizites TLS (falls verfügbar)"
 
-#: edith/widgets/server_edit_dialog.py:76
+#: edith/widgets/server_edit_dialog.py:79
 msgid "Explicit TLS (required)"
 msgstr "Explizites TLS (erforderlich)"
 
-#: edith/widgets/server_edit_dialog.py:76
+#: edith/widgets/server_edit_dialog.py:79
 msgid "Implicit TLS"
 msgstr "Implizites TLS"
 
-#: edith/widgets/server_edit_dialog.py:88
+#: edith/widgets/server_edit_dialog.py:91
 msgid "Host"
 msgstr "Host"
 
-#: edith/widgets/server_edit_dialog.py:98
+#: edith/widgets/server_edit_dialog.py:101
 msgid "Port"
 msgstr "Port"
 
-#: edith/widgets/server_edit_dialog.py:103
+#: edith/widgets/server_edit_dialog.py:106
 msgid "Username"
 msgstr "Benutzername"
 
-#: edith/widgets/server_edit_dialog.py:107
+#: edith/widgets/server_edit_dialog.py:110
 msgid "Authentication"
 msgstr "Authentifizierung"
 
-#: edith/widgets/server_edit_dialog.py:108
+#: edith/widgets/server_edit_dialog.py:111
 msgid "SSH Key"
 msgstr "SSH-Schlüssel"
 
-#: edith/widgets/server_edit_dialog.py:108
+#: edith/widgets/server_edit_dialog.py:111
 msgid "SSH Key + Passphrase"
 msgstr "SSH-Schlüssel + Passphrase"
 
-#: edith/widgets/server_edit_dialog.py:116
+#: edith/widgets/server_edit_dialog.py:119
 msgid "Key File Path"
 msgstr "Pfad zur Schlüsseldatei"
 
-#: edith/widgets/server_edit_dialog.py:134
+#: edith/widgets/server_edit_dialog.py:137
 msgid "FTP uses passive mode (PASV)."
 msgstr "FTP verwendet den passiven Modus (PASV)."
 
-#: edith/widgets/server_edit_dialog.py:146
+#: edith/widgets/server_edit_dialog.py:149
 msgid "Options"
 msgstr "Optionen"
 
-#: edith/widgets/server_edit_dialog.py:147
+#: edith/widgets/server_edit_dialog.py:150
 msgid "Initial Directory"
 msgstr "Startordner"
 
-#: edith/widgets/server_edit_dialog.py:179
-#: edith/widgets/server_edit_dialog.py:312
-#: edith/widgets/server_edit_dialog.py:327
+#: edith/widgets/server_edit_dialog.py:182
+#: edith/widgets/server_edit_dialog.py:315
+#: edith/widgets/server_edit_dialog.py:330
 msgid "Test Connection"
 msgstr "Verbindung testen"
 
-#: edith/widgets/server_edit_dialog.py:271
+#: edith/widgets/server_edit_dialog.py:274
 msgid "Connecting…"
 msgstr "Verbinden…"
 
-#: edith/widgets/server_edit_dialog.py:361
+#: edith/widgets/server_edit_dialog.py:364
 msgid "Missing Fields"
 msgstr "Fehlende Felder"
 
-#: edith/widgets/server_edit_dialog.py:362
+#: edith/widgets/server_edit_dialog.py:365
 msgid "Host and Username are required."
 msgstr "Host und Benutzername sind erforderlich."
 
-#: edith/widgets/server_list.py:59
+#: edith/widgets/server_list.py:62
 msgid "Add Server Here…"
 msgstr "Server hier hinzufügen…"
 
-#: edith/widgets/server_list.py:60
+#: edith/widgets/server_list.py:63
 msgid "Rename Group…"
 msgstr "Gruppe umbenennen…"
 
-#: edith/widgets/server_list.py:61
+#: edith/widgets/server_list.py:64
 msgid "Delete Group"
 msgstr "Gruppe löschen"
 
-#: edith/widgets/server_list.py:84
+#: edith/widgets/server_list.py:87
 msgid "New Server Group…"
 msgstr "Neue Servergruppe…"
 
-#: edith/widgets/server_list.py:164
+#: edith/widgets/server_list.py:167
 msgid "Delete Group?"
 msgstr "Gruppe löschen?"
 
-#: edith/widgets/server_list.py:165
+#: edith/widgets/server_list.py:168
 #, python-brace-format
 msgid "Delete “{name}”? Servers inside will become ungrouped."
 msgstr "„{name}“ löschen? Enthaltene Server werden gruppenlos."
 
-#: edith/widgets/server_panel.py:39
+#: edith/widgets/server_panel.py:42
 msgid "Search servers…"
 msgstr "Server durchsuchen…"
 
-#: edith/widgets/server_panel.py:71
+#: edith/widgets/server_panel.py:74
 msgid "No Servers"
 msgstr "Keine Server"
 
-#: edith/widgets/server_panel.py:73
+#: edith/widgets/server_panel.py:76
 msgid "Add a server using the button in the toolbar."
 msgstr "Füge über die Schaltfläche in der Werkzeugleiste einen Server hinzu."
 
-#: edith/widgets/server_panel.py:115
+#: edith/widgets/server_panel.py:118
 msgid "Edit"
 msgstr "Bearbeiten"
 
-#: edith/widgets/server_panel.py:116
+#: edith/widgets/server_panel.py:119
 msgid "Change Password…"
 msgstr "Passwort ändern…"
 
-#: edith/widgets/server_panel.py:125
+#: edith/widgets/server_panel.py:128
 msgid "Move to Group"
 msgstr "In Gruppe verschieben"
 
-#: edith/widgets/server_panel.py:126
+#: edith/widgets/server_panel.py:129
 msgid "Duplicate Server"
 msgstr "Server duplizieren"
 
-#: edith/widgets/server_panel.py:267
+#: edith/widgets/server_panel.py:270
 msgid "No Group"
 msgstr "Keine Gruppe"
 
-#: edith/widgets/server_panel.py:297
+#: edith/widgets/server_panel.py:300
 msgid "Change Password"
 msgstr "Passwort ändern"
 
-#: edith/widgets/server_panel.py:365
+#: edith/widgets/server_panel.py:368
 msgid "Delete Server?"
 msgstr "Server löschen?"
 
-#: edith/widgets/server_panel.py:366
+#: edith/widgets/server_panel.py:369
 #, python-brace-format
 msgid "Remove “{name}” from your servers?"
 msgstr "„{name}“ aus deinen Servern entfernen?"
 
-#: edith/widgets/status_bar.py:75
+#: edith/widgets/status_bar.py:78
 msgid "Ln 1, Col 1"
 msgstr "Z. 1, Sp. 1"
 
-#: edith/widgets/status_bar.py:79
+#: edith/widgets/status_bar.py:82
 msgid "Go to line"
 msgstr "Gehe zu Zeile"
 
-#: edith/widgets/status_bar.py:85
+#: edith/widgets/status_bar.py:88
 msgid "Wrap"
 msgstr "Umbruch"
 
-#: edith/widgets/status_bar.py:89
+#: edith/widgets/status_bar.py:92
 msgid "Toggle word wrap (Ctrl+Shift+W)"
 msgstr "Zeilenumbruch umschalten (Strg+Umschalt+W)"
 
-#: edith/widgets/status_bar.py:100
+#: edith/widgets/status_bar.py:103
 msgid "Change syntax highlighting"
 msgstr "Syntaxhervorhebung ändern"
 
-#: edith/widgets/status_bar.py:109
+#: edith/widgets/status_bar.py:112
 msgid "Change indentation"
 msgstr "Einrückung ändern"
 
-#: edith/widgets/status_bar.py:118
+#: edith/widgets/status_bar.py:121
 msgid "Change line ending"
 msgstr "Zeilenende ändern"
 
-#: edith/widgets/status_bar.py:198
+#: edith/widgets/status_bar.py:201
 msgid "Spaces"
 msgstr "Leerzeichen"
 
-#: edith/widgets/status_bar.py:199
+#: edith/widgets/status_bar.py:202
 msgid "Tabs"
 msgstr "Tabulatoren"
 
-#: edith/widgets/status_bar.py:207
+#: edith/widgets/status_bar.py:210
 msgid "Size:"
 msgstr "Größe:"
 
-#: edith/widgets/status_bar.py:268
+#: edith/widgets/status_bar.py:271
 #, python-brace-format
 msgid "Spaces: {n}"
 msgstr "Leerzeichen: {n}"
 
-#: edith/widgets/status_bar.py:269
+#: edith/widgets/status_bar.py:272
 #, python-brace-format
 msgid "Tab: {n}"
 msgstr "Tabulator: {n}"
 
-#: edith/widgets/status_bar.py:368
+#: edith/widgets/status_bar.py:371
 #, python-brace-format
 msgid "Ln {line}, Col {col}"
 msgstr "Z. {line}, Sp. {col}"
 
-#: edith/widgets/syntax_associations_dialog.py:27
+#. Translators: title of the "Support Edith" dialog.
+#: edith/widgets/support_dialog.py:43
+msgid "Keep this app alive"
+msgstr "Die App am Leben erhalten"
+
+#: edith/widgets/support_dialog.py:56
+msgid ""
+"This app doesn't track. Anything.\n"
+"The downside is I have no idea if or how often it's used or downloaded. "
+"Could be zero, could be a secret cult following. I genuinely don't know."
+msgstr ""
+"Diese App trackt nicht. Gar nicht.\n"
+"Der Nachteil: Ich habe keine Ahnung, ob und wie oft sie benutzt oder "
+"heruntergeladen wird. Könnte null sein, es könnten bereits Tattoos davon "
+"existieren. Ich weiß es nicht."
+
+#: edith/widgets/support_dialog.py:60
+msgid "Am I wasting my time publishing it? You tell me."
+msgstr "Lohnt sich der Aufwand, sie zu veröffentlichen? Sag es mir."
+
+#: edith/widgets/support_dialog.py:61
+msgid "There are three (maybe more) ways to keep me motivated:"
+msgstr "Es gibt (mindestens) drei Wege, mich zu motivieren:"
+
+#: edith/widgets/support_dialog.py:68
+msgid "The easy way"
+msgstr "Der einfache Weg"
+
+#: edith/widgets/support_dialog.py:69
+msgid "Give it a like"
+msgstr "App bewerten"
+
+#: edith/widgets/support_dialog.py:71
+msgid ""
+"Opens a page on my website with a like button. Nothing is counted until you "
+"press it — just the press and an anonymised IP."
+msgstr ""
+"Öffnet eine Seite auf meiner Website mit einem Like-Button. Gezählt wird "
+"erst, wenn du ihn drückst — nur der Klick und eine anonymisierte IP."
+
+#: edith/widgets/support_dialog.py:79
+msgid "The nerdy way"
+msgstr "Der nerdige Weg"
+
+#: edith/widgets/support_dialog.py:80
+msgid "Star it on GitHub"
+msgstr "GitHub Stern"
+
+#: edith/widgets/support_dialog.py:82
+msgid "A star is a number I can actually see, and it helps others find it."
+msgstr ""
+"Ein Stern ist eine Zahl, die ich sehen kann, und er hilft anderen, die App "
+"zu finden."
+
+#: edith/widgets/support_dialog.py:87
+msgid "The generous way"
+msgstr "Der großzügige Weg"
+
+#: edith/widgets/support_dialog.py:88
+msgid "Support it on Ko-fi"
+msgstr "Unterstütze sie auf Ko-fi"
+
+#: edith/widgets/support_dialog.py:90
+msgid "Entirely optional. Edith is and stays free either way."
+msgstr "Völlig freiwillig. Edith ist und bleibt kostenlos."
+
+#: edith/widgets/syntax_associations_dialog.py:30
 msgid "Add Association"
 msgstr "Zuordnung hinzufügen"
 
-#: edith/widgets/syntax_associations_dialog.py:37
+#: edith/widgets/syntax_associations_dialog.py:40
 msgid "Extension (without dot, e.g. tpl)"
 msgstr "Endung (ohne Punkt, z. B. tpl)"
 
-#: edith/widgets/syntax_associations_dialog.py:166
+#: edith/widgets/syntax_associations_dialog.py:169
 msgid "No custom associations yet"
 msgstr "Noch keine eigenen Zuordnungen"
 
-#: edith/widgets/syntax_associations_dialog.py:181
+#: edith/widgets/syntax_associations_dialog.py:184
 #, python-brace-format
 msgid "Remove .{ext} association"
 msgstr "Zuordnung .{ext} entfernen"
 
-#: edith/widgets/transfer_panel.py:43
+#: edith/widgets/theme_chooser_dialog.py:125
+msgid "Light or dark, matching your desktop"
+msgstr ""
+
+#: edith/widgets/transfer_panel.py:46
 msgid "Queued"
 msgstr "In Warteschlange"
 
-#: edith/widgets/transfer_panel.py:79
+#: edith/widgets/transfer_panel.py:82
 msgid "Done"
 msgstr "Fertig"
 
-#: edith/widgets/transfer_panel.py:86
+#: edith/widgets/transfer_panel.py:89
 msgid "Cancelled"
 msgstr "Abgebrochen"
 
-#: edith/widgets/transfer_panel.py:94
+#: edith/widgets/transfer_panel.py:97
 msgid "Failed"
 msgstr "Fehlgeschlagen"
 
-#: edith/widgets/transfer_panel.py:131
+#: edith/widgets/transfer_panel.py:134
 msgid "Clear Done"
 msgstr "Erledigte löschen"
 
-#: edith/widgets/transfer_panel.py:142
+#: edith/widgets/transfer_panel.py:145
 msgid "No uploads yet"
 msgstr "Noch keine Uploads"
 
-#: edith/widgets/welcome_view.py:21
+#: edith/widgets/welcome_view.py:24
 msgid "Welcome to Edith"
 msgstr "Willkommen bei Edith"
 
-#: edith/widgets/welcome_view.py:33
+#: edith/widgets/welcome_view.py:36
 msgid "Add Your First Server"
 msgstr "Ersten Server hinzufügen"
 
 #. Translators: keep the <a href="create"> markup intact; only the
 #. visible text between the tags should be translated.
-#: edith/widgets/welcome_view.py:47
+#: edith/widgets/welcome_view.py:50
 msgid ""
 "Connect to a server from the sidebar or <a href=\"create\">click here to "
 "create one</a>."
 msgstr ""
-"Verbinde dich über die Seitenleiste mit einem Server oder <a "
-"href=\"create\">klicke hier, um einen Server anzulegen</a>."
+"Server aus der Seitenleiste wählen oder <a href=\"create\">neu anlegen</a>."
 
-#: edith/widgets/welcome_view.py:66 edith/widgets/welcome_view.py:74
+#: edith/widgets/welcome_view.py:69 edith/widgets/welcome_view.py:77
 msgid "A code editor that talks (S)FTP"
 msgstr "Ein Code-Editor, der (S)FTP spricht"
 
-#: edith/widgets/welcome_view.py:67 edith/widgets/welcome_view.py:75
+#: edith/widgets/welcome_view.py:70 edith/widgets/welcome_view.py:78
 #, python-brace-format
 msgid "Version {version}"
 msgstr "Version {version}"
 
-#: edith/widgets/welcome_view.py:76
+#: edith/widgets/welcome_view.py:79
 msgid ""
 "No servers configured yet.\n"
 "Add a server to get started."
@@ -1405,6 +1784,18 @@ msgstr ""
 
 #. Translators: dialog title for the release notes shown after an
 #. update. The notes themselves are always English.
-#: edith/widgets/whats_new_dialog.py:121
+#: edith/widgets/whats_new_dialog.py:124
 msgid "What's New"
 msgstr "Neuigkeiten"
+
+#~ msgid "Import from FileZilla…"
+#~ msgstr "Aus FileZilla importieren…"
+
+#~ msgid "Import FileZilla Sites"
+#~ msgstr "FileZilla-Server importieren"
+
+#, python-brace-format
+#~ msgid "They were placed in {n} group."
+#~ msgid_plural "They were placed in {n} groups."
+#~ msgstr[0] "Sie wurden in {n} Gruppe eingeordnet."
+#~ msgstr[1] "Sie wurden in {n} Gruppen eingeordnet."
