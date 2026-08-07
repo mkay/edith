@@ -20,8 +20,8 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Edith now speaks German — and can speak your language too. Pick one under Preferences → General.
-- Would you like Edith in your mother tongue? Translating it is a text file, not code — see [TRANSLATING.md](https://github.com/mkay/edith/blob/main/TRANSLATING.md).
-- The editor no longer loses its undo history part-way through a session.
-- Dragging files between two Edith windows no longer freezes the app.
-- Your servers and settings are now backed up automatically at every start.
+- Move your servers between machines: import and export the server list, in Edith's own format or FileZilla's — and carry saved passwords along in an encrypted export.
+- A new Support Edith item in the main menu, with three ways to help. Two of them are free.
+- The syntax theme can now follow your system's light/dark setting instead of being pinned to one.
+- Opening a file is quicker: Edith no longer re-reads its whole config a dozen times per tab.
+- Edith is now GPL-3.0-or-later, and there is a Flatpak build alongside the Arch and Debian packages.
