@@ -95,14 +95,17 @@ rm -rf "$PAGES/repo"
 cp -a "$REPO" "$PAGES/repo"
 
 # 6. The file users actually click. Regenerated every time so the embedded key
-#    can never drift from the key the repo was signed with.
+#    can never drift from the key the repo was signed with. The summary is read
+#    from the metainfo rather than repeated here, so the two cannot disagree.
+SUMMARY=$(sed -n 's:.*<summary>\(.*\)</summary>.*:\1:p' data/de.singular.edith.metainfo.xml.in | head -1)
+[[ -n "$SUMMARY" ]] || die "could not read <summary> from the metainfo"
 echo "==> Writing edith.flatpakrepo"
 cat > "$PAGES/edith.flatpakrepo" <<EOF
 [Flatpak Repo]
 Title=Edith
 Url=${PAGES_URL}repo/
 Homepage=https://github.com/mkay/edith
-Comment=Edit remote files over SFTP and FTP
+Comment=$SUMMARY
 Description=A GTK4 client for editing files that live on a remote server.
 Icon=${PAGES_URL}icon.svg
 GPGKey=$(gpg --export "$GPG_KEY" | base64 -w0)

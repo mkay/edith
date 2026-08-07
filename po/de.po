@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 12:00+0300\n"
+"POT-Creation-Date: 2026-08-07 15:42+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -36,9 +36,10 @@ msgstr "Nativer GTK4-SFTP-Client zum direkten Bearbeiten entfernter Dateien"
 msgid "sftp;ssh;remote;editor;server;"
 msgstr "sftp;ssh;entfernt;Editor;Server;"
 
-#: data/de.singular.edith.metainfo.xml.in:8
-msgid "Edit remote files over SFTP and FTP"
-msgstr ""
+#: data/de.singular.edith.metainfo.xml.in:8 edith/widgets/welcome_view.py:69
+#: edith/widgets/welcome_view.py:77
+msgid "A code editor that talks (S)FTP"
+msgstr "Ein Code-Editor, der (S)FTP spricht"
 
 #: data/de.singular.edith.metainfo.xml.in:11
 msgid ""
@@ -104,19 +105,26 @@ msgid ""
 "Edith is alpha software — early access for the brave and the bug-tolerant."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:50
+#: data/de.singular.edith.metainfo.xml.in:51
 msgid "Browsing a remote server"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:54
+#: data/de.singular.edith.metainfo.xml.in:55
 msgid "Editing a remote file with syntax highlighting"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:58
+#: data/de.singular.edith.metainfo.xml.in:59
 msgid "Saved connections, grouped"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:81
+#: data/de.singular.edith.metainfo.xml.in:82
+msgid ""
+"Adds server list import and export, a Support Edith dialog, and a syntax "
+"theme that can follow the system light/dark setting. See the project release "
+"notes for the full list."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:92
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."
@@ -1764,10 +1772,6 @@ msgid ""
 "create one</a>."
 msgstr ""
 "Server aus der Seitenleiste wählen oder <a href=\"create\">neu anlegen</a>."
-
-#: edith/widgets/welcome_view.py:69 edith/widgets/welcome_view.py:77
-msgid "A code editor that talks (S)FTP"
-msgstr "Ein Code-Editor, der (S)FTP spricht"
 
 #: edith/widgets/welcome_view.py:70 edith/widgets/welcome_view.py:78
 #, python-brace-format

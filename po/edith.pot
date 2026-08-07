@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 12:00+0300\n"
+"POT-Creation-Date: 2026-08-07 15:42+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -32,8 +32,9 @@ msgstr ""
 msgid "sftp;ssh;remote;editor;server;"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:8
-msgid "Edit remote files over SFTP and FTP"
+#: data/de.singular.edith.metainfo.xml.in:8 edith/widgets/welcome_view.py:69
+#: edith/widgets/welcome_view.py:77
+msgid "A code editor that talks (S)FTP"
 msgstr ""
 
 #: data/de.singular.edith.metainfo.xml.in:11
@@ -100,19 +101,26 @@ msgid ""
 "Edith is alpha software — early access for the brave and the bug-tolerant."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:50
+#: data/de.singular.edith.metainfo.xml.in:51
 msgid "Browsing a remote server"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:54
+#: data/de.singular.edith.metainfo.xml.in:55
 msgid "Editing a remote file with syntax highlighting"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:58
+#: data/de.singular.edith.metainfo.xml.in:59
 msgid "Saved connections, grouped"
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:81
+#: data/de.singular.edith.metainfo.xml.in:82
+msgid ""
+"Adds server list import and export, a Support Edith dialog, and a syntax "
+"theme that can follow the system light/dark setting. See the project release "
+"notes for the full list."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:92
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."
@@ -1719,10 +1727,6 @@ msgstr ""
 msgid ""
 "Connect to a server from the sidebar or <a href=\"create\">click here to "
 "create one</a>."
-msgstr ""
-
-#: edith/widgets/welcome_view.py:69 edith/widgets/welcome_view.py:77
-msgid "A code editor that talks (S)FTP"
 msgstr ""
 
 #: edith/widgets/welcome_view.py:70 edith/widgets/welcome_view.py:78
