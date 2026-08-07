@@ -47,11 +47,13 @@ if [[ -z "$VERSION" ]]; then
 fi
 echo "==> Publishing $APP_ID at $VERSION"
 
-# 1. Build straight into the repo, signed as it is committed.
+# 1. Build unsigned. org.flatpak.Builder is itself a Flatpak and its sandbox
+#    ships no pinentry, so a --gpg-sign here fails with "GPG Agent: No pinentry"
+#    however warm the host's passphrase cache is. Signing happens on the host in
+#    step 3, where the agent can actually reach a pinentry.
 echo "==> Building"
 flatpak run org.flatpak.Builder --user --force-clean \
     --repo="$REPO" \
-    --gpg-sign="$GPG_KEY" \
     "$BUILD_DIR" "$MANIFEST"
 
 # 2. Debug symbols roughly double the repo for something no user of a binary
@@ -62,9 +64,18 @@ if ostree refs --repo="$REPO" | grep -q "^runtime/$APP_ID.Debug/"; then
     ostree refs --repo="$REPO" --delete "runtime/$APP_ID.Debug/x86_64/master"
 fi
 
-# 3. Static deltas turn an update into one small download instead of hundreds of
+# 3. Sign every remaining commit, on the host. Done after the Debug ref is gone
+#    so nothing is signed that is about to be pruned.
+echo "==> Signing commits"
+for ref in $(ostree refs --repo="$REPO"); do
+    ostree gpg-sign --repo="$REPO" "$ref" "$GPG_KEY" >/dev/null
+    echo "    signed $ref"
+done
+
+# 4. Static deltas turn an update into one small download instead of hundreds of
 #    object fetches. --prune drops anything no ref reaches any more, which is
-#    what stops the repo growing without bound across releases.
+#    what stops the repo growing without bound across releases. This also signs
+#    the summary, which is what a client checks first.
 echo "==> Updating repo metadata"
 flatpak build-update-repo \
     --generate-static-deltas \
@@ -72,7 +83,7 @@ flatpak build-update-repo \
     --gpg-sign="$GPG_KEY" \
     "$REPO"
 
-# 4. Publish. rsync --delete so a pruned object actually disappears from the
+# 5. Publish. rsync --delete so a pruned object actually disappears from the
 #    served copy; without it the repo would only ever accumulate.
 [[ -d "$PAGES/.git" ]] || die "$PAGES is not a git checkout — clone the Pages repo there first"
 echo "==> Syncing into $PAGES"
@@ -80,7 +91,7 @@ rsync -a --delete \
     --exclude='.git/' --exclude='.nojekyll' --exclude='*.flatpakrepo' --exclude='index.html' \
     "$REPO/" "$PAGES/repo/"
 
-# 5. The file users actually click. Regenerated every time so the embedded key
+# 6. The file users actually click. Regenerated every time so the embedded key
 #    can never drift from the key the repo was signed with.
 echo "==> Writing edith.flatpakrepo"
 cat > "$PAGES/edith.flatpakrepo" <<EOF
