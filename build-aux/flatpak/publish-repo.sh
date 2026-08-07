@@ -104,7 +104,7 @@ Url=${PAGES_URL}repo/
 Homepage=https://github.com/mkay/edith
 Comment=Edit remote files over SFTP and FTP
 Description=A GTK4 client for editing files that live on a remote server.
-Icon=https://raw.githubusercontent.com/mkay/edith/main/data/icons/hicolor/scalable/apps/de.singular.edith.svg
+Icon=${PAGES_URL}icon.svg
 GPGKey=$(gpg --export "$GPG_KEY" | base64 -w0)
 EOF
 
