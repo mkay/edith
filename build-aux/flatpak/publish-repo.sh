@@ -86,10 +86,13 @@ flatpak build-update-repo \
 # 5. Publish. rsync --delete so a pruned object actually disappears from the
 #    served copy; without it the repo would only ever accumulate.
 [[ -d "$PAGES/.git" ]] || die "$PAGES is not a git checkout — clone the Pages repo there first"
+# Replaced wholesale rather than merged: a pruned object has to disappear from
+# the served copy too, and at this size a full copy costs less than depending on
+# rsync, which is not installed everywhere. Only repo/ is touched — the README,
+# .nojekyll and .flatpakrepo live beside it and survive.
 echo "==> Syncing into $PAGES"
-rsync -a --delete \
-    --exclude='.git/' --exclude='.nojekyll' --exclude='*.flatpakrepo' --exclude='index.html' \
-    "$REPO/" "$PAGES/repo/"
+rm -rf "$PAGES/repo"
+cp -a "$REPO" "$PAGES/repo"
 
 # 6. The file users actually click. Regenerated every time so the embedded key
 #    can never drift from the key the repo was signed with.
