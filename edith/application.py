@@ -169,6 +169,10 @@ label.error { color: @error_color; }
         about_action.connect("activate", self._on_about)
         self.add_action(about_action)
 
+        support_action = Gio.SimpleAction.new("support", None)
+        support_action.connect("activate", self._on_support)
+        self.add_action(support_action)
+
         shortcuts_action = Gio.SimpleAction.new("shortcuts", None)
         shortcuts_action.connect("activate", self._on_shortcuts)
         self.add_action(shortcuts_action)
@@ -203,6 +207,13 @@ label.error { color: @error_color; }
         # it too, but only once, and only for people updating.
         about.add_link(_("Help Translate Edith"), TRANSLATE_URL)
 
+        # The same three asks the Support dialog makes, as plain links: About
+        # is where someone lands when they go looking for the project, and the
+        # dialog is only reachable from the menu.
+        from edith.widgets.support_dialog import KOFI_URL, LIKE_URL
+        about.add_link(_("Give Edith a Like"), LIKE_URL)
+        about.add_link(_("Support Edith on Ko-fi"), KOFI_URL)
+
         # Gives About its own "What's New" section, so the notes stay reachable
         # after the one-off dialog has been dismissed.
         from edith.widgets.whats_new_dialog import release_notes_markup
@@ -212,6 +223,13 @@ label.error { color: @error_color; }
             about.set_release_notes_version(VERSION)
 
         about.present(self.props.active_window)
+
+    def _on_support(self, action, param):
+        win = self.props.active_window
+        if not win:
+            return
+        from edith.widgets import support_dialog
+        support_dialog.present(win)
 
     def do_shutdown(self):
         # Pairs with the "started" line in the diagnostic log: an app that

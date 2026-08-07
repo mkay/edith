@@ -222,6 +222,7 @@ class EdithWindow(Adw.ApplicationWindow):
         prefs_section = Gio.Menu()
         prefs_section.append(_("Preferences\u2026"), "app.preferences")
         prefs_section.append(_("Keyboard Shortcuts"), "app.shortcuts")
+        prefs_section.append(_("Support Edith"), "app.support")
         prefs_section.append(_("About Edith"), "app.about")
         menu.append_section(None, prefs_section)
 

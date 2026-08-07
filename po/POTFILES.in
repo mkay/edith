@@ -21,6 +21,7 @@ edith/widgets/server_list.py
 edith/widgets/server_panel.py
 edith/widgets/server_row.py
 edith/widgets/status_bar.py
+edith/widgets/support_dialog.py
 edith/widgets/syntax_associations_dialog.py
 edith/widgets/theme_chooser_dialog.py
 edith/widgets/transfer_panel.py
