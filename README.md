@@ -47,6 +47,30 @@ Connect to remote servers over SFTP or FTP, browse files, and edit them in a tab
 | Delete | Delete selected file(s) |
 | Backspace | Parent directory |
 
+## Install
+
+### Flatpak
+
+Edith is not on Flathub — their policy doesn't allow AI-assisted apps, and Edith
+is — so it has [its own Flatpak repository](https://mkay.github.io/edith-flatpak/):
+
+```sh
+flatpak remote-add --user edith https://mkay.github.io/edith-flatpak/edith.flatpakrepo
+flatpak install edith de.singular.edith
+```
+
+Updates then arrive with `flatpak update`. The GNOME runtime comes from Flathub,
+so that remote has to exist too:
+
+```sh
+flatpak remote-add --if-not-exists --user flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+```
+
+### Arch and Debian packages
+
+Prebuilt `.pkg.tar.zst` and `.deb` artefacts are attached to each
+[release](https://github.com/mkay/edith/releases).
+
 ## Dependencies
 
 - Python 3
