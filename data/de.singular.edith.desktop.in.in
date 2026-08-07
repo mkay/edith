@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Edith
-Comment=GTK4 native SFTP client for live remote file editing
+Comment=A code editor that talks (S)FTP
 Exec=@BIN@
 Icon=de.singular.edith
 Terminal=false

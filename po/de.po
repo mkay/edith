@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 15:42+0300\n"
+"POT-Creation-Date: 2026-08-07 15:53+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -29,17 +29,14 @@ msgid "Edith"
 msgstr "Edith"
 
 #: data/de.singular.edith.desktop.in.in:4
-msgid "GTK4 native SFTP client for live remote file editing"
-msgstr "Nativer GTK4-SFTP-Client zum direkten Bearbeiten entfernter Dateien"
-
-#: data/de.singular.edith.desktop.in.in:9
-msgid "sftp;ssh;remote;editor;server;"
-msgstr "sftp;ssh;entfernt;Editor;Server;"
-
 #: data/de.singular.edith.metainfo.xml.in:8 edith/widgets/welcome_view.py:69
 #: edith/widgets/welcome_view.py:77
 msgid "A code editor that talks (S)FTP"
 msgstr "Ein Code-Editor, der (S)FTP spricht"
+
+#: data/de.singular.edith.desktop.in.in:9
+msgid "sftp;ssh;remote;editor;server;"
+msgstr "sftp;ssh;entfernt;Editor;Server;"
 
 #: data/de.singular.edith.metainfo.xml.in:11
 msgid ""
@@ -1791,6 +1788,9 @@ msgstr ""
 #: edith/widgets/whats_new_dialog.py:124
 msgid "What's New"
 msgstr "Neuigkeiten"
+
+#~ msgid "GTK4 native SFTP client for live remote file editing"
+#~ msgstr "Nativer GTK4-SFTP-Client zum direkten Bearbeiten entfernter Dateien"
 
 #~ msgid "Import from FileZilla…"
 #~ msgstr "Aus FileZilla importieren…"
