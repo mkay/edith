@@ -301,7 +301,7 @@ msgstr "Hauptmenü"
 #: edith/window.py:274 edith/window.py:1207
 msgid "Open a file from the sidebar to start editing."
 msgstr ""
-"Öffne eine Datei in der Seitenleiste, um mit dem Bearbeiten zu beginnen."
+"Eine Datei aus der Seitenleiste wählen, um sie zu bearbeiten."
 
 #: edith/window.py:464 edith/window.py:607 edith/window.py:843
 #: edith/window.py:968 edith/window.py:1113 edith/widgets/connect_dialog.py:37
