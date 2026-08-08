@@ -396,7 +396,7 @@ class MonacoEditor(Gtk.Box):
 
     def _on_preview_toggled(self, btn):
         visible = btn.get_active()
-        btn.set_label("Close Preview" if visible else "Preview")
+        btn.set_label(_("Close Preview") if visible else _("Preview"))
         self._preview_sep.set_visible(visible)
         self._preview_panel.set_visible(visible)
         if visible:

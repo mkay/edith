@@ -372,7 +372,7 @@ class StatusBar(Gtk.Box):
         self._cursor_btn.set_visible(True)
 
     def set_word_wrap(self, enabled: bool):
-        self._wrap_btn.set_label("Wrap" if enabled else "No Wrap")
+        self._wrap_btn.set_label(_("Wrap") if enabled else _("No Wrap"))
         self._wrap_btn.set_visible(True)
 
     def set_language_name(self, name: str):

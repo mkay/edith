@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-08 13:41+0300\n"
+"POT-Creation-Date: 2026-08-08 13:58+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -241,11 +241,11 @@ msgstr ""
 msgid "Pinned"
 msgstr ""
 
-#: edith/window.py:139 edith/widgets/status_bar.py:43
+#: edith/window.py:139 edith/window.py:1406 edith/widgets/status_bar.py:43
 msgid "Disconnected"
 msgstr ""
 
-#: edith/window.py:175 edith/window.py:1417 edith/widgets/connect_dialog.py:42
+#: edith/window.py:175 edith/window.py:1418 edith/widgets/connect_dialog.py:42
 #: edith/widgets/server_panel.py:117
 msgid "Connect"
 msgstr ""
@@ -294,7 +294,7 @@ msgstr ""
 msgid "Main Menu"
 msgstr ""
 
-#: edith/window.py:274 edith/window.py:1207
+#: edith/window.py:274 edith/window.py:1208
 msgid "Open a file from the sidebar to start editing."
 msgstr ""
 
@@ -316,7 +316,7 @@ msgstr ""
 msgid "Quit Anyway"
 msgstr ""
 
-#: edith/window.py:530 edith/window.py:1099 edith/window.py:1617
+#: edith/window.py:530 edith/window.py:1099 edith/window.py:1618
 #: edith/widgets/preferences_dialog.py:639
 #: edith/widgets/server_edit_dialog.py:367
 msgid "OK"
@@ -540,6 +540,16 @@ msgstr ""
 msgid "Go"
 msgstr ""
 
+#: edith/window.py:1043
+#, python-brace-format
+msgid "Connecting to {server}…"
+msgstr ""
+
+#: edith/window.py:1094
+#, python-brace-format
+msgid "Connection failed: {error}"
+msgstr ""
+
 #: edith/window.py:1096
 msgid "Connection Failed"
 msgstr ""
@@ -552,81 +562,81 @@ msgstr ""
 msgid "Discard & Disconnect"
 msgstr ""
 
-#: edith/window.py:1160
-msgid "Disconnect (Ctrl+D)"
-msgstr ""
-
-#: edith/window.py:1196 edith/window.py:1201
+#: edith/window.py:1157 edith/window.py:1197 edith/window.py:1202
 #, python-brace-format
 msgid "Connected to {server}"
 msgstr ""
 
-#: edith/window.py:1225
+#: edith/window.py:1161
+msgid "Disconnect (Ctrl+D)"
+msgstr ""
+
+#: edith/window.py:1226
 msgid "Remove from List"
 msgstr ""
 
-#: edith/window.py:1305 edith/widgets/server_panel.py:187
+#: edith/window.py:1306 edith/widgets/server_panel.py:187
 #: edith/widgets/server_row.py:69
 msgid "Unpin"
 msgstr ""
 
-#: edith/window.py:1478 edith/window.py:1505 edith/window.py:1535
+#: edith/window.py:1479 edith/window.py:1506 edith/window.py:1536
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr ""
 
-#: edith/window.py:1479
+#: edith/window.py:1480
 #, python-brace-format
 msgid "Failed to download: {error}"
 msgstr ""
 
-#: edith/window.py:1500 edith/window.py:1530
+#: edith/window.py:1501 edith/window.py:1531
 #, python-brace-format
 msgid "Downloaded {name}"
 msgstr ""
 
-#: edith/window.py:1520
+#: edith/window.py:1521
 #, python-brace-format
 msgid "{n} file"
 msgid_plural "{n} files"
 msgstr[0] ""
 msgstr[1] ""
 
-#: edith/window.py:1580
+#: edith/window.py:1581
 #, python-brace-format
 msgid "Uploaded {name}"
 msgstr ""
 
-#: edith/window.py:1589
+#: edith/window.py:1590
 #, python-brace-format
 msgid "Failed to upload {name}: {error}"
 msgstr ""
 
-#: edith/window.py:1609
+#: edith/window.py:1610
 #, python-brace-format
 msgid "Saved {name}"
 msgstr ""
 
-#: edith/window.py:1614
+#: edith/window.py:1615
 msgid "Upload Failed"
 msgstr ""
 
-#: edith/window.py:1746
+#: edith/window.py:1747
 msgid "File Changed on Server"
 msgstr ""
 
-#: edith/window.py:1748
+#: edith/window.py:1749
 #, python-brace-format
 msgid ""
 "“{filename}” has been modified on the server.\n"
 "Do you want to reload it? Your unsaved changes will be lost."
 msgstr ""
 
-#: edith/window.py:1752
+#: edith/window.py:1753
 msgid "Keep Local"
 msgstr ""
 
-#: edith/window.py:1753
+#: edith/window.py:1754
 msgid "Reload"
 msgstr ""
 
@@ -1065,6 +1075,7 @@ msgid "Search fonts…"
 msgstr ""
 
 #: edith/widgets/font_chooser_dialog.py:85 edith/widgets/monaco_editor.py:102
+#: edith/widgets/monaco_editor.py:399
 msgid "Preview"
 msgstr ""
 
@@ -1079,6 +1090,10 @@ msgstr ""
 #, python-brace-format
 msgid ""
 "The editor for “{filename}” crashed and was reloaded. Undo history was lost."
+msgstr ""
+
+#: edith/widgets/monaco_editor.py:399
+msgid "Close Preview"
 msgstr ""
 
 #: edith/widgets/preferences_dialog.py:39
@@ -1560,7 +1575,7 @@ msgstr ""
 msgid "Go to line"
 msgstr ""
 
-#: edith/widgets/status_bar.py:88
+#: edith/widgets/status_bar.py:88 edith/widgets/status_bar.py:375
 msgid "Wrap"
 msgstr ""
 
@@ -1605,6 +1620,10 @@ msgstr ""
 #: edith/widgets/status_bar.py:371
 #, python-brace-format
 msgid "Ln {line}, Col {col}"
+msgstr ""
+
+#: edith/widgets/status_bar.py:375
+msgid "No Wrap"
 msgstr ""
 
 #. Translators: title of the "Support Edith" dialog.

@@ -1040,7 +1040,7 @@ class EdithWindow(Adw.ApplicationWindow):
         """Initiate connection to a server."""
         from edith.services.async_worker import run_async
 
-        self._set_status("connecting", f"Connecting to {server_info.host}...")
+        self._set_status("connecting", _("Connecting to {server}…").format(server=server_info.host))
 
         initial_dir = server_info.initial_directory or "/"
         protocol = getattr(server_info, "protocol", "sftp")
@@ -1091,7 +1091,7 @@ class EdithWindow(Adw.ApplicationWindow):
             self._on_connected(server_info, resolved_dir)
 
         def on_error(error):
-            self._set_status("error", f"Connection failed: {error}")
+            self._set_status("error", _("Connection failed: {error}").format(error=error))
             dialog = Adw.AlertDialog(
                 heading=_("Connection Failed"),
                 body=str(error),
@@ -1154,7 +1154,8 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_connected(self, server_info, initial_dir=None):
         """Called after successful connection."""
-        self._set_status("connected", f"Connected to {server_info.username}@{server_info.host}")
+        self._set_status("connected", _("Connected to {server}").format(
+            server=f"{server_info.username}@{server_info.host}"))
         self.lookup_action("disconnect").set_enabled(True)
         self._connect_btn.set_icon_name("edith-disconnect-symbolic")
         self._connect_btn.set_tooltip_text(_("Disconnect (Ctrl+D)"))
@@ -1402,7 +1403,7 @@ class EdithWindow(Adw.ApplicationWindow):
         self._reload_dialog_paths.clear()
         self._poll_in_flight = False
         self._status_bar.clear_transfer()
-        self._set_status("disconnected", "Disconnected")
+        self._set_status("disconnected", _("Disconnected"))
         self._status_bar.hide_file_info()
         self._header_stack.set_visible_child_name("title")
         self._back_btn.set_visible(False)
