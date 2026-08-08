@@ -47,15 +47,15 @@
        wide. The first one is the one people actually see. -->
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/mkay/edith/fb0c8d3e0c7459cd876f5f42ef44cb2eaacc493f/data/screenshots/editor.png</image>
+      <image>https://raw.githubusercontent.com/mkay/edith/4a7fb51e501192779d42068f164c674c4a67371f/data/screenshots/editor.png</image>
       <caption>Editing a remote file with syntax highlighting</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/mkay/edith/fb0c8d3e0c7459cd876f5f42ef44cb2eaacc493f/data/screenshots/servers.png</image>
+      <image>https://raw.githubusercontent.com/mkay/edith/4a7fb51e501192779d42068f164c674c4a67371f/data/screenshots/servers.png</image>
       <caption>Saved connections, grouped</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/mkay/edith/fb0c8d3e0c7459cd876f5f42ef44cb2eaacc493f/data/screenshots/browser.png</image>
+      <image>https://raw.githubusercontent.com/mkay/edith/4a7fb51e501192779d42068f164c674c4a67371f/data/screenshots/browser.png</image>
       <caption>Browsing a remote server</caption>
     </screenshot>
   </screenshots>
