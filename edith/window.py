@@ -1521,9 +1521,8 @@ class EdithWindow(Adw.ApplicationWindow):
         client = self._sftp_client
 
         def do_download(progress_cb, cancel_event, set_channel):
-            for remote_path, local_path in items:
-                client.download_recursive(remote_path, local_path, progress_cb=progress_cb,
-                                          cancel_event=cancel_event, set_channel=set_channel)
+            client.download_many(items, progress_cb=progress_cb,
+                                 cancel_event=cancel_event, set_channel=set_channel)
 
         def on_success(_):
             if on_done:

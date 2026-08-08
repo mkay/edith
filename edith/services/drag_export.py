@@ -20,6 +20,16 @@ from gi.repository import Gdk, Gio, GLib
 from edith.i18n import _, ngettext
 
 
+class _Cancel:
+    """Adapt a Gio.Cancellable to the Event-like API the clients expect."""
+
+    def __init__(self, cancellable):
+        self._cancellable = cancellable
+
+    def is_set(self):
+        return self._cancellable is not None and self._cancellable.is_cancelled()
+
+
 class RemoteFilesProvider(Gdk.ContentProvider):
     """A `text/uri-list` provider that downloads on demand."""
 
@@ -31,6 +41,8 @@ class RemoteFilesProvider(Gdk.ContentProvider):
         self._file_infos = list(file_infos)
         self._on_status = on_status
         self._uris = None          # cached result of a completed download
+        self._started = False      # a download is running or has finished
+        self._waiters = []         # requests parked until that download lands
         self._lock = threading.Lock()
 
     # ── GdkContentProvider vfuncs ─────────────────────────────────────── #
@@ -57,19 +69,36 @@ class RemoteFilesProvider(Gdk.ContentProvider):
             )
             return
 
-        # A second request for an already-materialised drag costs nothing.
-        if self._uris is not None:
-            self._write_uris(stream, self._uris, task, io_priority, cancellable)
+        # Receivers ask for the payload more than once — XDND retries, and a
+        # union provider gets queried per format.  Every one of those must be
+        # served from a *single* download: parallel batches would fetch each
+        # file several times over, open a channel per copy (which is what
+        # kills the SSH connection on a large drag), and then race to write
+        # and close the same drop stream, leaving the receiver with a
+        # truncated URI list and nothing to copy.
+        with self._lock:
+            if self._uris is not None:
+                uris = self._uris
+            else:
+                uris = None
+                self._waiters.append((task, stream, io_priority, cancellable))
+                start = not self._started
+                self._started = True
+
+        if uris is not None:
+            self._write_uris(stream, uris, task, io_priority, cancellable)
             return
+
+        if not start:
+            return          # the in-flight download will serve this waiter
 
         def worker():
             try:
-                uris = self._download_all(cancellable)
+                downloaded = self._download_all(cancellable)
             except Exception as exc:                      # noqa: BLE001
-                GLib.idle_add(self._fail, task, str(exc))
+                GLib.idle_add(self._fail, str(exc))
                 return
-            GLib.idle_add(self._succeed, task, stream, uris, io_priority,
-                          cancellable)
+            GLib.idle_add(self._succeed, downloaded)
 
         self._notify(_("Preparing {what} for drop…").format(what=self._describe()), "info")
         threading.Thread(target=worker, daemon=True).start()
@@ -90,35 +119,47 @@ class RemoteFilesProvider(Gdk.ContentProvider):
 
     def _download_all(self, cancellable):
         from edith.services.temp_manager import TempManager
+        from edith.services.transfer_queue import TransferAborted
 
+        items = []
         uris = []
         for info in self._file_infos:
-            if cancellable is not None and cancellable.is_cancelled():
-                raise GLib.Error.new_literal(
-                    Gio.io_error_quark(), "Cancelled", Gio.IOErrorEnum.CANCELLED
-                )
             local_path = str(TempManager.get_temp_path(info.path))
-            if info.is_dir:
-                self._client.download_recursive(info.path, local_path)
-            else:
-                self._client.download(info.path, local_path)
+            items.append((info.path, local_path))
             uris.append(GLib.filename_to_uri(os.path.abspath(local_path), None))
+
+        # One channel for the whole batch, not one per file.
+        try:
+            self._client.download_many(items, cancel_event=_Cancel(cancellable))
+        except TransferAborted:
+            raise GLib.Error.new_literal(
+                Gio.io_error_quark(), "Cancelled", Gio.IOErrorEnum.CANCELLED
+            ) from None
         return uris
 
-    def _succeed(self, task, stream, uris, io_priority, cancellable):
+    def _succeed(self, uris):
         with self._lock:
             self._uris = uris
+            waiters = self._waiters
+            self._waiters = []
         self._notify(_("Dropped {what}").format(what=self._describe()), "success")
-        self._write_uris(stream, uris, task, io_priority, cancellable)
+        for task, stream, io_priority, cancellable in waiters:
+            self._write_uris(stream, uris, task, io_priority, cancellable)
         return GLib.SOURCE_REMOVE
 
-    def _fail(self, task, message):
+    def _fail(self, message):
+        with self._lock:
+            waiters = self._waiters
+            self._waiters = []
+            # Let a later request retry: a drag can be dropped again.
+            self._started = False
         self._notify(_("Drag failed: {message}").format(message=message), "error")
-        task.return_error(
-            GLib.Error.new_literal(
-                Gio.io_error_quark(), message, Gio.IOErrorEnum.FAILED
+        for task, _stream, _io_priority, _cancellable in waiters:
+            task.return_error(
+                GLib.Error.new_literal(
+                    Gio.io_error_quark(), message, Gio.IOErrorEnum.FAILED
+                )
             )
-        )
         return GLib.SOURCE_REMOVE
 
     def _write_uris(self, stream, uris, task, io_priority, cancellable):

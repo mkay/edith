@@ -341,6 +341,19 @@ class FtpClient:
                             progress_cb(received, file_size)
                     self._ftp.retrbinary(f"RETR {remote_path}", callback)
 
+    def download_many(self, items, progress_cb=None, cancel_event=None, set_channel=None):
+        """Download several remote paths.
+
+        Mirrors SftpClient.download_many() so callers need no protocol
+        branch.  FTP has no channels to conserve, so this is a plain loop
+        over the single control connection.
+        """
+        for remote_path, local_path in items:
+            if cancel_event is not None and cancel_event.is_set():
+                raise TransferAborted()
+            self.download_recursive(remote_path, local_path, progress_cb=progress_cb,
+                                    cancel_event=cancel_event, set_channel=set_channel)
+
     def _download_dir_unlocked(self, remote_path: str, local_path: str, progress_cb=None,
                                cancel_event=None):
         Path(local_path).mkdir(parents=True, exist_ok=True)
