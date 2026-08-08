@@ -71,6 +71,20 @@ else
         | sed -n 's/^[[:space:]]*[-*•][[:space:]]*/    • /p'
 fi
 
+# 0b. gettext is imported as `_`, which is also what an ignored callback
+# argument or tuple element gets called. Where one scope does both, the
+# translation function is gone: a TypeError at the first toast that runs, or —
+# when the binding is a loop variable — a dialog that cannot open at all. No
+# linter flags this, and the failure only surfaces once a user reaches the
+# line, so it is checked here rather than discovered in a release.
+if [[ -n "${SKIP_I18N_CHECK:-}" ]]; then
+    echo "==> SKIP_I18N_CHECK set, not scanning for shadowed gettext calls"
+elif ! python3 scripts/check-i18n-shadowing.py "$PROJECT_NAME"; then
+    echo "ERROR: a shadowed gettext call would ship in $TAG."
+    echo "       Rename the binding (not the call), or re-run with SKIP_I18N_CHECK=1."
+    exit 1
+fi
+
 # 1. Update version in meson.build, PKGBUILD, and Python package
 sed -i "0,/version: '[^']*'/{s/version: '[^']*'/version: '$VERSION'/}" meson.build
 sed -i "s/^pkgver=.*/pkgver=$VERSION/" PKGBUILD
