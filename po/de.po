@@ -407,7 +407,8 @@ msgstr[1] ""
 #: edith/window.py:676
 msgid "Passwords could not be imported — you'll need to re-enter them."
 msgstr ""
-"Passwörter konnten nicht importiert werden – du musst sie erneut eingeben."
+"Passwörter konnten nicht importiert werden – sie müssen erneut eingegeben "
+"werden."
 
 #: edith/window.py:680
 msgid ""
@@ -628,7 +629,7 @@ msgid ""
 "Do you want to reload it? Your unsaved changes will be lost."
 msgstr ""
 "„{filename}“ wurde auf dem Server geändert.\n"
-"Möchtest du sie neu laden? Deine ungespeicherten Änderungen gehen verloren."
+"Soll sie neu geladen werden? Nicht gespeicherte Änderungen gehen verloren."
 
 #: edith/window.py:1753
 msgid "Keep Local"
@@ -921,8 +922,8 @@ msgstr "Datei existiert bereits"
 msgid ""
 "“{name}” already exists in the current directory. Do you want to replace it?"
 msgstr ""
-"„{name}“ existiert bereits im aktuellen Ordner. Möchtest du den vorhandenen "
-"Eintrag ersetzen?"
+"„{name}“ existiert bereits im aktuellen Ordner. Soll der vorhandene Eintrag "
+"ersetzt werden?"
 
 #: edith/widgets/file_browser.py:1714 edith/widgets/file_browser.py:2036
 #: edith/widgets/file_browser.py:2174 edith/widgets/preferences_dialog.py:630
@@ -942,8 +943,8 @@ msgid ""
 "{listing} already exist in the current directory. Do you want to replace "
 "them?"
 msgstr ""
-"{listing} existieren bereits im aktuellen Ordner. Möchtest du die "
-"vorhandenen Einträge ersetzen?"
+"{listing} existieren bereits im aktuellen Ordner. Sollen die vorhandenen "
+"Einträge ersetzt werden?"
 
 #: edith/widgets/file_browser.py:1747
 #, python-brace-format
@@ -988,15 +989,15 @@ msgstr "Objekt existiert bereits"
 #, python-brace-format
 msgid "“{name}” already exists in “{dest}”. Do you want to replace it?"
 msgstr ""
-"„{name}“ existiert bereits in „{dest}“. Möchtest du den vorhandenen Eintrag "
-"ersetzen?"
+"„{name}“ existiert bereits in „{dest}“. Soll der vorhandene Eintrag ersetzt "
+"werden?"
 
 #: edith/widgets/file_browser.py:2039 edith/widgets/file_browser.py:2177
 #, python-brace-format
 msgid "{listing} already exist in “{dest}”. Do you want to replace them?"
 msgstr ""
-"{listing} existieren bereits in „{dest}“. Möchtest du die vorhandenen "
-"Einträge ersetzen?"
+"{listing} existieren bereits in „{dest}“. Sollen die vorhandenen Einträge "
+"ersetzt werden?"
 
 #: edith/widgets/file_browser.py:2086
 #, python-brace-format
@@ -1092,8 +1093,8 @@ msgid ""
 "The editor for “{filename}” crashed and was restored with your unsaved "
 "changes. Undo history was lost."
 msgstr ""
-"Der Editor für „{filename}“ ist abgestürzt und wurde mit deinen "
-"ungespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging "
+"Der Editor für „{filename}“ ist abgestürzt und wurde mit den nicht "
+"gespeicherten Änderungen wiederhergestellt. Die Rückgängig-Chronik ging "
 "dabei verloren."
 
 #: edith/widgets/monaco_editor.py:309
@@ -1200,8 +1201,8 @@ msgid ""
 "settings. See the Monaco Editor API docs for available options."
 msgstr ""
 "Rohe Monaco-Editor-Optionen als JSON. Diese werden über alle anderen "
-"Einstellungen gelegt. Verfügbare Optionen findest du in der Monaco-Editor-"
-"API-Dokumentation."
+"Einstellungen gelegt. Verfügbare Optionen siehe Monaco-Editor-API-"
+"Dokumentation."
 
 #: edith/widgets/preferences_dialog.py:141
 #: edith/widgets/syntax_associations_dialog.py:20
@@ -1230,9 +1231,8 @@ msgid ""
 "Choose which local application opens a file type when you use “Open with…” "
 "in the file browser. Without an entry here, the system default is used."
 msgstr ""
-"Wähle aus, welche lokale Anwendung einen Dateityp öffnet, wenn du „Öffnen "
-"mit…“ im Dateibrowser verwendest. Ohne Eintrag hier wird die Systemvorgabe "
-"verwendet."
+"Legt fest, welche lokale Anwendung einen Dateityp öffnet, wenn „Öffnen mit…“ "
+"im Dateibrowser verwendet wird. Ohne Eintrag hier gilt die Systemvorgabe."
 
 #: edith/widgets/preferences_dialog.py:182
 #: edith/widgets/syntax_associations_dialog.py:33
@@ -1327,7 +1327,7 @@ msgstr "Wird beim Neustart von Edith angewendet"
 
 #: edith/widgets/preferences_dialog.py:472
 msgid "Your language missing?"
-msgstr "Fehlt deine Sprache?"
+msgstr "Sprache nicht dabei?"
 
 #: edith/widgets/preferences_dialog.py:473
 msgid "Edith can be translated into any language — it's a text file, not code."
@@ -1585,7 +1585,7 @@ msgstr "Server löschen?"
 #: edith/widgets/server_panel.py:369
 #, python-brace-format
 msgid "Remove “{name}” from your servers?"
-msgstr "„{name}“ aus deinen Servern entfernen?"
+msgstr "„{name}“ aus der Serverliste entfernen?"
 
 #: edith/widgets/status_bar.py:78
 msgid "Ln 1, Col 1"
@@ -1680,7 +1680,7 @@ msgid ""
 "press it — just the press and an anonymised IP."
 msgstr ""
 "Öffnet eine Seite auf meiner Website mit einem Like-Button. Gezählt wird "
-"erst, wenn du ihn drückst — nur der Klick und eine anonymisierte IP."
+"erst, wenn er geklickt wird — nur der Klick und eine anonymisierte IP."
 
 #: edith/widgets/support_dialog.py:79
 msgid "The nerdy way"
@@ -1781,7 +1781,7 @@ msgid ""
 "Add a server to get started."
 msgstr ""
 "Noch keine Server eingerichtet.\n"
-"Füge einen Server hinzu."
+"Einen Server hinzufügen, um zu beginnen."
 
 #. Translators: dialog title for the release notes shown after an
 #. update. The notes themselves are always English.
