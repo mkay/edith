@@ -142,9 +142,9 @@ Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT) and bundles the
 
 ## Screenshots
 
-![Welcome screen](assets/edith_welcome.png)
+![Editing a remote file with syntax highlighting](data/screenshots/editor.png)
 
-![Connected with file open](assets/edith_connected.png)
+![Saved connections, grouped](data/screenshots/servers.png)
 
 ## Disclaimer
 
