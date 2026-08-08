@@ -618,7 +618,7 @@ msgstr "Verwerfen und trennen"
 #: edith/window.py:1157 edith/window.py:1197 edith/window.py:1202
 #, python-brace-format
 msgid "Connected to {server}"
-msgstr "Mit {server} verbunden"
+msgstr "Verbunden mit {server}"
 
 #: edith/window.py:1161
 msgid "Disconnect (Ctrl+D)"
