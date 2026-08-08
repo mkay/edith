@@ -128,7 +128,7 @@ class ArchiveDialog(Adw.Dialog):
         group.add(self._entry)
 
         string_list = Gtk.StringList()
-        for _, label in _ARCHIVE_FORMATS:
+        for _fmt, label in _ARCHIVE_FORMATS:
             string_list.append(label)
         self._format_row = Adw.ComboRow(title=_("Format"), model=string_list)
         self._format_row.set_selected(0)
@@ -146,7 +146,7 @@ class ArchiveDialog(Adw.Dialog):
             return
         ext = _ARCHIVE_FORMATS[self._format_row.get_selected()][0]
         # Strip any existing archive extension the user may have typed
-        for known_ext, _ in _ARCHIVE_FORMATS:
+        for known_ext, _label in _ARCHIVE_FORMATS:
             if name.endswith(f".{known_ext}"):
                 name = name[: -len(known_ext) - 1]
                 break

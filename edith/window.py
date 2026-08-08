@@ -1495,7 +1495,7 @@ class EdithWindow(Adw.ApplicationWindow):
             client.download_recursive(remote_path, local_path, progress_cb=progress_cb,
                                       cancel_event=cancel_event, set_channel=set_channel)
 
-        def on_success(_):
+        def on_success(_result):
             if on_done:
                 on_done()
             self.show_toast(_("Downloaded {name}").format(name=name), "success")
@@ -1525,7 +1525,7 @@ class EdithWindow(Adw.ApplicationWindow):
             client.download_many(items, progress_cb=progress_cb,
                                  cancel_event=cancel_event, set_channel=set_channel)
 
-        def on_success(_):
+        def on_success(_result):
             if on_done:
                 on_done()
             self.show_toast(_("Downloaded {name}").format(name=label), "success")

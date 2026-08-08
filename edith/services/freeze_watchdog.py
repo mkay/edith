@@ -47,6 +47,25 @@ def _log_path():
         return None
 
 
+def fault_log_path():
+    """Where faulthandler should write native crash and SIGUSR1 dumps.
+
+    The same file `record()` appends to, so a hard crash lands in sequence
+    with the session's "started"/"shutdown" lines and can be dated by them —
+    faulthandler writes bare stacks with no timestamp of their own.  Raises
+    OSError when there is no writable cache directory, which is the caller's
+    signal to fall back to stderr.
+
+    Note that rotation (`_MAX_LOG_BYTES`) renames the file; a dump written
+    after that lands in `freeze-dump.log.1`, since faulthandler holds the
+    descriptor rather than the path.
+    """
+    path = _log_path()
+    if path is None:
+        raise OSError("no writable cache directory for the diagnostic log")
+    return path
+
+
 def record(text):
     """Append a line to the diagnostic log. Never raises."""
     path = _log_path()

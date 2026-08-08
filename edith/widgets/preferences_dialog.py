@@ -782,7 +782,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         toolbar_view.set_content(content_box)
         dialog.set_child(toolbar_view)
 
-        def on_apply(_):
+        def on_apply(_button):
             buf = text_view.get_buffer()
             raw = buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False)
             # Strip JS-style // comments before parsing

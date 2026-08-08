@@ -1021,7 +1021,7 @@ class FileBrowser(Gtk.Box):
         name = fi.name
         from edith.services.async_worker import run_async
 
-        def on_deleted(_):
+        def on_deleted(_result):
             self.load_directory(self._current_path)
             if self._window:
                 self._window.show_toast(_("Deleted \u201c{name}\u201d").format(name=name), "success")
@@ -1106,7 +1106,7 @@ class FileBrowser(Gtk.Box):
         from edith.services.async_worker import run_async
         dest_name = dest_dir.rstrip("/").rsplit("/", 1)[-1] or dest_dir
 
-        def on_moved(_):
+        def on_moved(_result):
             self.load_directory(self._current_path)
             if self._window:
                 self._window.show_toast(_("Moved \u201c{name}\u201d to \u201c{dest}\u201d").format(name=name, dest=dest_name), "success")
@@ -1848,7 +1848,7 @@ class FileBrowser(Gtk.Box):
         def do_download():
             client.download_recursive(remote_path, local_path)
 
-        def on_done(_):
+        def on_done(_result):
             # Watch the local copy so edits made in the external app are
             # uploaded back. Directories aren't round-tripped.
             if not fi.is_dir:
@@ -2076,7 +2076,7 @@ class FileBrowser(Gtk.Box):
                 client.rename(sp, target)
 
         n = len(valid)
-        def on_done(_):
+        def on_done(_result):
             self.load_directory(self._current_path)
             if self._window:
                 if n == 1:

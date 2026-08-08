@@ -11,6 +11,10 @@ import sys
 from edith import LOCALEDIR
 from edith.i18n import GETTEXT_DOMAIN
 from edith.application import EdithApplication
+from edith.services import freeze_watchdog
+
+# Held open for the process lifetime; see the faulthandler setup in main().
+_fault_log = None
 
 
 def main():
@@ -21,16 +25,30 @@ def main():
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    # `kill -USR1 <pid>` dumps a Python stack trace for every thread to
-    # stderr.  The only way to see what a frozen UI is actually waiting on,
-    # since a hung main loop can't report anything itself.
+    # `kill -USR1 <pid>` dumps a Python stack trace for every thread, and a
+    # native crash (segfault, abort in GTK/WebKit) dumps one too.  The only
+    # way to see what a frozen UI is waiting on, since a hung main loop can't
+    # report anything itself.
+    #
+    # Both go to the diagnostic log, not to stderr: started from a launcher
+    # there is no stderr to read, so a hard crash would otherwise leave
+    # nothing behind — unlike a Python exception, which the excepthook
+    # records.  The file is deliberately kept open for the process lifetime;
+    # faulthandler writes to the descriptor, so closing it would disarm both
+    # handlers.
+    global _fault_log
     try:
-        faulthandler.enable()
+        _fault_log = open(freeze_watchdog.fault_log_path(), "a", buffering=1)
+    except OSError:
+        _fault_log = None
+    try:
+        faulthandler.enable(file=_fault_log or sys.stderr)
         # chain=False: the default SIGUSR1 action terminates the process, and
         # dumping a hung UI must not kill it.
-        faulthandler.register(signal.SIGUSR1, all_threads=True, chain=False)
+        faulthandler.register(signal.SIGUSR1, all_threads=True, chain=False,
+                              file=_fault_log or sys.stderr)
     except (AttributeError, ValueError, RuntimeError):
-        # No usable stderr (e.g. launched detached) — not worth failing over.
+        # No usable output (e.g. launched detached) — not worth failing over.
         pass
 
     # Honour the user's locale, and point the C library at our catalogues so
