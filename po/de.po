@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-07 15:53+0300\n"
+"POT-Creation-Date: 2026-08-08 13:41+0300\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -42,12 +42,11 @@ msgstr "sftp;ssh;entfernt;Editor;Server;"
 msgid ""
 "Edith is a GTK4 and libadwaita client for editing files that live on a "
 "remote server. Connect over SFTP or FTP, browse the file tree, and open "
-"files in a tabbed editor — changes are uploaded back when you save."
+"files in a tabbed editor — changes are saved straight to the server."
 msgstr ""
-"Edith ist ein GTK4- und libadwaita-Client zum Bearbeiten von Dateien auf "
-"einem entfernten Server. Per SFTP oder FTP verbinden, den Dateibaum "
-"durchsuchen und Dateien in einem Editor mit Tabs öffnen — Änderungen werden "
-"beim Speichern wieder hochgeladen."
+"Edith ist ein GTK4- und libadwaita-Client zum Bearbeiten von Dateien via "
+"(S)FTP. Verbinden, den Dateibaum durchsuchen und Dateien in einem Code-"
+"Editor mit Tabs öffnen — gespeichert wird direkt auf dem Server."
 
 #: data/de.singular.edith.metainfo.xml.in:16
 msgid "Features:"
@@ -351,7 +350,7 @@ msgstr "Abbrechen"
 msgid "Quit Anyway"
 msgstr "Trotzdem beenden"
 
-#: edith/window.py:530 edith/window.py:1099 edith/window.py:1618
+#: edith/window.py:530 edith/window.py:1099 edith/window.py:1617
 #: edith/widgets/preferences_dialog.py:639
 #: edith/widgets/server_edit_dialog.py:367
 msgid "OK"
@@ -624,7 +623,7 @@ msgstr "Aus Liste entfernen"
 msgid "Unpin"
 msgstr "Lösen"
 
-#: edith/window.py:1478 edith/window.py:1505 edith/window.py:1536
+#: edith/window.py:1478 edith/window.py:1505 edith/window.py:1535
 #, python-brace-format
 msgid "Download failed: {error}"
 msgstr "Herunterladen fehlgeschlagen: {error}"
@@ -634,7 +633,7 @@ msgstr "Herunterladen fehlgeschlagen: {error}"
 msgid "Failed to download: {error}"
 msgstr "Herunterladen fehlgeschlagen: {error}"
 
-#: edith/window.py:1500 edith/window.py:1531
+#: edith/window.py:1500 edith/window.py:1530
 #, python-brace-format
 msgid "Downloaded {name}"
 msgstr "{name} heruntergeladen"
@@ -646,30 +645,30 @@ msgid_plural "{n} files"
 msgstr[0] "{n} Datei"
 msgstr[1] "{n} Dateien"
 
-#: edith/window.py:1581
+#: edith/window.py:1580
 #, python-brace-format
 msgid "Uploaded {name}"
 msgstr "{name} hochgeladen"
 
-#: edith/window.py:1590
+#: edith/window.py:1589
 #, python-brace-format
 msgid "Failed to upload {name}: {error}"
 msgstr "Hochladen von {name} fehlgeschlagen: {error}"
 
-#: edith/window.py:1610
+#: edith/window.py:1609
 #, python-brace-format
 msgid "Saved {name}"
 msgstr "{name} gespeichert"
 
-#: edith/window.py:1615
+#: edith/window.py:1614
 msgid "Upload Failed"
 msgstr "Hochladen fehlgeschlagen"
 
-#: edith/window.py:1747
+#: edith/window.py:1746
 msgid "File Changed on Server"
 msgstr "Datei auf dem Server geändert"
 
-#: edith/window.py:1749
+#: edith/window.py:1748
 #, python-brace-format
 msgid ""
 "“{filename}” has been modified on the server.\n"
@@ -678,32 +677,32 @@ msgstr ""
 "„{filename}“ wurde auf dem Server geändert.\n"
 "Soll sie neu geladen werden? Nicht gespeicherte Änderungen gehen verloren."
 
-#: edith/window.py:1753
+#: edith/window.py:1752
 msgid "Keep Local"
 msgstr "Lokale behalten"
 
-#: edith/window.py:1754
+#: edith/window.py:1753
 msgid "Reload"
 msgstr "Neu laden"
 
-#: edith/services/drag_export.py:74
+#: edith/services/drag_export.py:103
 #, python-brace-format
 msgid "Preparing {what} for drop…"
 msgstr "{what} wird zum Ablegen vorbereitet…"
 
-#: edith/services/drag_export.py:85 edith/widgets/file_browser.py:419
+#: edith/services/drag_export.py:114 edith/widgets/file_browser.py:419
 #, python-brace-format
 msgid "{n} item"
 msgid_plural "{n} items"
 msgstr[0] "{n} Objekt"
 msgstr[1] "{n} Objekte"
 
-#: edith/services/drag_export.py:111
+#: edith/services/drag_export.py:145
 #, python-brace-format
 msgid "Dropped {what}"
 msgstr "{what} abgelegt"
 
-#: edith/services/drag_export.py:116
+#: edith/services/drag_export.py:156
 #, python-brace-format
 msgid "Drag failed: {message}"
 msgstr "Ziehen fehlgeschlagen: {message}"
@@ -1778,7 +1777,7 @@ msgstr "Zuordnung .{ext} entfernen"
 
 #: edith/widgets/theme_chooser_dialog.py:125
 msgid "Light or dark, matching your desktop"
-msgstr "Hell oder dunkel, passend zum Desktop"
+msgstr "Hell oder dunkel, Desktop-Einstellungen folgend"
 
 #: edith/widgets/transfer_panel.py:46
 msgid "Queued"

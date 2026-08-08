@@ -11,7 +11,7 @@
     <p>
       Edith is a GTK4 and libadwaita client for editing files that live on a
       remote server. Connect over SFTP or FTP, browse the file tree, and open
-      files in a tabbed editor — changes are uploaded back when you save.
+      files in a tabbed editor — changes are saved straight to the server.
     </p>
     <p>Features:</p>
     <ul>
