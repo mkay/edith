@@ -44,75 +44,99 @@ msgid ""
 "remote server. Connect over SFTP or FTP, browse the file tree, and open "
 "files in a tabbed editor — changes are uploaded back when you save."
 msgstr ""
+"Edith ist ein GTK4- und libadwaita-Client zum Bearbeiten von Dateien auf "
+"einem entfernten Server. Per SFTP oder FTP verbinden, den Dateibaum "
+"durchsuchen und Dateien in einem Editor mit Tabs öffnen — Änderungen werden "
+"beim Speichern wieder hochgeladen."
 
 #: data/de.singular.edith.metainfo.xml.in:16
 msgid "Features:"
-msgstr ""
+msgstr "Funktionen:"
 
 #: data/de.singular.edith.metainfo.xml.in:18
 msgid "SFTP over SSH, plain FTP, and FTPS with explicit or implicit TLS"
 msgstr ""
+"SFTP über SSH, einfaches FTP und FTPS mit expliziter oder impliziter TLS-"
+"Verschlüsselung"
 
 #: data/de.singular.edith.metainfo.xml.in:19
 msgid ""
 "Saved connections with password or key authentication, organised into drag-"
 "and-drop groups"
 msgstr ""
+"Gespeicherte Verbindungen mit Passwort- oder Schlüsselauthentifizierung, per "
+"Drag-and-Drop in Gruppen organisiert"
 
 #: data/de.singular.edith.metainfo.xml.in:20
 msgid ""
 "A file browser with sortable columns, multi-select, pinned files, and a "
 "breadcrumb path bar"
 msgstr ""
+"Ein Dateibrowser mit sortierbaren Spalten, Mehrfachauswahl, angehefteten "
+"Dateien und einer Pfadleiste"
 
 #: data/de.singular.edith.metainfo.xml.in:21
 msgid ""
 "Syntax highlighting for over 80 languages, Emmet, find and replace, and "
 "customisable themes and fonts"
 msgstr ""
+"Syntaxhervorhebung für über 80 Sprachen, Emmet, Suchen und Ersetzen sowie "
+"anpassbare Themes und Schriftarten"
 
 #: data/de.singular.edith.metainfo.xml.in:22
 msgid ""
 "Live editing: files are downloaded to a temporary location, edited locally, "
 "and uploaded on save, with automatic reload when the server copy changes"
 msgstr ""
+"Direktes Bearbeiten: Dateien werden an einen temporären Ort heruntergeladen, "
+"lokal bearbeitet und beim Speichern hochgeladen — mit automatischem "
+"Neuladen, wenn sich die Serverkopie ändert"
 
 #: data/de.singular.edith.metainfo.xml.in:23
 msgid ""
 "Open any remote file in a local application, with per-file-type associations "
 "you choose"
 msgstr ""
+"Entfernte Dateien in einer lokalen Anwendung öffnen, mit frei wählbaren "
+"Zuordnungen je Dateityp"
 
 #: data/de.singular.edith.metainfo.xml.in:24
 msgid "An image viewer for raster files and a side-by-side preview for SVGs"
 msgstr ""
+"Ein Bildbetrachter für Rasterbilder und eine Vorschau für SVGs neben dem "
+"Editor"
 
 #: data/de.singular.edith.metainfo.xml.in:25
 msgid "Credentials stored in the system keyring, never in plain text on disk"
 msgstr ""
+"Zugangsdaten im System-Schlüsselbund gespeichert, nie im Klartext auf der "
+"Festplatte"
 
 #: data/de.singular.edith.metainfo.xml.in:26
 msgid ""
 "Upload tools: keep frequently used scripts to hand and upload them to any "
 "directory from the context menu"
 msgstr ""
+"Upload-Werkzeuge: häufig genutzte Skripte griffbereit halten und über das "
+"Kontextmenü in jedes Verzeichnis hochladen"
 
 #: data/de.singular.edith.metainfo.xml.in:28
 msgid ""
 "Edith is alpha software — early access for the brave and the bug-tolerant."
 msgstr ""
+"Edith ist Alpha-Software — Early Access für Mutige und Fehlertolerante."
 
 #: data/de.singular.edith.metainfo.xml.in:51
 msgid "Browsing a remote server"
-msgstr ""
+msgstr "Durchsuchen eines entfernten Servers"
 
 #: data/de.singular.edith.metainfo.xml.in:55
 msgid "Editing a remote file with syntax highlighting"
-msgstr ""
+msgstr "Bearbeiten einer entfernten Datei mit Syntaxhervorhebung"
 
 #: data/de.singular.edith.metainfo.xml.in:59
 msgid "Saved connections, grouped"
-msgstr ""
+msgstr "Gespeicherte Verbindungen, gruppiert"
 
 #: data/de.singular.edith.metainfo.xml.in:82
 msgid ""
@@ -120,12 +144,19 @@ msgid ""
 "theme that can follow the system light/dark setting. See the project release "
 "notes for the full list."
 msgstr ""
+"Ergänzt Import und Export der Serverliste, einen Dialog zur Unterstützung "
+"von Edith und ein Syntax-Theme, das der Hell/Dunkel-Einstellung des Systems "
+"folgen kann. Die vollständige Liste steht in den Veröffentlichungshinweisen "
+"des Projekts."
 
 #: data/de.singular.edith.metainfo.xml.in:92
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."
 msgstr ""
+"Ergänzt einen Neuigkeiten-Dialog, eine deutsche Übersetzung und eine "
+"Einladung an Übersetzer. Die vollständige Liste steht in den "
+"Veröffentlichungshinweisen des Projekts."
 
 #. Translators: replace this with your name(s); it is shown in the
 #. About dialog. Untranslated, the placeholder is hidden rather than
@@ -264,11 +295,11 @@ msgstr "Vor"
 
 #: edith/window.py:219
 msgid "Import Servers…"
-msgstr ""
+msgstr "Serverliste importieren…"
 
 #: edith/window.py:220
 msgid "Export Servers…"
-msgstr ""
+msgstr "Serverliste exportieren…"
 
 #: edith/window.py:223
 msgid "Preferences…"
@@ -300,8 +331,7 @@ msgstr "Hauptmenü"
 
 #: edith/window.py:274 edith/window.py:1207
 msgid "Open a file from the sidebar to start editing."
-msgstr ""
-"Eine Datei aus der Seitenleiste wählen, um sie zu bearbeiten."
+msgstr "Eine Datei aus der Seitenleiste wählen, um sie zu bearbeiten."
 
 #: edith/window.py:464 edith/window.py:607 edith/window.py:843
 #: edith/window.py:968 edith/window.py:1113 edith/widgets/connect_dialog.py:37
@@ -329,19 +359,19 @@ msgstr "OK"
 
 #: edith/window.py:536 edith/window.py:597
 msgid "Import Servers"
-msgstr ""
+msgstr "Serverliste importieren"
 
 #: edith/window.py:539
 msgid "Server lists"
-msgstr ""
+msgstr "Serverlisten"
 
 #: edith/window.py:543 edith/window.py:795
 msgid "Edith export (*.json)"
-msgstr ""
+msgstr "Edith-Export (*.json)"
 
 #: edith/window.py:546
 msgid "FileZilla sites (*.xml)"
-msgstr ""
+msgstr "FileZilla-Sites (*.xml)"
 
 #: edith/window.py:569 edith/window.py:583 edith/window.py:632
 #: edith/window.py:774
@@ -352,6 +382,8 @@ msgstr "Import fehlgeschlagen"
 msgid ""
 "That location can't be read directly. Copy the file to this computer first."
 msgstr ""
+"Dieser Ort kann nicht direkt gelesen werden. Die Datei zuerst auf diesen "
+"Computer kopieren."
 
 #: edith/window.py:588
 msgid "No Servers Found"
@@ -365,14 +397,17 @@ msgstr "Die gewählte Datei enthielt keine Servereinträge."
 #, python-brace-format
 msgid "The file contains {n} server."
 msgid_plural "The file contains {n} servers."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "Die Datei enthält {n} Server."
+msgstr[1] "Die Datei enthält {n} Server."
 
 #: edith/window.py:603
 msgid ""
 "Merging keeps your current servers and updates any that match. Replacing "
 "discards your current list entirely."
 msgstr ""
+"Beim Zusammenführen bleibt die aktuelle Serverliste erhalten und "
+"übereinstimmende Einträge werden aktualisiert. Beim Ersetzen wird die "
+"aktuelle Liste vollständig verworfen."
 
 #: edith/window.py:608 edith/widgets/file_browser.py:1723
 #: edith/widgets/file_browser.py:2045 edith/widgets/file_browser.py:2183
@@ -381,7 +416,7 @@ msgstr "Ersetzen"
 
 #: edith/window.py:609
 msgid "Merge"
-msgstr ""
+msgstr "Zusammenführen"
 
 #: edith/window.py:647
 #, python-brace-format
@@ -394,15 +429,15 @@ msgstr[1] "{n} Server importiert."
 #, python-brace-format
 msgid "Updated {n} existing server."
 msgid_plural "Updated {n} existing servers."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} vorhandenen Server aktualisiert."
+msgstr[1] "{n} vorhandene Server aktualisiert."
 
 #: edith/window.py:661
 #, python-brace-format
 msgid "Added {n} group."
 msgid_plural "Added {n} groups."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} Gruppe hinzugefügt."
+msgstr[1] "{n} Gruppen hinzugefügt."
 
 #: edith/window.py:676
 msgid "Passwords could not be imported — you'll need to re-enter them."
@@ -416,6 +451,10 @@ msgid ""
 "still find any passwords already in your keyring; on another machine you'll "
 "need to re-enter them."
 msgstr ""
+"Diese Datei enthält keine gespeicherten Passwörter. Auf diesem Rechner "
+"finden die wiederhergestellten Server weiterhin alle Passwörter, die bereits "
+"im Schlüsselbund liegen; auf einem anderen Rechner müssen sie erneut "
+"eingegeben werden."
 
 #: edith/window.py:685 edith/window.py:709 edith/window.py:770
 msgid "Import Complete"
@@ -423,76 +462,80 @@ msgstr "Import abgeschlossen"
 
 #: edith/window.py:689
 msgid "Saved Passwords Found"
-msgstr ""
+msgstr "Gespeicherte Passwörter gefunden"
 
 #: edith/window.py:691
 msgid ""
 "This file includes encrypted passwords. Enter the passphrase used when it "
 "was exported to add them to your keyring."
 msgstr ""
+"Diese Datei enthält verschlüsselte Passwörter. Zum Hinzufügen zum "
+"Schlüsselbund die beim Export verwendete Passphrase eingeben."
 
 #: edith/window.py:696 edith/window.py:837
 msgid "Passphrase"
-msgstr ""
+msgstr "Passphrase"
 
 #: edith/window.py:700
 msgid "Skip"
-msgstr ""
+msgstr "Überspringen"
 
 #: edith/window.py:701
 msgid "Restore Passwords"
-msgstr ""
+msgstr "Passwörter wiederherstellen"
 
 #: edith/window.py:710
 msgid "Saved passwords were skipped."
-msgstr ""
+msgstr "Gespeicherte Passwörter wurden übersprungen."
 
 #: edith/window.py:736
 msgid "Restoring Passwords"
-msgstr ""
+msgstr "Passwörter werden wiederhergestellt"
 
 #: edith/window.py:737
 msgid "Adding saved passwords to your keyring…"
-msgstr ""
+msgstr "Gespeicherte Passwörter werden zum Schlüsselbund hinzugefügt…"
 
 #: edith/window.py:759
 #, python-brace-format
 msgid "Restored {n} saved password."
 msgid_plural "Restored {n} saved passwords."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} gespeichertes Passwort wiederhergestellt."
+msgstr[1] "{n} gespeicherte Passwörter wiederhergestellt."
 
 #: edith/window.py:766
 #, python-brace-format
 msgid "{n} belonged to a server that wasn't imported."
 msgid_plural "{n} belonged to servers that weren't imported."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} gehörte zu einem Server, der nicht importiert wurde."
+msgstr[1] "{n} gehörten zu Servern, die nicht importiert wurden."
 
 #: edith/window.py:783
 msgid "Nothing to Export"
-msgstr ""
+msgstr "Nichts zu exportieren"
 
 #: edith/window.py:784
 msgid "You have no saved servers yet."
-msgstr ""
+msgstr "Es sind noch keine Server gespeichert."
 
 #: edith/window.py:791
 msgid "Export Servers"
-msgstr ""
+msgstr "Serverliste exportieren"
 
 #: edith/window.py:815 edith/window.py:908
 msgid "Export Failed"
-msgstr ""
+msgstr "Export fehlgeschlagen"
 
 #: edith/window.py:816
 msgid ""
 "That location can't be written to directly. Choose a folder on this computer."
 msgstr ""
+"An diesen Ort kann nicht direkt geschrieben werden. Einen Ordner auf diesem "
+"Computer wählen."
 
 #: edith/window.py:827
 msgid "Include Saved Passwords?"
-msgstr ""
+msgstr "Gespeicherte Passwörter einschließen?"
 
 #: edith/window.py:829
 msgid ""
@@ -500,44 +543,48 @@ msgid ""
 "They can be included, encrypted with a passphrase you choose — you'll need "
 "that same passphrase to import them on the other machine."
 msgstr ""
+"Passwörter liegen im System-Schlüsselbund und wandern nicht in einen "
+"einfachen Export. Sie können verschlüsselt mit einer frei wählbaren "
+"Passphrase eingeschlossen werden — dieselbe Passphrase wird zum Import auf "
+"dem anderen Rechner benötigt."
 
 #: edith/window.py:838
 msgid "Confirm Passphrase"
-msgstr ""
+msgstr "Passphrase bestätigen"
 
 #: edith/window.py:844
 msgid "Without Passwords"
-msgstr ""
+msgstr "Ohne Passwörter"
 
 #: edith/window.py:845
 msgid "Include Passwords"
-msgstr ""
+msgstr "Mit Passwörtern"
 
 #: edith/window.py:893
 #, python-brace-format
 msgid "Exported {n} server."
 msgid_plural "Exported {n} servers."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} Server exportiert."
+msgstr[1] "{n} Server exportiert."
 
 #: edith/window.py:897
 #, python-brace-format
 msgid "{n} saved password was included, encrypted."
 msgid_plural "{n} saved passwords were included, encrypted."
-msgstr[0] ""
-msgstr[1] ""
+msgstr[0] "{n} gespeichertes Passwort wurde verschlüsselt eingeschlossen."
+msgstr[1] "{n} gespeicherte Passwörter wurden verschlüsselt eingeschlossen."
 
 #: edith/window.py:902
 msgid "No saved passwords were found to include."
-msgstr ""
+msgstr "Es wurden keine gespeicherten Passwörter zum Einschließen gefunden."
 
 #: edith/window.py:904
 msgid "Passwords are not included — they stay in your system keyring."
-msgstr ""
+msgstr "Passwörter sind nicht enthalten — sie bleiben im System-Schlüsselbund."
 
 #: edith/window.py:905
 msgid "Export Complete"
-msgstr ""
+msgstr "Export abgeschlossen"
 
 #: edith/window.py:963
 msgid "Line number…"
@@ -664,34 +711,38 @@ msgstr "Ziehen fehlgeschlagen: {message}"
 #: edith/services/servers_transfer.py:116
 msgid "This file's saved passwords are in a format this version can't read."
 msgstr ""
+"Die gespeicherten Passwörter dieser Datei liegen in einem Format vor, das "
+"diese Version nicht lesen kann."
 
 #: edith/services/servers_transfer.py:124
 msgid "Wrong passphrase."
-msgstr ""
+msgstr "Falsche Passphrase."
 
 #: edith/services/servers_transfer.py:126
 #: edith/services/servers_transfer.py:130
 msgid "The saved passwords in this file are damaged."
-msgstr ""
+msgstr "Die gespeicherten Passwörter in dieser Datei sind beschädigt."
 
 #: edith/services/servers_transfer.py:199
 msgid ""
 "Unrecognised file format — expected an Edith export or a FileZilla "
 "sitemanager.xml."
 msgstr ""
+"Unbekanntes Dateiformat — erwartet wurde ein Edith-Export oder eine "
+"FileZilla-sitemanager.xml."
 
 #: edith/services/servers_transfer.py:207
 #, python-brace-format
 msgid "This file is not valid JSON: {error}"
-msgstr ""
+msgstr "Diese Datei ist kein gültiges JSON: {error}"
 
 #: edith/services/servers_transfer.py:210
 msgid "This file does not contain an Edith server list."
-msgstr ""
+msgstr "Diese Datei enthält keine Edith-Serverliste."
 
 #: edith/services/servers_transfer.py:215
 msgid "This file's server list is malformed."
-msgstr ""
+msgstr "Die Serverliste in dieser Datei ist fehlerhaft."
 
 #: edith/widgets/connect_dialog.py:24
 #, python-brace-format
@@ -1374,7 +1425,7 @@ msgstr "Höhe"
 #: edith/widgets/preferences_dialog.py:534
 #: edith/widgets/theme_chooser_dialog.py:125
 msgid "Follow System"
-msgstr ""
+msgstr "Systemeinstellung folgen"
 
 #: edith/widgets/preferences_dialog.py:612
 msgid "Restart Edith?"
@@ -1727,7 +1778,7 @@ msgstr "Zuordnung .{ext} entfernen"
 
 #: edith/widgets/theme_chooser_dialog.py:125
 msgid "Light or dark, matching your desktop"
-msgstr ""
+msgstr "Hell oder dunkel, passend zum Desktop"
 
 #: edith/widgets/transfer_panel.py:46
 msgid "Queued"
