@@ -77,6 +77,16 @@
   </supports>
 
   <releases>
+    <release version="0.8.0" date="2026-08-13">
+      <description>
+        <p>
+          Completes the German translation, fixes a set of crashes while
+          connecting, browsing and saving, and downloads a dragged-out file
+          only once. See the project release notes for the full list.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.8.0</url>
+    </release>
     <release version="0.7.0" date="2026-08-07">
       <description>
         <p>

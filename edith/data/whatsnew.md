@@ -20,8 +20,6 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Move your servers between machines: import and export the server list, in Edith's own format or FileZilla's — and carry saved passwords along in an encrypted export.
-- A new Support Edith item in the main menu, with three ways to help. Two of them are free.
-- The syntax theme can now follow your system's light/dark setting instead of being pinned to one.
-- Opening a file is quicker: Edith no longer re-reads its whole config a dozen times per tab.
-- Edith is now GPL-3.0-or-later, and there is a Flatpak build alongside the Arch and Debian packages.
+- Edith now speaks German throughout. The last untranslated corners — the status bar, dialogs and connection messages — have caught up with the rest.
+- Fixed a set of crashes that could hit while connecting, browsing or saving.
+- Dragging a file out of Edith now downloads it once instead of twice, so large files land noticeably sooner.
