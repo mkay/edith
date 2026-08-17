@@ -63,13 +63,16 @@ modules:
           - edith-0.6.0.tar.gz
           - edith-0.7.0.tar.gz
           - edith-0.8.0.tar.gz
+          - edith-0.8.1.tar.gz
           - edith_0.5.0_amd64.deb
           - edith_0.6.0_amd64.deb
           - edith_0.7.0_amd64.deb
           - edith_0.8.0_amd64.deb
+          - edith_0.8.1_amd64.deb
           - edith-0.6.0-1-any.pkg.tar.zst
           - edith-0.7.0-1-any.pkg.tar.zst
           - edith-0.8.0-1-any.pkg.tar.zst
+          - edith-0.8.1-1-any.pkg.tar.zst
           - edith/data/monaco/vs
           - edith/data/monaco/emmet.js
 
