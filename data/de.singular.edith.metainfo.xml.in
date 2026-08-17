@@ -77,6 +77,15 @@
   </supports>
 
   <releases>
+    <release version="0.8.1" date="2026-08-17">
+      <description>
+        <p>
+          Fixes a rare crash caused by file type icons, which could bring Edith
+          down while opening a folder.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.8.1</url>
+    </release>
     <release version="0.8.0" date="2026-08-13">
       <description>
         <p>

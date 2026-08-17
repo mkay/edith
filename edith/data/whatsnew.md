@@ -20,6 +20,4 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Edith now speaks German throughout. The last untranslated corners — the status bar, dialogs and connection messages — have caught up with the rest.
-- Fixed a set of crashes that could hit while connecting, browsing or saving.
-- Dragging a file out of Edith now downloads it once instead of twice, so large files land noticeably sooner.
+- Fixed a rare crash caused by file type icons.
