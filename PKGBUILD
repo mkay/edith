@@ -5,7 +5,7 @@ pkgrel=1
 pkgdesc="GTK4 native SFTP client for live remote file editing"
 arch=('any')
 url='https://github.com/mkay/edith'
-license=('MIT')
+license=('GPL-3.0-or-later')
 depends=(
   'python'
   'python-gobject'
