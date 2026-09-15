@@ -269,7 +269,6 @@ class EdithWindow(Adw.ApplicationWindow):
         self._content_stack.add_named(self._server_panel, "servers")
 
         self._connected_page = Adw.StatusPage(
-            icon_name="edith-status-connected-symbolic",
             title="",
             description=_("Open a file from the sidebar to start editing."),
             vexpand=True,
@@ -1238,8 +1237,13 @@ class EdithWindow(Adw.ApplicationWindow):
             row.add_controller(gesture)
             lb.append(row)
 
+        group = Adw.PreferencesGroup(
+            title=_("Recent Files"),
+            description=_("Files you opened on this server before."),
+        )
+        group.add(lb)
         clamp = Adw.Clamp(maximum_size=480, margin_top=4, margin_bottom=4)
-        clamp.set_child(lb)
+        clamp.set_child(group)
         self._connected_page.set_child(clamp)
 
     def _on_recent_activated(self, row):

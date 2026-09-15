@@ -628,6 +628,14 @@ msgstr "Trennen (Strg+D)"
 msgid "Remove from List"
 msgstr "Aus Liste entfernen"
 
+#: edith/window.py:1241
+msgid "Recent Files"
+msgstr "Zuletzt geöffnet"
+
+#: edith/window.py:1242
+msgid "Files you opened on this server before."
+msgstr "Dateien, die Du auf diesem Server zuletzt geöffnet hast."
+
 #: edith/window.py:1306 edith/widgets/server_panel.py:187
 #: edith/widgets/server_row.py:69
 msgid "Unpin"
