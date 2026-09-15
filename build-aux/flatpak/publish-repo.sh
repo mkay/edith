@@ -15,6 +15,10 @@
 
 set -euo pipefail
 
+# Machine-specific settings (Pages checkout, signing key) live outside the
+# repo. .private/ is gitignored; see the template in the comments below.
+[[ -f .private/publish.env ]] && source .private/publish.env
+
 APP_ID="de.singular.edith"
 MANIFEST="build-aux/flatpak/de.singular.edith.yaml"
 
@@ -23,15 +27,18 @@ BUILD_DIR="${EDITH_FLATPAK_BUILD:-$HOME/.cache/edith-flatpak/build}"
 REPO="${EDITH_FLATPAK_REPO:-$HOME/.cache/edith-flatpak/repo}"
 
 # Working checkout of the GitHub Pages repo that serves the files.
-PAGES="${EDITH_PAGES_CHECKOUT:-$HOME/Staging/edith-flatpak}"
+# EDITH_PAGES_CHECKOUT=/path/to/edith-flatpak
+PAGES="${EDITH_PAGES_CHECKOUT:-}"
 PAGES_URL="${EDITH_PAGES_URL:-https://mkay.github.io/edith-flatpak/}"
 
 # Signing key. Passphrase-protected by design, so gpg-agent will prompt once.
+# EDITH_GPG_KEY=<fingerprint>
 GPG_KEY="${EDITH_GPG_KEY:-}"
 
 die() { echo "ERROR: $*" >&2; exit 1; }
 
 [[ -f "$MANIFEST" ]] || die "run this from the repository root ($MANIFEST not found)"
+[[ -n "$PAGES" ]] || die "set EDITH_PAGES_CHECKOUT to your edith-flatpak Pages checkout"
 [[ -n "$GPG_KEY" ]] || die "set EDITH_GPG_KEY to the signing key's fingerprint"
 gpg --list-secret-keys "$GPG_KEY" >/dev/null 2>&1 || die "no secret key for $GPG_KEY"
 
