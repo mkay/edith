@@ -75,9 +75,11 @@ modules:
           - edith-0.8.1-1-any.pkg.tar.zst
           - edith/data/monaco/vs
           - edith/data/monaco/emmet.js
+          - edith/data/monaco/terser.js
+          - edith/data/monaco/csso.js
 
       # scripts/fetch-monaco.sh shells out to `npm pack`, which cannot run
-      # during a Flatpak build (no network). The same two tarballs are pinned
+      # during a Flatpak build (no network). The same tarballs are pinned
       # here. Keep these versions in sync with that script.
       - type: archive
         url: https://registry.npmjs.org/monaco-editor/-/monaco-editor-0.52.2.tgz
@@ -91,11 +93,25 @@ modules:
         strip-components: 1
         dest: .emmet-src
 
-      # Mirrors fetch-monaco.sh: only min/vs ships, and emmet is renamed to the
-      # name editor.html loads (<script src="emmet.js">).
+      - type: archive
+        url: https://registry.npmjs.org/terser/-/terser-5.51.2.tgz
+        sha256: e861b3a42eef7477ba7df38483fd0b802b4954637d396ca04316f26e30996d89
+        strip-components: 1
+        dest: .terser-src
+
+      - type: archive
+        url: https://registry.npmjs.org/csso/-/csso-5.0.5.tgz
+        sha256: f7605918aff2de20dd00b741edbc888f0f8ec0f79c060745c987a1ef50e54fd8
+        strip-components: 1
+        dest: .csso-src
+
+      # Mirrors fetch-monaco.sh: only min/vs ships, and the bundles are
+      # renamed to what editor.html and services/minifier.py load.
       - type: shell
         commands:
           - mkdir -p edith/data/monaco
           - mv .monaco-src/min/vs edith/data/monaco/vs
           - mv .emmet-src/dist/emmet-monaco.min.js edith/data/monaco/emmet.js
-          - rm -rf .monaco-src .emmet-src
+          - mv .terser-src/dist/bundle.min.js edith/data/monaco/terser.js
+          - mv .csso-src/dist/csso.js edith/data/monaco/csso.js
+          - rm -rf .monaco-src .emmet-src .terser-src .csso-src

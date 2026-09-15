@@ -18,6 +18,7 @@ from edith.services.config import ConfigService
 # compile-bytecode.py — an uncached import here stalls the UI for seconds).
 from edith.services.async_worker import run_async as _run_async
 from edith.services.drag_export import RemoteFilesProvider
+from edith.services.minifier import MINIFY_KINDS
 from edith.services.temp_manager import TempManager
 from edith.widgets.file_dialogs import NameDialog, ChmodDialog, FileInfoDialog, DirectoryChooserDialog, ArchiveDialog, InformationDialog
 from edith.i18n import _, ngettext
@@ -559,6 +560,7 @@ class FileBrowser(Gtk.Box):
         actions_submenu.append(_("Move to"), "file.move-to")
         actions_submenu.append(_("Copy to"), "file.copy-to")
         actions_submenu.append(_("Duplicate"), "file.duplicate")
+        actions_submenu.append(_("Minify"), "file.minify")
 
         self._tools_submenu = Gio.Menu()
 
@@ -623,6 +625,11 @@ class FileBrowser(Gtk.Box):
         self._duplicate_action = Gio.SimpleAction.new("duplicate", None)
         self._duplicate_action.connect("activate", self._on_duplicate)
         group.add_action(self._duplicate_action)
+
+        self._minify_action = Gio.SimpleAction.new("minify", None)
+        self._minify_action.connect("activate", self._on_minify)
+        self._minify_action.set_enabled(False)
+        group.add_action(self._minify_action)
 
         self._copy_path_action = Gio.SimpleAction.new("copy-path", None)
         self._copy_path_action.connect("activate", self._on_copy_path)
@@ -732,6 +739,9 @@ class FileBrowser(Gtk.Box):
         self._pin_action.set_enabled(has_item and not multi)
         self._open_locally_action.set_enabled(
             has_item and not multi and fi is not None and not fi.is_dir)
+        self._minify_action.set_enabled(
+            has_item and not multi and fi is not None and not fi.is_dir
+            and fi.name.rsplit(".", 1)[-1].lower() in MINIFY_KINDS)
 
         # Archive: only for SFTP connections, when item is readable and
         # current directory is writable.
@@ -1064,6 +1074,39 @@ class FileBrowser(Gtk.Box):
         run_async(do_dups,
                   lambda _: self.load_directory(self._current_path),
                   lambda e: self._show_op_error(str(e)))
+
+    def _on_minify(self, action, param):
+        infos = self._get_context_file_infos()
+        if len(infos) != 1 or not self._window or not self._window.sftp_client:
+            return
+        fi = infos[0]
+        client = self._window.sftp_client
+        stem, ext = fi.name.rsplit(".", 1)
+        kind = MINIFY_KINDS[ext.lower()]
+        # Always <stem>.min.<ext>, even for a file that is already *.min.js:
+        # the source is never overwritten. An existing target goes through
+        # the usual upload overwrite prompt.
+        min_name = f"{stem}.min.{ext}"
+        src_local = TempManager.get_temp_path(fi.path)
+        dst_local = TempManager.get_temp_path(f"{self._current_path.rstrip('/')}/{min_name}")
+
+        def do_minify():
+            from edith.services.minifier import minify
+            client.download(fi.path, str(src_local))
+            code = src_local.read_text(encoding="utf-8")
+            dst_local.write_text(minify(code, kind), encoding="utf-8")
+            return code, dst_local.stat().st_size
+
+        def on_done(result):
+            code, size = result
+            before = len(code.encode("utf-8"))
+            pct = 100 - round(size * 100 / before) if before else 0
+            self._do_upload_paths([str(dst_local)])
+            self._window.show_toast(
+                _("Minified “{name}” ({pct}% smaller)").format(name=fi.name, pct=pct),
+                "success")
+
+        _run_async(do_minify, on_done, lambda e: self._show_op_error(str(e)))
 
     def _on_copy_path(self, action, param):
         infos = self._get_context_file_infos()

@@ -6,6 +6,8 @@ src/
 __pycache__/
 edith/data/monaco/vs/
 edith/data/monaco/emmet.js
+edith/data/monaco/terser.js
+edith/data/monaco/csso.js
 *.log
 *.deb
 deb-staging/

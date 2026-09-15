@@ -883,6 +883,14 @@ msgstr "Kopieren nach"
 msgid "Duplicate"
 msgstr "Duplizieren"
 
+#: edith/widgets/file_browser.py:562
+msgid "Minify"
+msgstr "Minimieren"
+
+#: edith/widgets/file_browser.py:1105
+msgid "Minified “{name}” ({pct}% smaller)"
+msgstr "„{name}“ minimiert ({pct} % kleiner)"
+
 #: edith/widgets/file_browser.py:566
 msgid "Actions"
 msgstr "Aktionen"
