@@ -26,10 +26,8 @@ fi
 
 # Cleanup handler for temp directories
 AUR_DIR=""
-DEB_STAGING="$(pwd)/deb-staging"
 cleanup() {
     [[ -n "$AUR_DIR" && -d "$AUR_DIR" ]] && rm -rf "$AUR_DIR"
-    [[ -d "$DEB_STAGING" ]] && rm -rf "$DEB_STAGING"
     # Never let a false test in the EXIT trap mask a successful run.
     return 0
 }
@@ -142,48 +140,11 @@ if ! git diff --quiet PKGBUILD .SRCINFO; then
     done
 fi
 
-# 6. Build .deb package via meson install + nfpm
-echo "==> Building .deb package"
-PKGDESC=$(grep -oP "^pkgdesc=\"\K[^\"]+" PKGBUILD || echo "$PROJECT_NAME")
-PKGLICENSE=$(grep -oP "^license=\('\K[^']+" PKGBUILD || echo "MIT")
-
-# Install into a staging directory to capture all files
-rm -rf "$DEB_STAGING"
-meson setup builddir --prefix=/usr --wipe
-meson compile -C builddir
-DESTDIR="$DEB_STAGING" meson install -C builddir --no-rebuild
-
-# Generate nfpm contents from the staged install tree
-CONTENTS=""
-while IFS= read -r file; do
-    dst="${file#"$DEB_STAGING"}"
-    CONTENTS+="  - src: $file
-    dst: $dst
-"
-done < <(find "$DEB_STAGING" -type f)
-
-cat > /tmp/nfpm-release.yaml <<NFPM
-name: $PROJECT_NAME
-arch: amd64
-version: $VERSION
-maintainer: mk
-description: $PKGDESC
-license: $PKGLICENSE
-depends:
-  - python3
-  - gir1.2-gtk-4.0
-  - gir1.2-adw-1
-  - gir1.2-webkit-6.0
-  - python3-gi
-  - python3-paramiko
-  - python3-keyring
-contents:
-$CONTENTS
-NFPM
-
-VERSION="$VERSION" nfpm package -p deb -f /tmp/nfpm-release.yaml
-rm -rf "$DEB_STAGING"
-DEB_PKG=$(ls -t "${PROJECT_NAME}"*.deb 2>/dev/null | head -1)
+# 6. Build .deb package
+# build-deb.sh owns the whole deb recipe — staging, metadata and the runtime
+# dependency list — so a package built by hand from a branch is the same
+# package a release ships.
+DEB_PKG=$(./build-deb.sh "$VERSION")
 
 # 7. Create releases
 RELEASE_ASSETS=()
