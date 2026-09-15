@@ -245,6 +245,9 @@ class EditorPanel(Gtk.Box):
         if isinstance(widget, MonacoEditor):
             remote_path = widget.open_file.remote_path
 
+            if widget.open_file.is_deleted:
+                self._confirm_close_deleted(page, widget)
+                return True  # Inhibit default close, we handle it
             if widget.open_file.is_modified:
                 self._confirm_close(page, widget)
                 return True  # Inhibit default close, we handle it
@@ -252,6 +255,9 @@ class EditorPanel(Gtk.Box):
             self._tabs.pop(remote_path, None)
         else:
             open_file = getattr(widget, "open_file", None)
+            if open_file and open_file.is_deleted:
+                self._confirm_close_deleted(page, widget)
+                return True
             if open_file:
                 self._tabs.pop(open_file.remote_path, None)
 
@@ -275,6 +281,61 @@ class EditorPanel(Gtk.Box):
 
         dialog.connect("response", self._on_close_response, page, editor)
         dialog.present(win)
+
+    def _confirm_close_deleted(self, page, widget):
+        """The file vanished from the server; the tab is its only copy."""
+        dialog = Adw.AlertDialog(
+            heading=_("File Was Deleted"),
+            body=_("\u201c{name}\u201d no longer exists on the server. "
+                   "Closing the tab loses its content.").format(name=widget.open_file.filename),
+        )
+        dialog.add_response("close", _("Close"))
+        dialog.add_response("cancel", _("Cancel"))
+        dialog.add_response("restore", _("Restore"))
+        dialog.set_response_appearance("close", Adw.ResponseAppearance.DESTRUCTIVE)
+        dialog.set_response_appearance("restore", Adw.ResponseAppearance.SUGGESTED)
+        dialog.connect("response", self._on_close_deleted_response, page, widget)
+        dialog.present(self.get_root())
+
+    def _on_close_deleted_response(self, dialog, response, page, widget):
+        open_file = widget.open_file
+        if response == "restore":
+            def upload():
+                if self._window:
+                    self._window.save_remote_file(open_file.remote_path, open_file.local_path)
+            # Editors hold the newest content in Monaco, viewers on disk.
+            if isinstance(widget, MonacoEditor):
+                widget.save_to_disk(on_done=upload)
+            else:
+                upload()
+            self._tab_view.close_page_finish(page, False)
+        elif response == "close":
+            self._tabs.pop(open_file.remote_path, None)
+            self._record_close(page)
+            self._tab_view.close_page_finish(page, True)
+        else:
+            self._tab_view.close_page_finish(page, False)
+
+    def set_deleted(self, remote_path: str, deleted: bool):
+        """Flag a tab whose file is gone from the server (or back again)."""
+        page = self._tabs.get(remote_path)
+        if not page:
+            return
+        open_file = page.get_child().open_file
+        if open_file.is_deleted == deleted:
+            return
+        open_file.is_deleted = deleted
+        self._refresh_title(page)
+
+    def _refresh_title(self, page):
+        open_file = page.get_child().open_file
+        title = open_file.filename
+        if open_file.is_deleted:
+            # Translators: tab title suffix for a file removed on the server
+            title = _("{name} (Deleted)").format(name=title)
+        if open_file.is_modified:
+            title = "\u2022 " + title
+        page.set_title(title)
 
     def _on_close_response(self, dialog, response, page, editor):
         if response == "save":
@@ -302,11 +363,7 @@ class EditorPanel(Gtk.Box):
         remote_path = editor.open_file.remote_path
         page = self._tabs.get(remote_path)
         if page:
-            filename = os.path.basename(remote_path)
-            if modified:
-                page.set_title("• {}".format(filename))
-            else:
-                page.set_title(filename)
+            self._refresh_title(page)
 
     def apply_syntax_scheme(self, scheme_id: str):
         """Apply a style scheme to all open editor tabs."""
@@ -376,7 +433,8 @@ class EditorPanel(Gtk.Box):
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, MonacoEditor) and editor.open_file.is_modified:
+            if isinstance(editor, MonacoEditor) and (
+                    editor.open_file.is_modified or editor.open_file.is_deleted):
                 return True
         return False
 
@@ -386,7 +444,8 @@ class EditorPanel(Gtk.Box):
         for i in range(self._tab_view.get_n_pages()):
             page = self._tab_view.get_nth_page(i)
             editor = page.get_child()
-            if isinstance(editor, MonacoEditor) and editor.open_file.is_modified:
+            if isinstance(editor, MonacoEditor) and (
+                    editor.open_file.is_modified or editor.open_file.is_deleted):
                 names.append(editor.open_file.filename)
         return names
 

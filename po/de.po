@@ -805,6 +805,30 @@ msgstr "Andere schließen"
 msgid "Close to Right"
 msgstr "Rechts davon schließen"
 
+#: edith/window.py:1274
+msgid "“{name}” no longer exists on the server."
+msgstr "„{name}“ existiert auf dem Server nicht mehr."
+
+#: edith/window.py:1277
+msgid "Keep"
+msgstr "Behalten"
+
+#: edith/widgets/editor_panel.py:305
+msgid "File Was Deleted"
+msgstr "Datei wurde gelöscht"
+
+#: edith/widgets/editor_panel.py:306
+msgid "“{name}” no longer exists on the server. Closing the tab loses its content."
+msgstr "„{name}“ existiert auf dem Server nicht mehr. Beim Schließen des Tabs geht der Inhalt verloren."
+
+#: edith/widgets/editor_panel.py:311
+msgid "Restore"
+msgstr "Wiederherstellen"
+
+#: edith/widgets/editor_panel.py:346
+msgid "{name} (Deleted)"
+msgstr "{name} (gelöscht)"
+
 #: edith/widgets/editor_panel.py:267
 msgid "Save Changes?"
 msgstr "Änderungen speichern?"

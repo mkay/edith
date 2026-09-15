@@ -11,6 +11,9 @@ class OpenFile:
     remote_path: str
     local_path: str
     is_modified: bool = False
+    # Set when polling finds the file gone from the server; the tab still
+    # holds the content, so closing it needs a warning like unsaved changes.
+    is_deleted: bool = False
 
     @property
     def filename(self) -> str:

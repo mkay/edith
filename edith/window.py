@@ -1222,11 +1222,15 @@ class EdithWindow(Adw.ApplicationWindow):
             row.connect("activated", self._on_recent_activated)
 
             row_menu = Gio.Menu()
+            row_menu.append(_("Show in Sidebar"), "recents.show-in-sidebar")
             row_menu.append(_("Remove from List"), "recents.remove")
             row_popover = Gtk.PopoverMenu(menu_model=row_menu, has_arrow=False)
             row_popover.set_parent(row)
 
             row_group = Gio.SimpleActionGroup()
+            show_action = Gio.SimpleAction.new("show-in-sidebar", None)
+            show_action.connect("activate", self._on_recent_show_in_sidebar)
+            row_group.add_action(show_action)
             remove_action = Gio.SimpleAction.new("remove", None)
             remove_action.connect("activate", self._on_recent_remove)
             row_group.add_action(remove_action)
@@ -1247,7 +1251,45 @@ class EdithWindow(Adw.ApplicationWindow):
         self._connected_page.set_child(clamp)
 
     def _on_recent_activated(self, row):
-        self.open_remote_file(row._recent_path)
+        self._if_recent_exists(row._recent_path, self.open_remote_file)
+
+    def _if_recent_exists(self, path, then):
+        """Run `then(path)` if the recent file is still on the server;
+        otherwise say so and offer to drop it from the list."""
+        client = self._sftp_client
+        if not client:
+            return
+
+        def check():
+            try:
+                client.stat(path)
+                return True
+            except FileNotFoundError:
+                return False
+
+        def on_checked(exists):
+            if exists:
+                then(path)
+                return
+            dialog = Adw.AlertDialog(
+                heading=_("File Was Deleted"),
+                body=_("\u201c{name}\u201d no longer exists on the server.").format(
+                    name=os.path.basename(path)),
+            )
+            dialog.add_response("keep", _("Keep"))
+            dialog.add_response("remove", _("Remove from List"))
+            dialog.set_response_appearance("remove", Adw.ResponseAppearance.DESTRUCTIVE)
+            dialog.set_default_response("remove")
+            dialog.connect("response", self._on_missing_recent_response, path)
+            dialog.present(self)
+
+        from edith.services.async_worker import run_async
+        run_async(check, on_checked, lambda e: self.show_toast(str(e), "error"))
+
+    def _on_missing_recent_response(self, dialog, response, path):
+        if response == "remove" and self._connected_server:
+            ConfigService.delete_recent(self._connected_server.id, path)
+            self._rebuild_recents_child(self._connected_server)
 
     def _on_row_right_click(self, gesture, n_press, x, y, row, popover):
         gesture.set_state(Gtk.EventSequenceState.CLAIMED)
@@ -1256,6 +1298,10 @@ class EdithWindow(Adw.ApplicationWindow):
         rect.x, rect.y, rect.width, rect.height = int(x), int(y), 1, 1
         popover.set_pointing_to(rect)
         popover.popup()
+
+    def _on_recent_show_in_sidebar(self, action, param):
+        if self._recents_context_path:
+            self._if_recent_exists(self._recents_context_path, self.reveal_in_sidebar)
 
     def _on_recent_remove(self, action, param):
         if self._recents_context_path and self._connected_server:
@@ -1611,6 +1657,7 @@ class EdithWindow(Adw.ApplicationWindow):
         def on_success(mtime):
             self._remote_mtimes[remote_path] = mtime
             self._saving_paths.discard(remote_path)
+            self._editor_panel.set_deleted(remote_path, False)
             self.show_toast(_("Saved {name}").format(name=name), "success")
 
         def on_error(error):
@@ -1652,17 +1699,28 @@ class EdithWindow(Adw.ApplicationWindow):
 
         def do_stat():
             changed = []
+            gone = []
+            present = []
             for rpath, old_mtime in paths_to_check.items():
                 try:
                     new_mtime = client.stat(rpath).st_mtime
+                    present.append(rpath)
                     if new_mtime != old_mtime:
                         changed.append((rpath, new_mtime))
+                except FileNotFoundError:
+                    gone.append(rpath)
                 except OSError:
-                    pass
-            return changed
+                    pass  # transient; leave the deleted flag as it was
+            return changed, gone, present
 
-        def on_stat_done(changed):
+        def on_stat_done(result):
+            changed, gone, present = result
             self._poll_in_flight = False
+            for rpath in gone:
+                if rpath not in self._saving_paths:
+                    self._editor_panel.set_deleted(rpath, True)
+            for rpath in present:
+                self._editor_panel.set_deleted(rpath, False)
             for rpath, new_mtime in changed:
                 # A save may have started *after* paths_to_check was collected;
                 # its own upload bumps the remote mtime, which would otherwise
