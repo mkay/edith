@@ -77,6 +77,16 @@
   </supports>
 
   <releases>
+    <release version="0.9.0" date="2026-09-15">
+      <description>
+        <p>
+          Adds a Minify action for JavaScript and CSS files, marks open tabs
+          whose file was deleted on the server and offers to restore them, and
+          gives recent files a Show in Sidebar entry.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.9.0</url>
+    </release>
     <release version="0.8.1" date="2026-08-17">
       <description>
         <p>
