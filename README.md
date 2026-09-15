@@ -104,6 +104,14 @@ ninja -C builddir
 sudo meson install -C builddir
 ```
 
+## Building (Debian package)
+
+Requires [nfpm](https://nfpm.goreleaser.com) in addition to meson and ninja. The package is written to the repository root and named after the version in `meson.build`.
+
+```sh
+./build-deb.sh
+```
+
 ## Usage
 
 ```sh
