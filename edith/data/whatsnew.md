@@ -20,4 +20,6 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Fixed a rare crash caused by file type icons.
+- Minify: right-click a .js or .css file → Actions → Minify writes a .min copy next to it (terser and csso).
+- A tab whose file was deleted on the server is marked "(Deleted)"; closing it warns and offers to restore the file.
+- Recent files: right-click → Show in Sidebar, and a missing file now says so and can be dropped from the list.
