@@ -5,7 +5,7 @@ A GTK4/libadwaita SFTP/FTP client for live remote file editing.
 
 Connect to remote servers over SFTP or FTP, browse files, and edit them in a tabbed editor with syntax highlighting — changes are uploaded back on save.
 
-> **Alpha software.** Early access for the brave and the bug‑tolerant.
+> Early-stage release — expect rough edges. Feedback and bug reports welcome via Issues.
 
 ![Edith Icon](data/de.singular.edith.svg)
 
