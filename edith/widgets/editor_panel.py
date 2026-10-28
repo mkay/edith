@@ -28,6 +28,7 @@ class EditorPanel(Gtk.Box):
 
         self._window = None
         self._tabs = {}  # remote_path -> Adw.TabPage
+        self._force_close = False  # close_all skips the save/deleted prompts
         self._closed_tab_paths = []  # stack for reopen-closed-tab (most recent last)
 
         # Tab bar
@@ -214,11 +215,12 @@ class EditorPanel(Gtk.Box):
 
     def close_all(self):
         """Close all tabs."""
-        paths = list(self._tabs.keys())
-        for path in paths:
-            page = self._tabs.get(path)
-            if page:
-                self._tab_view.close_page_finish(page, True)
+        self._force_close = True
+        try:
+            for i in reversed(range(self._tab_view.get_n_pages())):
+                self._tab_view.close_page(self._tab_view.get_nth_page(i))
+        finally:
+            self._force_close = False
         self._tabs.clear()
 
     def _record_close(self, page):
@@ -241,6 +243,9 @@ class EditorPanel(Gtk.Box):
         self._window.open_remote_file(remote_path)
 
     def _on_close_page(self, tab_view, page):
+        if self._force_close:
+            tab_view.close_page_finish(page, True)
+            return True
         widget = page.get_child()
         if isinstance(widget, MonacoEditor):
             remote_path = widget.open_file.remote_path
