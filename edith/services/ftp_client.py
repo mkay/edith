@@ -60,6 +60,17 @@ class _ImplicitFTP_TLS(_FTP_TLS):
         return self.welcome
 
 
+def _unverified_context():
+    """A context that accepts any certificate, to look at one that failed.
+
+    Only used to compare the certificate against one the user trusted.
+    """
+    context = ssl.create_default_context()
+    context.check_hostname = False
+    context.verify_mode = ssl.CERT_NONE  # nosec B501
+    return context
+
+
 class _DataChannel:
     """The handle an FTP transfer registers with the transfer queue.
 
@@ -133,6 +144,9 @@ class FtpFileAttr:
         self.st_uid = int(facts["unix.uid"]) if "unix.uid" in facts else None
         self.st_gid = int(facts["unix.gid"]) if "unix.gid" in facts else None
         self.st_atime = self.st_mtime
+        # MLSD/MLST's id for the file itself (device and inode on Unix), the
+        # same for every path that reaches it.
+        self.unique = facts.get("unique", "")
 
 
 class FtpClient:
@@ -185,31 +199,33 @@ class FtpClient:
         """Connect to an FTP server.
 
         encryption: "none", "explicit_optional", "explicit_required", "implicit"
+
+        TLS certificates are verified against the system trust store. One
+        that fails is accepted only if the user trusted that exact
+        certificate for this host and port before; otherwise this raises
+        trust_store.UntrustedCertificate, before any credentials are sent.
         """
+        from edith.services import trust_store
 
-        if encryption == "implicit":
-            ftp = _ImplicitFTP_TLS(timeout=timeout)
-        elif encryption in ("explicit_required", "explicit_optional"):
-            ftp = _FTP_TLS(timeout=timeout)
-        else:
-            ftp = FTP(timeout=timeout)  # nosec B321
-
-        ftp.connect(host, port)
-
-        tls = encryption == "implicit"
-        if encryption == "explicit_required":
-            ftp.auth()
-            tls = True
-        elif encryption == "explicit_optional":
-            try:
-                ftp.auth()
-                tls = True
-            except (error_perm, error_reply, error_temp):
-                # The server refused AUTH (500/502/504/534…): carry on in
-                # plain text, as "if available" promises. A failed handshake
-                # (OSError) is not a refusal and still aborts — the
-                # connection is unusable after it anyway.
-                pass
+        try:
+            ftp, tls = self._open(host, port, encryption, timeout,
+                                  ssl.create_default_context())
+        except ssl.SSLCertVerificationError as e:
+            reason = e.verify_message or str(e)
+            # Connect again without verification to see the certificate,
+            # and keep this connection only if it is the trusted one: the
+            # check is on the certificate this session actually uses.
+            ftp, tls = self._open(host, port, encryption, timeout,
+                                  _unverified_context())
+            if not tls:
+                # It offered TLS a moment ago: refusing it now is a downgrade,
+                # not "TLS unavailable".
+                ftp.close()
+                raise
+            der = ftp.sock.getpeercert(binary_form=True)
+            if not trust_store.is_trusted_certificate(host, port, der):
+                ftp.close()
+                raise trust_store.UntrustedCertificate(host, port, der, reason)
 
         # FTP_TLS.login() would send AUTH again on a plain socket.
         if tls:
@@ -266,6 +282,42 @@ class FtpClient:
             self._keepalive_stop.set()
         self._keepalive_thread = None
         self._keepalive_stop = None
+
+    @staticmethod
+    def _open(host, port, encryption, timeout, context):
+        """Connect and set up TLS as `encryption` asks, short of logging in.
+
+        Returns (ftp, tls) where tls tells whether the control connection is
+        encrypted. A failed TLS handshake raises (and closes the socket).
+        """
+        if encryption == "implicit":
+            ftp = _ImplicitFTP_TLS(context=context, timeout=timeout)
+        elif encryption in ("explicit_required", "explicit_optional"):
+            ftp = _FTP_TLS(context=context, timeout=timeout)
+        else:
+            ftp = FTP(timeout=timeout)  # nosec B321
+
+        try:
+            ftp.connect(host, port)
+
+            tls = encryption == "implicit"
+            if encryption == "explicit_required":
+                ftp.auth()
+                tls = True
+            elif encryption == "explicit_optional":
+                try:
+                    ftp.auth()
+                    tls = True
+                except (error_perm, error_reply, error_temp):
+                    # The server refused AUTH (500/502/504/534…): carry on
+                    # in plain text, as "if available" promises. A failed
+                    # handshake (OSError, including a certificate that
+                    # doesn't verify) is not a refusal and still aborts.
+                    pass
+        except BaseException:
+            ftp.close()
+            raise
+        return ftp, tls
 
     @staticmethod
     def _check_mlsd(ftp):
@@ -756,23 +808,65 @@ class FtpClient:
             self._ftp.storbinary(f"STOR {dst}", buf)
 
     def _copy_recursive_unlocked(self, src: str, dst: str):
-        if self._is_dir_unlocked(src):
-            try:
-                self._ftp.mkd(dst)
-            except OSError:
-                pass  # directory may already exist
-            if self._has_mlsd:
-                entries = list(self._ftp.mlsd(src))
-            else:
-                entries = self._listdir_list_raw(src)
-            for name, facts in entries:
-                if name in (".", ".."):
-                    continue
-                child_src = f"{src.rstrip('/')}/{name}"
-                child_dst = f"{dst.rstrip('/')}/{name}"
-                self._copy_recursive_unlocked(child_src, child_dst)
-        else:
+        if not self._is_dir_unlocked(src):
             self._copy_file_unlocked(src, dst)
+            return
+        top = ""
+        if self._has_mlsd:
+            try:
+                top = self._mlst_unlocked(src).unique
+            except (OSError, error_perm):
+                pass
+        skipped = []
+        self._copy_dir_unlocked(src, dst, {top} if top else set(), skipped)
+        if skipped:
+            names = ", ".join(p.rsplit("/", 1)[-1] for p in skipped[:5])
+            more = f" and {len(skipped) - 5} more" if len(skipped) > 5 else ""
+            raise OSError(
+                f"Copied, except {len(skipped)} linked folder(s), which FTP "
+                f"can't copy as links: {names}{more}"
+            )
+
+    def _copy_dir_unlocked(self, src, dst, ancestors, skipped):
+        """Copy folder src's contents to dst.
+
+        FTP can't create links, and a link to a folder that is followed can
+        lead back to a parent and never end. So links to folders are skipped
+        (and reported), and on servers whose MLSD follows links silently, a
+        folder whose unique id matches a folder above it is skipped too.
+        """
+        try:
+            self._ftp.mkd(dst)
+        except (OSError, error_perm):
+            pass  # directory may already exist
+        if self._has_mlsd:
+            entries = list(self._ftp.mlsd(src))
+        else:
+            entries = self._listdir_list_raw(src)
+        for name, facts in entries:
+            if name in (".", ".."):
+                continue
+            child_src = f"{src.rstrip('/')}/{name}"
+            child_dst = f"{dst.rstrip('/')}/{name}"
+            if _is_link_type(facts):
+                facts = self._resolve_link_unlocked(src, name, facts)
+                if facts["type"] == "dir":
+                    skipped.append(child_src)
+                    continue
+            entry_type = facts.get("type", "file").lower()
+            if entry_type in ("cdir", "pdir"):
+                continue
+            if entry_type == "dir":
+                unique = facts.get("unique", "")
+                if unique and unique in ancestors:
+                    skipped.append(child_src)
+                    continue
+                self._copy_dir_unlocked(
+                    child_src, child_dst,
+                    ancestors | {unique} if unique else ancestors, skipped,
+                )
+            else:
+                self._copy_file_unlocked(child_src, child_dst)
 
     def create_file(self, path: str):
         with self._lock:

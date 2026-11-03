@@ -12,9 +12,11 @@ services_sources = [
   'local_files.py',
   'ftp_client.py',
   'minifier.py',
+  'ppk.py',
   'sftp_client.py',
   'temp_manager.py',
   'transfer_queue.py',
+  'trust_store.py',
 ]
 
 install_data(services_sources, install_dir: moduledir / 'services')

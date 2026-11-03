@@ -37,15 +37,32 @@ class SftpClient:
         """Connect to an SFTP server. Blocks until connected."""
         import socket
 
+        from edith.services import trust_store
+
         sock = socket.create_connection((host, port), timeout=timeout)
         transport = paramiko.Transport(sock)
-        transport.start_client()
+        try:
+            self._prefer_known_key_types(transport, trust_store.known_key_types(host, port))
+            transport.start_client()
+            # Before any credential goes out: a server that isn't the one we
+            # know must not see the password.
+            trust_store.check_host_key(host, port, transport.get_remote_server_key())
+        except BaseException:
+            transport.close()
+            raise
 
         pkey = None
         if key_file and os.path.isfile(key_file):
-            # Positional: the keyword is `passphrase` up to paramiko 4 and
-            # `password` from 5 on.
-            pkey = paramiko.PKey.from_path(key_file, passphrase)
+            from edith.services import ppk
+
+            if ppk.is_ppk(key_file):
+                # PuTTY's format, common with keys made for FileZilla;
+                # paramiko can't read it.
+                pkey = ppk.load(key_file, passphrase)
+            else:
+                # Positional: the keyword is `passphrase` up to paramiko 4
+                # and `password` from 5 on.
+                pkey = paramiko.PKey.from_path(key_file, passphrase)
 
         if pkey:
             transport.auth_publickey(username, pkey)
@@ -76,6 +93,30 @@ class SftpClient:
         with self._lock:
             self._transport = transport
             self._sftp = sftp
+
+    # Host key algorithms each known_hosts key type can be verified with.
+    _HOSTKEY_ALGORITHMS = {
+        "ssh-rsa": ("rsa-sha2-512", "rsa-sha2-256", "ssh-rsa"),
+    }
+
+    @classmethod
+    def _prefer_known_key_types(cls, transport, known_types):
+        """Negotiate a host key type that is already known, if there is one.
+
+        The server picks the first of our algorithms it supports, so with a
+        known RSA key and paramiko preferring ED25519 the user would be asked
+        to trust a host they already trust. OpenSSH reorders the same way.
+        """
+        if not known_types:
+            return
+        options = transport.get_security_options()
+        current = list(options.key_types)
+        wanted = []
+        for key_type in known_types:
+            for algorithm in cls._HOSTKEY_ALGORITHMS.get(key_type, (key_type,)):
+                if algorithm in current and algorithm not in wanted:
+                    wanted.append(algorithm)
+        options.key_types = wanted + [a for a in current if a not in wanted]
 
     def close(self):
         with self._lock:
@@ -412,8 +453,13 @@ class SftpClient:
                     fout.write(chunk)
 
     def _copy_recursive_unlocked(self, src: str, dst: str):
-        src_stat = self._sftp.stat(src)
-        if stat.S_ISDIR(src_stat.st_mode):
+        # lstat: a link is copied as a link. Following it would copy the
+        # target instead, and loop forever on a link to a parent folder.
+        src_stat = self._sftp.lstat(src)
+        if stat.S_ISLNK(src_stat.st_mode):
+            # paramiko sends (target, link) in the order OpenSSH expects.
+            self._sftp.symlink(self._sftp.readlink(src), dst)
+        elif stat.S_ISDIR(src_stat.st_mode):
             try:
                 self._sftp.mkdir(dst)
             except OSError:

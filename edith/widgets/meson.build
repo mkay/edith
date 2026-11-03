@@ -20,6 +20,7 @@ widgets_sources = [
   'syntax_associations_dialog.py',
   'theme_chooser_dialog.py',
   'transfer_panel.py',
+  'trust_dialogs.py',
   'welcome_view.py',
   'whats_new_dialog.py',
 ]

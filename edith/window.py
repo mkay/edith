@@ -1168,6 +1168,23 @@ class EdithWindow(Adw.ApplicationWindow):
             self._on_connected(server_info, resolved_dir)
 
         def on_error(error):
+            from edith.widgets.trust_dialogs import present_trust_dialog
+
+            # An unknown host key or certificate: ask, and once trusted
+            # connect again with the same credentials.
+            def retry():
+                self.connect_to_server(server_info, password=password,
+                                       passphrase=passphrase, reconnect=reconnect)
+
+            def declined():
+                if reconnect:
+                    self._set_status("error", _("Reconnect failed: {error}").format(error=error))
+                else:
+                    self._set_status("error", _("Connection failed: {error}").format(error=error))
+
+            if present_trust_dialog(self, error, retry, declined):
+                return
+
             if reconnect:
                 # Still lost: tabs stay, and the connect button still offers
                 # to reconnect.

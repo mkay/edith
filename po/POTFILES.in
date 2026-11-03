@@ -25,5 +25,6 @@ edith/widgets/support_dialog.py
 edith/widgets/syntax_associations_dialog.py
 edith/widgets/theme_chooser_dialog.py
 edith/widgets/transfer_panel.py
+edith/widgets/trust_dialogs.py
 edith/widgets/welcome_view.py
 edith/widgets/whats_new_dialog.py
