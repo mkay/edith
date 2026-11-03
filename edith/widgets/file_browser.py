@@ -1410,6 +1410,10 @@ class FileBrowser(Gtk.Box):
     # Directory loading
     # ──────────────────────────────────────────────────────────────────────
 
+    @property
+    def current_path(self) -> str:
+        return self._current_path
+
     def load_directory(self, path: str, add_to_history: bool = True):
         if not self._window or not self._window.sftp_client:
             return

@@ -3,11 +3,13 @@
 
 """FTP/FTPS client with the same interface as SftpClient."""
 
+import functools
 import os
 import socket
+import ssl
 import stat as stat_module
 import threading
-from ftplib import FTP, FTP_TLS, error_perm  # nosec B402
+from ftplib import FTP, FTP_TLS, error_perm, error_reply, error_temp  # nosec B402
 from io import BytesIO
 from pathlib import Path
 
@@ -15,7 +17,26 @@ from edith.services.local_files import atomic_write
 from edith.services.transfer_queue import TransferAborted
 
 
-class _ImplicitFTP_TLS(FTP_TLS):
+class _FTP_TLS(FTP_TLS):
+    """FTP_TLS that resumes the control connection's TLS session on data
+    connections.
+
+    ftplib wraps each data socket as a fresh TLS session. vsftpd refuses that
+    by default (require_ssl_reuse=YES), as do some ProFTPD and Pure-FTPd
+    setups, so listings and transfers fail there. Resuming the control
+    session is what FileZilla and every other client does.
+    """
+
+    def ntransfercmd(self, cmd, rest=None):
+        conn, size = FTP.ntransfercmd(self, cmd, rest)
+        if self._prot_p:
+            conn = self.context.wrap_socket(
+                conn, server_hostname=self.host, session=self.sock.session
+            )
+        return conn, size
+
+
+class _ImplicitFTP_TLS(_FTP_TLS):
     """FTP_TLS subclass for implicit FTPS (TLS on connect, port 990)."""
 
     def connect(self, host="", port=0, timeout=-999, source_address=None):
@@ -97,6 +118,30 @@ class FtpClient:
         self._use_tls = False
         self._keepalive_thread = None
         self._keepalive_stop = None
+        # Set when the control connection is found dead; see connection_lost.
+        self._lost = False
+
+    @property
+    def connection_lost(self) -> bool:
+        """True once the control connection is known to be dead.
+
+        A flag rather than a NOOP, so the main loop can poll it without
+        waiting on the lock behind a transfer. It is set by the keep-alive
+        thread when its NOOP fails, and by any operation that fails on the
+        connection itself (see _marks_lost).
+        """
+        return self._lost
+
+    def _is_connection_error(self, error) -> bool:
+        if isinstance(error, (EOFError, ConnectionError,
+                              ssl.SSLEOFError, ssl.SSLZeroReturnError)):
+            return True
+        # 421: the server is closing the control connection (idle timeout).
+        if isinstance(error, error_temp) and str(error).startswith("421"):
+            return True
+        # ftplib.close() — also what cancelling a transfer does — leaves the
+        # object with no socket; every later command fails on that.
+        return self._ftp is not None and self._ftp.sock is None
 
     def connect(
         self,
@@ -112,29 +157,38 @@ class FtpClient:
 
         encryption: "none", "explicit_optional", "explicit_required", "implicit"
         """
-        self._use_tls = encryption != "none"
 
         if encryption == "implicit":
             ftp = _ImplicitFTP_TLS(timeout=timeout)
         elif encryption in ("explicit_required", "explicit_optional"):
-            ftp = FTP_TLS(timeout=timeout)
+            ftp = _FTP_TLS(timeout=timeout)
         else:
             ftp = FTP(timeout=timeout)  # nosec B321
 
         ftp.connect(host, port)
 
+        tls = encryption == "implicit"
         if encryption == "explicit_required":
             ftp.auth()
+            tls = True
         elif encryption == "explicit_optional":
             try:
                 ftp.auth()
-            except OSError:
-                pass  # server doesn't support TLS, continue unencrypted
+                tls = True
+            except (error_perm, error_reply, error_temp):
+                # The server refused AUTH (500/502/504/534…): carry on in
+                # plain text, as "if available" promises. A failed handshake
+                # (OSError) is not a refusal and still aborts — the
+                # connection is unusable after it anyway.
+                pass
 
-        ftp.login(username or "anonymous", password or "")
-
-        if encryption != "none" and isinstance(ftp, FTP_TLS):
+        # FTP_TLS.login() would send AUTH again on a plain socket.
+        if tls:
+            ftp.login(username or "anonymous", password or "")
             ftp.prot_p()
+        else:
+            FTP.login(ftp, username or "anonymous", password or "")
+        self._use_tls = tls
 
         # Check for MLSD support
         self._has_mlsd = self._check_mlsd(ftp)
@@ -173,6 +227,7 @@ class FtpClient:
                     self._ftp.voidcmd("NOOP")
                 except Exception:
                     # Connection is gone or unhealthy; stop pinging it.
+                    self._lost = True
                     return
             finally:
                 self._lock.release()
@@ -606,3 +661,26 @@ class FtpClient:
             return size if size is not None else 0
         except Exception:
             return 0
+
+
+def _marks_lost(method):
+    """Flag the connection lost when an operation fails on the connection
+    itself, not on the request (a missing file, a refused rename)."""
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        try:
+            return method(self, *args, **kwargs)
+        except Exception as e:
+            if self._is_connection_error(e):
+                self._lost = True
+            raise
+    return wrapper
+
+
+for _name in (
+    "normalize", "listdir_attr", "download", "download_recursive", "upload",
+    "stat", "mkdir", "rename", "chmod", "remove", "rmdir", "rmdir_recursive",
+    "copy_remote", "copy_remote_recursive", "create_file", "upload_directory",
+):
+    setattr(FtpClient, _name, _marks_lost(getattr(FtpClient, _name)))
+del _name

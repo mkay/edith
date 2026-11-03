@@ -1,6 +1,7 @@
 # SPDX-FileCopyrightText: 2025 Kreuder <mk@singular.de>
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+import functools
 import os
 from pathlib import Path
 import gi
@@ -44,6 +45,8 @@ class EdithWindow(Adw.ApplicationWindow):
         self._saving_paths = set()     # paths currently being uploaded (suppress poll)
         self._poll_timer_id = None
         self._poll_in_flight = False
+        self._watch_timer_id = None        # checks for a dropped connection
+        self._connection_lost = False      # dropped; tabs kept, reconnect offered
         self._reload_dialog_paths = set()  # paths with an open reload dialog
         self._sidebar_width_timer = None   # debounces saving the paned position
         self._sidebar_width_suppress = None  # ignores programmatic resizes
@@ -982,7 +985,9 @@ class EdithWindow(Adw.ApplicationWindow):
         dialog.present(self)
 
     def _on_connect_btn_clicked(self, btn):
-        if self._sftp_client:
+        if self._connection_lost:
+            self.reconnect()
+        elif self._sftp_client:
             self.disconnect_server()
         else:
             server = self._server_panel.get_selected_server()
@@ -1001,9 +1006,10 @@ class EdithWindow(Adw.ApplicationWindow):
 
     # --- Connection flow ---
 
-    def _initiate_connection(self, server_info):
+    def _initiate_connection(self, server_info, reconnect=False):
         """Start the connection flow — prompt for credentials if needed."""
         protocol = getattr(server_info, "protocol", "sftp")
+        connect = functools.partial(self.connect_to_server, reconnect=reconnect)
 
         # Try stored credential first
         stored = credential_store.get_password(server_info.id)
@@ -1011,32 +1017,36 @@ class EdithWindow(Adw.ApplicationWindow):
         if protocol in ("ftp", "ftps"):
             # FTP uses password-only auth
             if stored:
-                self.connect_to_server(server_info, password=stored)
+                connect(server_info, password=stored)
             else:
                 dialog = ConnectDialog(server_info)
-                dialog.connect("connect", lambda d, pw, pp: self.connect_to_server(server_info, password=pw))
+                dialog.connect("connect", lambda d, pw, pp: connect(server_info, password=pw))
                 dialog.present(self)
             return
 
         if server_info.auth_method == "key" and server_info.key_file:
             # Key-only auth, no password needed
-            self.connect_to_server(server_info)
+            connect(server_info)
             return
 
         if stored:
             if server_info.auth_method == "password":
-                self.connect_to_server(server_info, password=stored)
+                connect(server_info, password=stored)
             else:
-                self.connect_to_server(server_info, passphrase=stored)
+                connect(server_info, passphrase=stored)
             return
 
         # Show connect dialog for password/passphrase
         dialog = ConnectDialog(server_info)
-        dialog.connect("connect", lambda d, pw, pp: self.connect_to_server(server_info, password=pw, passphrase=pp))
+        dialog.connect("connect", lambda d, pw, pp: connect(server_info, password=pw, passphrase=pp))
         dialog.present(self)
 
-    def connect_to_server(self, server_info, password=None, passphrase=None):
-        """Initiate connection to a server."""
+    def connect_to_server(self, server_info, password=None, passphrase=None, reconnect=False):
+        """Initiate connection to a server.
+
+        reconnect: replace the dropped connection to the current server,
+        keeping open tabs, the browsed folder and the transfer queue.
+        """
         from edith.services.async_worker import run_async
 
         self._set_status("connecting", _("Connecting to {server}…").format(server=server_info.host))
@@ -1085,11 +1095,26 @@ class EdithWindow(Adw.ApplicationWindow):
 
         def on_success(result):
             client, resolved_dir = result
+            if reconnect:
+                if not self._connection_lost or self._connected_server is not server_info:
+                    # Disconnected (or reconnected) while this was in flight.
+                    run_async(client.close, lambda _: None, lambda _: None)
+                    return
+                self._on_reconnected(client)
+                return
             self._sftp_client = client
             self._connected_server = server_info
             self._on_connected(server_info, resolved_dir)
 
         def on_error(error):
+            if reconnect:
+                # Still lost: tabs stay, and the connect button still offers
+                # to reconnect.
+                self._set_status("error", _("Reconnect failed: {error}").format(error=error))
+                dialog = Adw.AlertDialog(heading=_("Reconnect Failed"), body=str(error))
+                dialog.add_response("ok", _("OK"))
+                dialog.present(self)
+                return
             self._set_status("error", _("Connection failed: {error}").format(error=error))
             dialog = Adw.AlertDialog(
                 heading=_("Connection Failed"),
@@ -1191,6 +1216,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
         # Start remote file-change polling
         self._poll_timer_id = GLib.timeout_add_seconds(3, self._poll_remote_mtimes)
+        self._start_connection_watch()
 
         # Show connected placeholder until the user opens a file
         self._connected_page.set_title(_("Connected to {server}").format(server=server_info.display_name))
@@ -1442,8 +1468,111 @@ class EdithWindow(Adw.ApplicationWindow):
         if editor is self._editor_panel.get_current_editor():
             self._status_bar.set_word_wrap(enabled)
 
+    # --- Dropped connections ---
+
+    def _start_connection_watch(self):
+        if self._watch_timer_id is None:
+            self._watch_timer_id = GLib.timeout_add_seconds(2, self._watch_connection)
+
+    def _stop_connection_watch(self):
+        if self._watch_timer_id is not None:
+            GLib.source_remove(self._watch_timer_id)
+            self._watch_timer_id = None
+
+    def _watch_connection(self):
+        """Notice a connection the server (or the network) has dropped.
+
+        connection_lost does no I/O, so this is cheap on the main loop.
+        Without it the window keeps showing "Connected" and every action
+        fails with a raw "Socket is closed".
+        """
+        client = self._sftp_client
+        if client is None:
+            self._watch_timer_id = None
+            return GLib.SOURCE_REMOVE
+        if getattr(client, "connection_lost", False):
+            self._watch_timer_id = None
+            self._on_connection_lost()
+            return GLib.SOURCE_REMOVE
+        return GLib.SOURCE_CONTINUE
+
+    def _on_connection_lost(self):
+        """The connection dropped: keep everything open and offer to reconnect.
+
+        Unlike a disconnect, nothing is closed — open tabs hold edits that
+        may be the only copy, and a reconnect picks up where this left off.
+        """
+        if self._connection_lost or not self._connected_server:
+            return
+        self._connection_lost = True
+        server = self._connected_server
+
+        if self._poll_timer_id:
+            GLib.source_remove(self._poll_timer_id)
+            self._poll_timer_id = None
+        self._poll_in_flight = False
+        # Queued jobs captured the dead client and would only fail one by one.
+        if self._transfer_queue:
+            self._transfer_queue.clear()
+
+        self._set_status("error", _("Connection to {server} lost").format(server=server.host))
+        self._connect_btn.set_icon_name("edith-connect-symbolic")
+        self._connect_btn.set_tooltip_text(_("Reconnect"))
+
+        dialog = Adw.AlertDialog(
+            heading=_("Connection Lost"),
+            body=_(
+                "The connection to {server} was closed. Open files and their "
+                "unsaved changes are kept."
+            ).format(server=server.display_name),
+        )
+        dialog.add_response("later", _("Not Now"))
+        dialog.add_response("disconnect", _("Disconnect"))
+        dialog.add_response("reconnect", _("Reconnect"))
+        dialog.set_response_appearance("reconnect", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("reconnect")
+        dialog.set_close_response("later")
+
+        def on_response(d, response):
+            if response == "reconnect":
+                self.reconnect()
+            elif response == "disconnect":
+                self.disconnect_server()
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
+    def reconnect(self):
+        """Open a fresh connection to the server whose connection dropped."""
+        if self._connection_lost and self._connected_server:
+            self._initiate_connection(self._connected_server, reconnect=True)
+
+    def _on_reconnected(self, client):
+        from edith.services.async_worker import run_async
+
+        old = self._sftp_client
+        self._sftp_client = client
+        self._connection_lost = False
+        if old is not None:
+            run_async(old.close, lambda _: None, lambda _: None)
+
+        server = self._connected_server
+        self._set_status("connected", _("Connected to {server}").format(
+            server=f"{server.username}@{server.host}"))
+        self._connect_btn.set_icon_name("edith-disconnect-symbolic")
+        self._connect_btn.set_tooltip_text(_("Disconnect (Ctrl+D)"))
+
+        # Remote mtimes are kept: the first poll reports anything that
+        # changed on the server while the connection was down.
+        self._poll_timer_id = GLib.timeout_add_seconds(3, self._poll_remote_mtimes)
+        self._start_connection_watch()
+        self._file_browser.load_directory(self._file_browser.current_path)
+        self.show_toast(_("Reconnected to {server}").format(server=server.display_name), "success")
+
     def _on_disconnected(self):
         """Called after disconnection."""
+        self._stop_connection_watch()
+        self._connection_lost = False
         if self._poll_timer_id:
             GLib.source_remove(self._poll_timer_id)
             self._poll_timer_id = None
@@ -1494,6 +1623,9 @@ class EdithWindow(Adw.ApplicationWindow):
     def open_remote_file(self, remote_path):
         """Download and open a remote file for editing."""
         if not self._sftp_client or not self._transfer_queue:
+            return
+        if self._connection_lost:
+            self.show_toast(_("The connection is lost \u2014 reconnect first"), "error")
             return
 
         # Check if already open
@@ -1647,8 +1779,12 @@ class EdithWindow(Adw.ApplicationWindow):
         on_success() runs once the server has the file; on_error(exc) when it
         doesn't — including when there is no connection to upload over.
         """
-        if not self._sftp_client or not self._transfer_queue:
-            self.show_toast(_("Not saved: not connected"), "error")
+        if not self._sftp_client or not self._transfer_queue or self._connection_lost:
+            self.show_toast(
+                _("Not saved: the connection is lost \u2014 reconnect first")
+                if self._connection_lost else _("Not saved: not connected"),
+                "error", 6,
+            )
             if on_error:
                 on_error(RuntimeError("Not connected"))
             return

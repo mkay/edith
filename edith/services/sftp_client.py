@@ -43,7 +43,9 @@ class SftpClient:
 
         pkey = None
         if key_file and os.path.isfile(key_file):
-            pkey = paramiko.PKey.from_path(key_file, passphrase=passphrase)
+            # Positional: the keyword is `passphrase` up to paramiko 4 and
+            # `password` from 5 on.
+            pkey = paramiko.PKey.from_path(key_file, passphrase)
 
         if pkey:
             transport.auth_publickey(username, pkey)
@@ -89,6 +91,17 @@ class SftpClient:
                 except OSError:
                     pass
                 self._transport = None
+
+    @property
+    def connection_lost(self) -> bool:
+        """True once an established connection has dropped.
+
+        No network I/O, so it is safe to poll from the main loop: paramiko's
+        transport thread marks the transport inactive as soon as it reads EOF
+        or a disconnect from the server.
+        """
+        transport = self._transport
+        return transport is not None and not transport.is_active()
 
     @property
     def is_connected(self) -> bool:
