@@ -39,18 +39,9 @@ class SftpClient:
 
         from edith.services import trust_store
 
-        sock = socket.create_connection((host, port), timeout=timeout)
-        transport = paramiko.Transport(sock)
-        try:
-            self._prefer_known_key_types(transport, trust_store.known_key_types(host, port))
-            transport.start_client()
-            # Before any credential goes out: a server that isn't the one we
-            # know must not see the password.
-            trust_store.check_host_key(host, port, transport.get_remote_server_key())
-        except BaseException:
-            transport.close()
-            raise
-
+        # The key first: a wrong passphrase or an unreadable key file fails
+        # here, without a connection the server would count as a failed
+        # login attempt.
         pkey = None
         if key_file and os.path.isfile(key_file):
             from edith.services import ppk
@@ -61,9 +52,55 @@ class SftpClient:
                 pkey = ppk.load(key_file, passphrase)
             else:
                 # Positional: the keyword is `passphrase` up to paramiko 4
-                # and `password` from 5 on.
-                pkey = paramiko.PKey.from_path(key_file, passphrase)
+                # and `password` from 5 on. Bytes: from_path() hands it
+                # straight to cryptography, which rejects a str.
+                secret = passphrase.encode("utf-8") if passphrase else None
+                try:
+                    pkey = paramiko.PKey.from_path(key_file, secret)
+                except TypeError as e:
+                    # cryptography's "Key is password-protected, but
+                    # password was not provided."
+                    raise paramiko.PasswordRequiredException(
+                        "The key file is protected by a passphrase"
+                    ) from e
+                except ValueError as e:
+                    # A wrong passphrase surfaces as an unparseable key
+                    # ("Valid PEM but no BEGIN/END delimiters…").
+                    if secret:
+                        raise paramiko.SSHException(
+                            "Wrong passphrase for the key file"
+                        ) from e
+                    raise
 
+        sock = socket.create_connection((host, port), timeout=timeout)
+        try:
+            transport = paramiko.Transport(sock)
+        except BaseException:
+            sock.close()
+            raise
+        # Any failure from here on must close the transport: left open, its
+        # thread and socket linger until the server's login grace time runs
+        # out, and OpenSSH 9.8+ then penalises the client's address, refusing
+        # every connection from it for a while.
+        try:
+            self._prefer_known_key_types(transport, trust_store.known_key_types(host, port))
+            transport.start_client()
+            # Before any credential goes out: a server that isn't the one we
+            # know must not see the password.
+            trust_store.check_host_key(host, port, transport.get_remote_server_key())
+            self._authenticate(transport, username, password, pkey)
+            transport.set_keepalive(30)
+            sftp = paramiko.SFTPClient.from_transport(transport)
+        except BaseException:
+            transport.close()
+            raise
+
+        with self._lock:
+            self._transport = transport
+            self._sftp = sftp
+
+    @staticmethod
+    def _authenticate(transport, username, password, pkey):
         if pkey:
             transport.auth_publickey(username, pkey)
         elif password:
@@ -71,28 +108,19 @@ class SftpClient:
         else:
             # Try SSH agent
             agent = paramiko.Agent()
-            agent_keys = agent.get_keys()
-            if not agent_keys:
-                agent.close()
-                raise ValueError("No authentication method provided (no password, key file, or SSH agent keys)")
-            authenticated = False
-            for agent_key in agent_keys:
-                try:
-                    transport.auth_publickey(username, agent_key)
-                    authenticated = True
-                    break
-                except paramiko.AuthenticationException:
-                    continue
-            agent.close()
-            if not authenticated:
+            try:
+                agent_keys = agent.get_keys()
+                if not agent_keys:
+                    raise ValueError("No authentication method provided (no password, key file, or SSH agent keys)")
+                for agent_key in agent_keys:
+                    try:
+                        transport.auth_publickey(username, agent_key)
+                        return
+                    except paramiko.AuthenticationException:
+                        continue
                 raise paramiko.AuthenticationException("All SSH agent keys were rejected")
-
-        transport.set_keepalive(30)
-        sftp = paramiko.SFTPClient.from_transport(transport)
-
-        with self._lock:
-            self._transport = transport
-            self._sftp = sftp
+            finally:
+                agent.close()
 
     # Host key algorithms each known_hosts key type can be verified with.
     _HOSTKEY_ALGORITHMS = {
