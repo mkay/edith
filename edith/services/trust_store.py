@@ -43,6 +43,9 @@ _lock = threading.Lock()
 class HostKeyError(Exception):
     """Base for host keys that need the user's attention."""
 
+    # A question for the user, not a failure: run_async() doesn't log it.
+    log_as_failure = False
+
     def __init__(self, host, port, key, message):
         super().__init__(message)
         self.host = host
@@ -92,6 +95,8 @@ class HostKeyRevoked(HostKeyError):
 
 class UntrustedCertificate(Exception):
     """A TLS certificate failed verification and isn't trusted by the user."""
+
+    log_as_failure = False
 
     def __init__(self, host, port, der: bytes, reason: str):
         super().__init__(f"The certificate of {host}:{port} is not trusted: {reason}")
