@@ -386,8 +386,11 @@
 
   // ── AMD loader config & editor creation ───────────────────────────────
   // An absolute baseUrl is required so that the AMD config Monaco
-  // serialises into Web Workers resolves modules correctly.
-  require.config({ baseUrl: monacoBaseUrl, paths: { vs: monacoBaseUrl + "vs" } });
+  // serialises into Web Workers resolves modules correctly. The vs path is
+  // relative to it: the loader only treats http:, https:, file: and / as
+  // absolute, so an absolute path breaks under any other scheme (the Mac
+  // app's), while "vs" resolves to the same place under file://.
+  require.config({ baseUrl: monacoBaseUrl, paths: { vs: "vs" } });
 
   require(["vs/editor/editor.main"], function (monaco) {
     monacoRef = monaco;
