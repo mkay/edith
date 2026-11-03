@@ -578,8 +578,10 @@ class EdithWindow(Adw.ApplicationWindow):
             kind = servers_transfer.detect_format(path)
             if kind == "filezilla":
                 from edith.services.filezilla_import import parse_sitemanager
-                servers, folders = parse_sitemanager(path)
+                fz = parse_sitemanager(path)
+                servers, folders = fz.servers, fz.folders
             else:
+                fz = None
                 servers, folders = servers_transfer.parse_export(path)
         except Exception as e:
             self._show_message(_("Import Failed"), str(e))
@@ -617,15 +619,15 @@ class EdithWindow(Adw.ApplicationWindow):
             def on_response(d, response):
                 if response in ("merge", "replace"):
                     self._finish_import(
-                        servers, folders, response == "replace", kind, path
+                        servers, folders, response == "replace", kind, path, fz
                     )
 
             choice.connect("response", on_response)
             choice.present(self)
         else:
-            self._finish_import(servers, folders, False, kind, path)
+            self._finish_import(servers, folders, False, kind, path, fz)
 
-    def _finish_import(self, servers, folders, replace, kind, path):
+    def _finish_import(self, servers, folders, replace, kind, path, fz=None):
         from edith.services import servers_transfer
 
         try:
@@ -674,8 +676,11 @@ class EdithWindow(Adw.ApplicationWindow):
             self._ask_import_passphrase(blob, imported_ids, summary)
             return
 
-        if kind == "filezilla":
-            note = _("Passwords could not be imported — you'll need to re-enter them.")
+        if fz is not None:
+            if fz.passwords:
+                self._ask_store_filezilla_passwords(fz, imported_ids, summary)
+                return
+            note = self._filezilla_password_note(fz)
         else:
             # Ids survive the round trip, so the keyring lookup still matches.
             note = _(
@@ -685,6 +690,55 @@ class EdithWindow(Adw.ApplicationWindow):
             )
 
         self._show_message(_("Import Complete"), summary + "\n\n" + note)
+
+    def _filezilla_password_note(self, fz):
+        if fz.encrypted_passwords:
+            return ngettext(
+                "{n} password is protected by FileZilla's master password and "
+                "couldn't be imported — you'll need to re-enter it.",
+                "{n} passwords are protected by FileZilla's master password and "
+                "couldn't be imported — you'll need to re-enter them.",
+                fz.encrypted_passwords,
+            ).format(n=fz.encrypted_passwords)
+        return _("The file contains no saved passwords — you'll need to enter them when connecting.")
+
+    def _ask_store_filezilla_passwords(self, fz, imported_ids, summary):
+        """Offer to move FileZilla's stored passwords into the keyring.
+
+        Asked rather than done: FileZilla keeps them as base64, readable by
+        anyone with the file, and the user may not want them kept at all.
+        """
+        count = len(fz.passwords)
+        dialog = Adw.AlertDialog(
+            heading=_("Saved Passwords Found"),
+            body=ngettext(
+                "FileZilla stored {n} password for these servers. Store it in "
+                "your keyring?",
+                "FileZilla stored {n} passwords for these servers. Store them "
+                "in your keyring?",
+                count,
+            ).format(n=count),
+        )
+        dialog.add_response("skip", _("Skip"))
+        dialog.add_response("store", _("Store Passwords"))
+        dialog.set_response_appearance("store", Adw.ResponseAppearance.SUGGESTED)
+        dialog.set_default_response("store")
+        dialog.set_close_response("skip")
+
+        def on_response(d, response):
+            if response != "store":
+                self._show_message(
+                    _("Import Complete"),
+                    summary + "\n\n" + _("Saved passwords were skipped."),
+                )
+                return
+            note = (
+                self._filezilla_password_note(fz) if fz.encrypted_passwords else ""
+            )
+            self._store_secrets(fz.passwords, imported_ids, summary, note)
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
 
     def _ask_import_passphrase(self, blob, imported_ids, summary, error=None):
         dialog = Adw.AlertDialog(
@@ -721,7 +775,6 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _do_restore_secrets(self, blob, passphrase, imported_ids, summary):
         from edith.services import servers_transfer
-        from edith.services.async_worker import run_async
 
         try:
             secrets = servers_transfer.decrypt_secrets(blob, passphrase)
@@ -730,6 +783,12 @@ class EdithWindow(Adw.ApplicationWindow):
             # rather than making the user redo the whole import.
             self._ask_import_passphrase(blob, imported_ids, summary, error=str(e))
             return
+        self._store_secrets(secrets, imported_ids, summary)
+
+    def _store_secrets(self, secrets, imported_ids, summary, extra_note=""):
+        """Write imported passwords to the keyring, with a progress dialog."""
+        from edith.services import servers_transfer
+        from edith.services.async_worker import run_async
 
         # ~100ms per keyring write puts a few hundred of them well past the
         # freeze watchdog's 10s threshold, so this runs on a worker with a
@@ -769,6 +828,8 @@ class EdithWindow(Adw.ApplicationWindow):
                     "{n} belonged to servers that weren't imported.",
                     skipped,
                 ).format(n=skipped)
+            if extra_note:
+                note += " " + extra_note
             self._show_message(_("Import Complete"), summary + "\n\n" + note)
 
         def on_error(e):
