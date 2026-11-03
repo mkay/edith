@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-03 22:53+0200\n"
+"POT-Creation-Date: 2026-11-03 23:21+0200\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -139,6 +139,19 @@ msgstr "Durchsuchen eines entfernten Servers"
 
 #: data/de.singular.edith.metainfo.xml.in:82
 msgid ""
+"Verifies SSH host keys and FTPS certificates before logging in, offers to "
+"reconnect after a dropped connection while keeping open tabs, keeps a file's "
+"encoding and line endings on save, reads PuTTY keys, and fixes FileZilla "
+"import, links to folders and cancelling FTP transfers."
+msgstr ""
+"Prüft SSH-Hostschlüssel und FTPS-Zertifikate vor der Anmeldung, bietet nach "
+"einer abgebrochenen Verbindung an, sich erneut zu verbinden, und behält "
+"dabei offene Tabs, bewahrt beim Speichern Zeichenkodierung und Zeilenenden "
+"einer Datei, liest PuTTY-Schlüssel und behebt Fehler beim FileZilla-Import, "
+"bei Verknüpfungen zu Ordnern und beim Abbrechen von FTP-Übertragungen."
+
+#: data/de.singular.edith.metainfo.xml.in:94
+msgid ""
 "Adds a Minify action for JavaScript and CSS files, marks open tabs whose "
 "file was deleted on the server and offers to restore them, and gives recent "
 "files a Show in Sidebar entry."
@@ -148,7 +161,7 @@ msgstr ""
 "an, sie wiederherzustellen. Zuletzt geöffnete Dateien haben einen Eintrag "
 "„In Seitenleiste anzeigen“."
 
-#: data/de.singular.edith.metainfo.xml.in:92
+#: data/de.singular.edith.metainfo.xml.in:104
 msgid ""
 "Fixes a rare crash caused by file type icons, which could bring Edith down "
 "while opening a folder."
@@ -156,7 +169,7 @@ msgstr ""
 "Behebt einen seltenen Absturz durch Dateityp-Symbole, der Edith beim Öffnen "
 "eines Ordners beenden konnte."
 
-#: data/de.singular.edith.metainfo.xml.in:101
+#: data/de.singular.edith.metainfo.xml.in:113
 msgid ""
 "Completes the German translation, fixes a set of crashes while connecting, "
 "browsing and saving, and downloads a dragged-out file only once. See the "
@@ -167,7 +180,7 @@ msgstr ""
 "nur noch einmal herunter. Die vollständige Liste steht in den "
 "Versionshinweisen des Projekts."
 
-#: data/de.singular.edith.metainfo.xml.in:111
+#: data/de.singular.edith.metainfo.xml.in:123
 msgid ""
 "Adds server list import and export, a Support Edith dialog, and a syntax "
 "theme that can follow the system light/dark setting. See the project release "
@@ -178,7 +191,7 @@ msgstr ""
 "folgen kann. Die vollständige Liste steht in den Veröffentlichungshinweisen "
 "des Projekts."
 
-#: data/de.singular.edith.metainfo.xml.in:121
+#: data/de.singular.edith.metainfo.xml.in:133
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."
@@ -209,8 +222,8 @@ msgstr ""
 #: edith/application.py:157 edith/window.py:532 edith/window.py:1193
 #: edith/window.py:1201 edith/window.py:1892
 #: edith/widgets/preferences_dialog.py:639
-#: edith/widgets/server_edit_dialog.py:378 edith/widgets/trust_dialogs.py:52
-#: edith/widgets/trust_dialogs.py:118
+#: edith/widgets/server_edit_dialog.py:378 edith/widgets/trust_dialogs.py:54
+#: edith/widgets/trust_dialogs.py:120
 msgid "OK"
 msgstr "OK"
 
@@ -399,8 +412,8 @@ msgstr "Eine Datei aus der Seitenleiste wählen, um sie zu bearbeiten."
 #: edith/widgets/file_dialogs.py:479 edith/widgets/preferences_dialog.py:748
 #: edith/widgets/server_edit_dialog.py:41 edith/widgets/server_list.py:172
 #: edith/widgets/server_panel.py:312 edith/widgets/server_panel.py:382
-#: edith/widgets/transfer_panel.py:56 edith/widgets/trust_dialogs.py:83
-#: edith/widgets/trust_dialogs.py:147
+#: edith/widgets/transfer_panel.py:56 edith/widgets/trust_dialogs.py:85
+#: edith/widgets/trust_dialogs.py:149
 msgid "Cancel"
 msgstr "Abbrechen"
 
@@ -2032,11 +2045,11 @@ msgstr "Erledigte löschen"
 msgid "No uploads yet"
 msgstr "Noch keine Uploads"
 
-#: edith/widgets/trust_dialogs.py:50
+#: edith/widgets/trust_dialogs.py:52
 msgid "Couldn't Save Trust"
 msgstr "Vertrauen konnte nicht gespeichert werden"
 
-#: edith/widgets/trust_dialogs.py:68
+#: edith/widgets/trust_dialogs.py:70
 #, python-brace-format
 msgid ""
 "Edith hasn't connected to {host} before, so it can't confirm this is the "
@@ -2048,12 +2061,12 @@ msgstr ""
 "Vergleichen Sie den Fingerabdruck mit dem, den Ihr Hosting-Anbieter oder "
 "Ihre Administration angibt."
 
-#: edith/widgets/trust_dialogs.py:73
+#: edith/widgets/trust_dialogs.py:75
 #, python-brace-format
 msgid "{type} key fingerprint:"
 msgstr "Fingerabdruck des {type}-Schlüssels:"
 
-#: edith/widgets/trust_dialogs.py:77
+#: edith/widgets/trust_dialogs.py:79
 msgid ""
 "Keys of another type are already known for this host; the server offered one "
 "Edith hasn't seen."
@@ -2061,19 +2074,19 @@ msgstr ""
 "Für diesen Host sind bereits Schlüssel eines anderen Typs bekannt; der "
 "Server hat einen angeboten, den Edith noch nicht kennt."
 
-#: edith/widgets/trust_dialogs.py:81
+#: edith/widgets/trust_dialogs.py:83
 msgid "Unknown Server"
 msgstr "Unbekannter Server"
 
-#: edith/widgets/trust_dialogs.py:84 edith/widgets/trust_dialogs.py:148
+#: edith/widgets/trust_dialogs.py:86 edith/widgets/trust_dialogs.py:150
 msgid "Trust and Connect"
 msgstr "Vertrauen und verbinden"
 
-#: edith/widgets/trust_dialogs.py:95
+#: edith/widgets/trust_dialogs.py:97
 msgid "Server Key Revoked"
 msgstr "Serverschlüssel widerrufen"
 
-#: edith/widgets/trust_dialogs.py:97
+#: edith/widgets/trust_dialogs.py:99
 #, python-brace-format
 msgid ""
 "{host} presented a key that is marked as revoked in {file}. Edith won't "
@@ -2082,11 +2095,11 @@ msgstr ""
 "{host} hat einen Schlüssel vorgelegt, der in {file} als widerrufen markiert "
 "ist. Edith verbindet sich nicht."
 
-#: edith/widgets/trust_dialogs.py:101
+#: edith/widgets/trust_dialogs.py:103
 msgid "Server Key Changed"
 msgstr "Serverschlüssel geändert"
 
-#: edith/widgets/trust_dialogs.py:103
+#: edith/widgets/trust_dialogs.py:105
 #, python-brace-format
 msgid ""
 "{host} presented a different {type} key from the one Edith knows. That "
@@ -2099,22 +2112,22 @@ msgstr ""
 "ersetzt werden — genauso sähe es aber aus, wenn jemand die Verbindung "
 "abfängt. Deshalb verbindet sich Edith nicht."
 
-#: edith/widgets/trust_dialogs.py:109
+#: edith/widgets/trust_dialogs.py:111
 msgid "If you know the key changed, remove the old one, then connect again:"
 msgstr ""
 "Wenn Sie wissen, dass sich der Schlüssel geändert hat, entfernen Sie den "
 "alten und verbinden Sie sich dann erneut:"
 
-#: edith/widgets/trust_dialogs.py:113
+#: edith/widgets/trust_dialogs.py:115
 msgid "Fingerprint of the key presented:"
 msgstr "Fingerabdruck des vorgelegten Schlüssels:"
 
-#: edith/widgets/trust_dialogs.py:125
+#: edith/widgets/trust_dialogs.py:127
 #, python-brace-format
 msgid "The certificate of {host} couldn't be verified: {reason}."
 msgstr "Das Zertifikat von {host} konnte nicht überprüft werden: {reason}."
 
-#: edith/widgets/trust_dialogs.py:128
+#: edith/widgets/trust_dialogs.py:130
 msgid ""
 "Shared hosting servers often present the provider's certificate rather than "
 "one for your domain. Trust it only if it is the certificate you expect."
@@ -2123,26 +2136,26 @@ msgstr ""
 "statt eines für Ihre Domain vor. Vertrauen Sie ihm nur, wenn es das "
 "erwartete Zertifikat ist."
 
-#: edith/widgets/trust_dialogs.py:136
+#: edith/widgets/trust_dialogs.py:138
 #, python-brace-format
 msgid "Issued to: {name}"
 msgstr "Ausgestellt für: {name}"
 
-#: edith/widgets/trust_dialogs.py:137
+#: edith/widgets/trust_dialogs.py:139
 #, python-brace-format
 msgid "Issued by: {name}"
 msgstr "Ausgestellt von: {name}"
 
-#: edith/widgets/trust_dialogs.py:138
+#: edith/widgets/trust_dialogs.py:140
 #, python-brace-format
 msgid "Valid: {start} to {end}"
 msgstr "Gültig: {start} bis {end}"
 
-#: edith/widgets/trust_dialogs.py:142
+#: edith/widgets/trust_dialogs.py:144
 msgid "SHA-256 fingerprint:"
 msgstr "SHA-256-Fingerabdruck:"
 
-#: edith/widgets/trust_dialogs.py:145
+#: edith/widgets/trust_dialogs.py:147
 msgid "Untrusted Certificate"
 msgstr "Nicht vertrauenswürdiges Zertifikat"
 

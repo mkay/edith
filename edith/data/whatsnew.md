@@ -20,6 +20,8 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Minify: right-click a .js or .css file → Actions → Minify writes a .min copy next to it (terser and csso).
-- A tab whose file was deleted on the server is marked "(Deleted)"; closing it warns and offers to restore the file.
-- Recent files: right-click → Show in Sidebar, and a missing file now says so and can be dropped from the list.
+- Servers are checked before logging in: a new SFTP server asks once to confirm its key, a changed key is refused, and FTPS certificates are verified.
+- A dropped connection is noticed and offers to reconnect, keeping open tabs and unsaved edits.
+- Saving keeps a file's encoding and line endings, a failed upload no longer looks saved, and failed downloads leave no partial files.
+- PuTTY .ppk keys work, and FileZilla import keeps start folders, FTP encryption, key files and saved passwords.
+- Links to folders open as folders, and cancelling an FTP transfer no longer drops the connection.
