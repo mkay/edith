@@ -119,7 +119,15 @@ def _keys_v3(headers: dict, passphrase: bytes):
             "Edith can't read. Re-save it in PuTTYgen with the default "
             "(Argon2id), or convert it to OpenSSH format."
         )
-    from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+    try:
+        from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+    except ImportError:
+        # Argon2id arrived in cryptography 44; Debian 13 ships 43.
+        raise paramiko.SSHException(
+            "This PuTTY key needs a newer python3-cryptography (44 or later) "
+            "to decrypt. Convert it to OpenSSH format with PuTTYgen, or save "
+            "it as a version 2 key."
+        )
 
     derived = Argon2id(
         salt=bytes.fromhex(headers["Argon2-Salt"]),
