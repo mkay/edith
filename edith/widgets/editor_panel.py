@@ -29,6 +29,7 @@ class EditorPanel(Gtk.Box):
         self._window = None
         self._tabs = {}  # remote_path -> Adw.TabPage
         self._force_close = False  # close_all skips the save/deleted prompts
+        self._closing_pages = set()  # save-and-close tabs waiting on their upload
         self._closed_tab_paths = []  # stack for reopen-closed-tab (most recent last)
 
         # Tab bar
@@ -198,14 +199,34 @@ class EditorPanel(Gtk.Box):
         if not isinstance(editor, MonacoEditor):
             return
 
-        def on_done():
-            if self._window:
-                self._window.save_remote_file(
-                    editor.open_file.remote_path,
-                    editor.open_file.local_path,
-                )
+        self._save_and_upload(editor)
 
-        editor.save_to_disk(on_done=on_done)
+    def _save_and_upload(self, editor, on_saved=None, on_failed=None):
+        """Write the editor's text locally, upload it, and mark the tab clean
+        only once the server has it. on_saved() / on_failed() report the
+        outcome; on failure the tab stays dirty and keeps the edits."""
+        def written(token):
+            if not self._window:
+                if on_failed:
+                    on_failed()
+                return
+
+            def uploaded():
+                editor.mark_saved(token)
+                if on_saved:
+                    on_saved()
+
+            self._window.save_remote_file(
+                editor.open_file.remote_path,
+                editor.open_file.local_path,
+                on_success=uploaded,
+                on_error=lambda _e: on_failed() if on_failed else None,
+            )
+
+        editor.save_to_disk(
+            on_done=written,
+            on_error=lambda _e: on_failed() if on_failed else None,
+        )
 
     def close_current(self):
         """Close the currently active tab."""
@@ -217,6 +238,11 @@ class EditorPanel(Gtk.Box):
         """Close all tabs."""
         self._force_close = True
         try:
+            # Pages waiting on a save-and-close upload won't take another
+            # close_page(); the caller has decided to drop them anyway.
+            pending, self._closing_pages = self._closing_pages, set()
+            for page in pending:
+                self._tab_view.close_page_finish(page, True)
             for i in reversed(range(self._tab_view.get_n_pages())):
                 self._tab_view.close_page(self._tab_view.get_nth_page(i))
         finally:
@@ -305,14 +331,11 @@ class EditorPanel(Gtk.Box):
     def _on_close_deleted_response(self, dialog, response, page, widget):
         open_file = widget.open_file
         if response == "restore":
-            def upload():
-                if self._window:
-                    self._window.save_remote_file(open_file.remote_path, open_file.local_path)
             # Editors hold the newest content in Monaco, viewers on disk.
             if isinstance(widget, MonacoEditor):
-                widget.save_to_disk(on_done=upload)
-            else:
-                upload()
+                self._save_and_upload(widget)
+            elif self._window:
+                self._window.save_remote_file(open_file.remote_path, open_file.local_path)
             self._tab_view.close_page_finish(page, False)
         elif response == "close":
             self._tabs.pop(open_file.remote_path, None)
@@ -344,17 +367,26 @@ class EditorPanel(Gtk.Box):
 
     def _on_close_response(self, dialog, response, page, editor):
         if response == "save":
+            # The tab closes only once the server has the file: closing it
+            # earlier would throw away the only copy if the upload fails.
             def on_saved():
-                if self._window:
-                    self._window.save_remote_file(
-                        editor.open_file.remote_path,
-                        editor.open_file.local_path,
-                    )
+                if page not in self._closing_pages:
+                    return  # close_all already finished it
+                self._closing_pages.discard(page)
                 self._tabs.pop(editor.open_file.remote_path, None)
                 self._record_close(page)
                 self._tab_view.close_page_finish(page, True)
 
-            editor.save_to_disk(on_done=on_saved)
+            def on_failed():
+                if page not in self._closing_pages:
+                    return
+                self._closing_pages.discard(page)
+                self._tab_view.close_page_finish(page, False)
+
+            # AdwTabView ignores close_page() on a page already closing, so
+            # close_all() has to finish these itself.
+            self._closing_pages.add(page)
+            self._save_and_upload(editor, on_saved=on_saved, on_failed=on_failed)
             return
 
         if response != "cancel":

@@ -1,5 +1,6 @@
 widgets_sources = [
   '__init__.py',
+  'config_guard.py',
   'connect_dialog.py',
   'editor_panel.py',
   'file_browser.py',

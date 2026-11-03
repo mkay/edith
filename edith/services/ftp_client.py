@@ -11,6 +11,7 @@ from ftplib import FTP, FTP_TLS, error_perm  # nosec B402
 from io import BytesIO
 from pathlib import Path
 
+from edith.services.local_files import atomic_write
 from edith.services.transfer_queue import TransferAborted
 
 
@@ -303,18 +304,9 @@ class FtpClient:
                 raise RuntimeError("Not connected")
             if set_channel:
                 set_channel(self._ftp)
-            file_size = self._size_unlocked(remote_path)
-            received = 0
-            with open(local_path, "wb") as f:
-                def callback(chunk):
-                    nonlocal received
-                    if cancel_event is not None and cancel_event.is_set():
-                        raise TransferAborted()
-                    f.write(chunk)
-                    received += len(chunk)
-                    if progress_cb:
-                        progress_cb(received, file_size)
-                self._ftp.retrbinary(f"RETR {remote_path}", callback)
+            self._retr_unlocked(remote_path, local_path,
+                                self._size_unlocked(remote_path),
+                                progress_cb, cancel_event)
 
     def download_recursive(self, remote_path: str, local_path: str, progress_cb=None,
                            cancel_event=None, set_channel=None):
@@ -327,19 +319,10 @@ class FtpClient:
                 self._download_dir_unlocked(remote_path, local_path, progress_cb,
                                             cancel_event)
             else:
-                file_size = self._size_unlocked(remote_path)
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
-                received = 0
-                with open(local_path, "wb") as f:
-                    def callback(chunk):
-                        nonlocal received
-                        if cancel_event is not None and cancel_event.is_set():
-                            raise TransferAborted()
-                        f.write(chunk)
-                        received += len(chunk)
-                        if progress_cb:
-                            progress_cb(received, file_size)
-                    self._ftp.retrbinary(f"RETR {remote_path}", callback)
+                self._retr_unlocked(remote_path, local_path,
+                                    self._size_unlocked(remote_path),
+                                    progress_cb, cancel_event)
 
     def download_many(self, items, progress_cb=None, cancel_event=None, set_channel=None):
         """Download several remote paths.
@@ -372,19 +355,23 @@ class FtpClient:
                 self._download_dir_unlocked(child_remote, child_local, progress_cb,
                                             cancel_event)
             else:
-                file_size = int(facts.get("size", 0))
-                received = [0]
-                with open(child_local, "wb") as f:
-                    def make_callback(r, s):
-                        def callback(chunk):
-                            if cancel_event is not None and cancel_event.is_set():
-                                raise TransferAborted()
-                            f.write(chunk)
-                            r[0] += len(chunk)
-                            if progress_cb:
-                                progress_cb(r[0], s)
-                        return callback
-                    self._ftp.retrbinary(f"RETR {child_remote}", make_callback(received, file_size))
+                self._retr_unlocked(child_remote, child_local,
+                                    int(facts.get("size", 0)),
+                                    progress_cb, cancel_event)
+
+    def _retr_unlocked(self, remote_path, local_path, file_size, progress_cb, cancel_event):
+        """RETR one file into local_path, which appears only once complete."""
+        received = 0
+        with atomic_write(local_path) as f:
+            def callback(chunk):
+                nonlocal received
+                if cancel_event is not None and cancel_event.is_set():
+                    raise TransferAborted()
+                f.write(chunk)
+                received += len(chunk)
+                if progress_cb:
+                    progress_cb(received, file_size)
+            self._ftp.retrbinary(f"RETR {remote_path}", callback)
 
     def _listdir_list_raw(self, path: str) -> list:
         """LIST fallback returning (name, facts) tuples like mlsd."""

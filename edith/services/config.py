@@ -7,9 +7,18 @@ from pathlib import Path
 from typing import List
 
 from edith.models.server import ServerInfo, FolderInfo
+from edith.services.local_files import atomic_write_bytes
 
 CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "edith"
 SERVERS_FILE = CONFIG_DIR / "servers.json"
+
+
+class ConfigDamagedError(OSError):
+    """The config file doesn't parse, so it must not be written."""
+
+    def __init__(self, path):
+        super().__init__(f"{path} is damaged and was not changed")
+        self.path = path
 
 
 class ConfigService:
@@ -77,15 +86,34 @@ class ConfigService:
         return text
 
     @classmethod
+    def _parse(cls, text):
+        """The config dict, or None when the text isn't one."""
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return None
+        return data if isinstance(data, dict) else None
+
+    @classmethod
     def _load_raw(cls) -> dict:
         path = cls._servers_file()
         text = cls._read_cached(path)
         if text is None:
             return {}
-        try:
-            return json.loads(text)
-        except (json.JSONDecodeError, KeyError):
-            return {}
+        # A damaged file reads as empty so the app still starts — but see
+        # is_damaged(): nothing may be written over it.
+        return cls._parse(text) or {}
+
+    @classmethod
+    def is_damaged(cls) -> bool:
+        """True when the config file exists but doesn't parse.
+
+        It reads as empty then, which is exactly when a write is most
+        dangerous: the reader's {} plus one preference would replace every
+        server. So _write_raw refuses, and the app says so at startup.
+        """
+        text = cls._read_cached(cls._servers_file())
+        return text is not None and cls._parse(text) is None
 
     @classmethod
     def _write_raw(cls, data: dict, deliberate: bool = False):
@@ -105,6 +133,18 @@ class ConfigService:
         """
         path = cls._servers_file()
 
+        # Deliberate writes too: adding a server to a list that only reads as
+        # empty would save that one server over all the others. A preference
+        # is skipped quietly, as below; a server-list change raises, since the
+        # user just asked for it and has to learn it didn't happen.
+        if cls.is_damaged():
+            from edith.services.freeze_watchdog import record
+            record(f"REFUSED config write: {path} does not parse "
+                   f"(payload keys: {sorted(data)})")
+            if deliberate:
+                raise ConfigDamagedError(path)
+            return
+
         if not deliberate:
             current = cls._load_raw()
             if current.get("servers") and not data.get("servers"):
@@ -121,7 +161,9 @@ class ConfigService:
                 return
 
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(data, indent=2))
+        # Atomic, so a crash or full disk mid-write leaves the old file rather
+        # than half a new one — which is how the file gets damaged at all.
+        atomic_write_bytes(path, json.dumps(data, indent=2).encode("utf-8"))
         # Dropped rather than refreshed with what was just written: the stat
         # check would catch the change anyway, and re-reading once after a
         # write costs nothing next to trusting that the bytes landed.

@@ -9,6 +9,7 @@ services_sources = [
   'filezilla_import.py',
   'servers_transfer.py',
   'freeze_watchdog.py',
+  'local_files.py',
   'ftp_client.py',
   'minifier.py',
   'sftp_client.py',

@@ -15,9 +15,14 @@ from gi.repository import Adw, Gtk, GObject, WebKit
 from edith.models.open_file import OpenFile
 from edith.monaco_languages import EXT_TO_MONACO, get_language_name
 from edith.services.config import ConfigService
+from edith.services.local_files import (
+    UnencodableError, atomic_write_bytes, encode_text, read_text,
+)
 from edith.i18n import _
 
 log = logging.getLogger(__name__)
+
+_ENCODING_NAMES = {"utf-8": "UTF-8", "utf-8-sig": "UTF-8", "latin-1": "Latin-1"}
 
 
 class MonacoEditor(Gtk.Box):
@@ -48,6 +53,15 @@ class MonacoEditor(Gtk.Box):
         # while the buffer is dirty.  Used to rebuild the tab if the WebKit
         # render process dies (which otherwise loses both edits and history).
         self._content_snapshot = None
+        # Bumped whenever the WebView is rebuilt: Monaco's version ids start
+        # over with the new model, so a save token from before can't be
+        # matched against the buffer after.
+        self._generation = 0
+        # Newest version written to the local file, and newest the server
+        # confirmed. They differ while an upload is in flight or after one
+        # failed — then the local file is ahead of the server.
+        self._written_version = None
+        self._uploaded_version = None
 
         self._build_ui()
         self._load_file_and_init()
@@ -251,19 +265,28 @@ class MonacoEditor(Gtk.Box):
             self._content_snapshot = data.get("content", "")
 
         elif msg_type == "save-content":
+            on_done, on_error = self._pending_save_callback or (None, None)
+            self._pending_save_callback = None
             content = data.get("content", "")
             try:
-                with open(self.open_file.local_path, "w") as f:
-                    f.write(content)
-            except OSError:
-                pass
+                atomic_write_bytes(
+                    self.open_file.local_path,
+                    encode_text(content, self.open_file.encoding),
+                )
+            except (OSError, UnencodableError) as e:
+                # Nothing was written, so nothing may be uploaded or marked
+                # clean: the buffer is still the only copy of these edits.
+                self._notify(self._save_error_message(e))
+                if on_error:
+                    on_error(e)
+                return
+            # The disk now holds this text, which is newer than any snapshot.
             self._content_snapshot = None
-            self._eval_js("EdithBridge.markClean()")
+            version = data.get("versionId")
+            self._written_version = version
             self._refresh_svg_preview()
-            cb = self._pending_save_callback
-            self._pending_save_callback = None
-            if cb:
-                cb()
+            if on_done:
+                on_done((self._generation, version))
 
         elif msg_type == "modified-changed":
             modified = data.get("modified", False)
@@ -291,11 +314,22 @@ class MonacoEditor(Gtk.Box):
         )
         self._ready = False
         self._pending_js = []
+        _, on_error = self._pending_save_callback or (None, None)
         self._pending_save_callback = None
+        if on_error:
+            on_error(RuntimeError("editor crashed during save"))
+
+        # Rebuilt from disk, the buffer matches the local file — but if that
+        # was never confirmed on the server, the tab must stay dirty.
+        unconfirmed = self._written_version != self._uploaded_version
+        self._generation += 1
+        self._written_version = self._uploaded_version = None
 
         recovered = self._content_snapshot
         # queues init JS into _pending_js, using the snapshot if we have one
         self._load_file_and_init(content_override=recovered)
+        if recovered is None and unconfirmed:
+            self._eval_js("EdithBridge.markDirty()")
         monaco_dir = Path(__file__).parent.parent / "data" / "monaco"
         self._webview.load_uri((monaco_dir / "editor.html").as_uri())
 
@@ -325,8 +359,7 @@ class MonacoEditor(Gtk.Box):
             content = content_override
         else:
             try:
-                with open(self.open_file.local_path, "r", errors="replace") as f:
-                    content = f.read()
+                content, self.open_file.encoding = read_text(self.open_file.local_path)
             except Exception as e:
                 content = f"Error loading file: {e}"
 
@@ -441,10 +474,18 @@ class MonacoEditor(Gtk.Box):
     def toggle_wrap(self):
         self._eval_js("EdithBridge.toggleWrap()")
 
-    def save_to_disk(self, on_done=None):
-        """Async save: ask Monaco for content (formatting first if configured),
-        write to disk on callback, then call on_done."""
-        self._pending_save_callback = on_done
+    def save_to_disk(self, on_done=None, on_error=None):
+        """Async save: ask Monaco for content (formatting first if configured)
+        and write it to the local file.
+
+        Then on_done(token) — upload the file, and once the server has it,
+        pass the token to mark_saved(). If the local write fails, on_error(exc)
+        instead; the user has already been told.
+
+        The tab is not marked clean here: until the server has the file, the
+        edits aren't saved.
+        """
+        self._pending_save_callback = (on_done, on_error)
         format_on_save = ConfigService.get_preference("editor_format_on_save", False)
         flag = "true" if format_on_save else "false"
         self._eval_js(f"EdithBridge.savePrepare({flag})")
@@ -518,11 +559,33 @@ class MonacoEditor(Gtk.Box):
     def get_cursor_position(self) -> tuple[int, int]:
         return self._cursor_line, self._cursor_col
 
+    def mark_saved(self, token):
+        """The server has the text saved under `token` (from save_to_disk).
+
+        Marks the buffer clean at that version, so anything typed while the
+        upload ran stays dirty — and undoing back to it reads as clean.
+        """
+        generation, version = token
+        if generation != self._generation or version is None:
+            return  # the editor was rebuilt since; its versions mean nothing now
+        self._uploaded_version = version
+        self._eval_js(f"EdithBridge.markCleanAt({json.dumps(version)})")
+
+    @staticmethod
+    def _save_error_message(error):
+        if isinstance(error, UnencodableError):
+            # Translators: {encoding} is e.g. "latin-1"; {chars} the offending text
+            return _(
+                "Not saved: this file is {encoding}, which can't hold "
+                "\u201c{chars}\u201d."
+            ).format(encoding=_ENCODING_NAMES.get(error.encoding, error.encoding),
+                     chars=error.chars)
+        return _("Not saved: {error}").format(error=error)
+
     def reload_from_disk(self):
         """Re-read the local file and replace editor content."""
         try:
-            with open(self.open_file.local_path, "r", errors="replace") as f:
-                content = f.read()
+            content, self.open_file.encoding = read_text(self.open_file.local_path)
         except Exception:
             return
         self._eval_js(

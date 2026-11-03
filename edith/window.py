@@ -1641,9 +1641,16 @@ class EdithWindow(Adw.ApplicationWindow):
 
         self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
 
-    def save_remote_file(self, remote_path, local_path):
-        """Queue an upload of a saved local file back to the server."""
+    def save_remote_file(self, remote_path, local_path, on_success=None, on_error=None):
+        """Queue an upload of a saved local file back to the server.
+
+        on_success() runs once the server has the file; on_error(exc) when it
+        doesn't — including when there is no connection to upload over.
+        """
         if not self._sftp_client or not self._transfer_queue:
+            self.show_toast(_("Not saved: not connected"), "error")
+            if on_error:
+                on_error(RuntimeError("Not connected"))
             return
 
         name = os.path.basename(remote_path)
@@ -1654,13 +1661,15 @@ class EdithWindow(Adw.ApplicationWindow):
             client.upload(local_path, remote_path, progress_cb=progress_cb, overwrite=True)
             return client.stat(remote_path).st_mtime
 
-        def on_success(mtime):
+        def uploaded(mtime):
             self._remote_mtimes[remote_path] = mtime
             self._saving_paths.discard(remote_path)
             self._editor_panel.set_deleted(remote_path, False)
             self.show_toast(_("Saved {name}").format(name=name), "success")
+            if on_success:
+                on_success()
 
-        def on_error(error):
+        def failed(error):
             self._saving_paths.discard(remote_path)
             dialog = Adw.AlertDialog(
                 heading=_("Upload Failed"),
@@ -1668,8 +1677,10 @@ class EdithWindow(Adw.ApplicationWindow):
             )
             dialog.add_response("ok", _("OK"))
             dialog.present(self)
+            if on_error:
+                on_error(error)
 
-        self._transfer_queue.enqueue(name, do_upload, on_success, on_error)
+        self._transfer_queue.enqueue(name, do_upload, uploaded, failed)
 
     # --- Remote file-change polling ---
 

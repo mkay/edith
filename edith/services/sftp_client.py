@@ -12,6 +12,8 @@ from pathlib import Path
 
 import paramiko
 
+from edith.services.local_files import atomic_write
+
 
 class SftpClient:
     """Thread-safe SFTP client wrapping paramiko."""
@@ -154,7 +156,7 @@ class SftpClient:
         with dl_sftp.open(remote_path, "rb") as fr:
             fr.MAX_REQUEST_SIZE = self._DL_REQ_SIZE
             fr.prefetch(file_size)
-            with open(local_path, "wb", buffering=self._DL_CHUNK) as fl:
+            with atomic_write(local_path, buffering=self._DL_CHUNK) as fl:
                 received = 0
                 while True:
                     chunk = fr.read(self._DL_CHUNK)

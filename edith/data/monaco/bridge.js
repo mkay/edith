@@ -658,11 +658,17 @@
     // it back to Python via the "save-content" postMessage.
     savePrepare: function (doFormat) {
       if (!editor) {
-        postMessage("save-content", { content: "" });
+        postMessage("save-content", { content: "", versionId: null });
         return;
       }
+      // The version id travels with the text, so Python can later mark the
+      // buffer clean at exactly what was saved (markCleanAt), not at
+      // whatever it holds by the time the upload finishes.
       var send = function () {
-        postMessage("save-content", { content: editor.getValue() });
+        postMessage("save-content", {
+          content: editor.getValue(),
+          versionId: editor.getModel().getAlternativeVersionId(),
+        });
       };
       if (doFormat) {
         var action = editor.getAction("editor.action.formatDocument");
@@ -775,12 +781,15 @@
       editor.focus();
     },
 
-    markClean: function () {
+    // The text saved at versionId reached the server. Edits made since keep
+    // the tab dirty; undoing back to versionId makes it clean again.
+    markCleanAt: function (versionId) {
       if (!editor) return;
-      cleanVersionId = editor.getModel().getAlternativeVersionId();
-      if (lastModifiedState) {
-        lastModifiedState = false;
-        postMessage("modified-changed", { modified: false });
+      cleanVersionId = versionId;
+      var isModified = editor.getModel().getAlternativeVersionId() !== cleanVersionId;
+      if (isModified !== lastModifiedState) {
+        lastModifiedState = isModified;
+        postMessage("modified-changed", { modified: isModified });
       }
     },
 

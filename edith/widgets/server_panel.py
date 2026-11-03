@@ -13,6 +13,8 @@ from gi.repository import Adw, Gio, GLib, Gtk, GObject, Gdk, Graphene
 from edith.models.server import ServerInfo
 from edith.services.config import ConfigService
 from edith.services import credential_store
+from edith.services.config import ConfigDamagedError
+from edith.widgets.config_guard import refuses_damaged_config
 from edith.widgets.server_row import ServerRow
 from edith.widgets.server_edit_dialog import ServerEditDialog
 from edith.i18n import _
@@ -237,6 +239,7 @@ class ServerPanel(Gtk.Box):
             if isinstance(child, ServerRow):
                 self._confirm_delete(child.server_info)
 
+    @refuses_damaged_config("reload")
     def _on_context_duplicate(self, action, param):
         if not self._context_row:
             return
@@ -273,6 +276,7 @@ class ServerPanel(Gtk.Box):
             )
             self._move_submenu.append_item(item)
 
+    @refuses_damaged_config("reload")
     def _on_context_move_to_group(self, action, param):
         if self._context_row:
             child = self._context_row.get_child()
@@ -352,11 +356,18 @@ class ServerPanel(Gtk.Box):
         dialog.connect("saved", self._on_server_edited)
         dialog.present(win)
 
+    @refuses_damaged_config("reload")
     def _on_server_added(self, dialog, server):
-        ConfigService.add_server(server)
+        try:
+            ConfigService.add_server(server)
+        except ConfigDamagedError:
+            # The dialog already stored the password; don't orphan it.
+            credential_store.delete_password(server.id)
+            raise
         self.reload()
         self.emit("servers-changed")
 
+    @refuses_damaged_config("reload")
     def _on_server_edited(self, dialog, server):
         ConfigService.update_server(server)
         self.reload()
@@ -374,10 +385,11 @@ class ServerPanel(Gtk.Box):
         dialog.connect("response", self._on_delete_response, server_info)
         dialog.present(win)
 
+    @refuses_damaged_config("reload")
     def _on_delete_response(self, dialog, response, server_info):
         if response == "delete":
-            credential_store.delete_password(server_info.id)
             ConfigService.delete_server(server_info.id)
+            credential_store.delete_password(server_info.id)
             self.reload()
             self.emit("servers-changed")
 
