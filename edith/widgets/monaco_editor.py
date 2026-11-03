@@ -314,7 +314,7 @@ class MonacoEditor(Gtk.Box):
         )
         self._ready = False
         self._pending_js = []
-        _, on_error = self._pending_save_callback or (None, None)
+        _on_success, on_error = self._pending_save_callback or (None, None)
         self._pending_save_callback = None
         if on_error:
             on_error(RuntimeError("editor crashed during save"))
