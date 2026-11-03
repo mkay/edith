@@ -23,6 +23,8 @@ class RemoteFileInfo:
     owner: str = ""
     group: str = ""
     is_parent_dir: bool = False
+    # A symbolic link; is_dir, size and mtime describe its target.
+    is_link: bool = False
 
     @classmethod
     def from_sftp_attr(cls, attr, parent_path: str) -> "RemoteFileInfo":
@@ -33,6 +35,9 @@ class RemoteFileInfo:
             path = f"{parent_path}/{name}"
 
         is_dir = stat.S_ISDIR(attr.st_mode) if attr.st_mode else False
+        is_link = getattr(attr, "is_link", None)
+        if is_link is None:
+            is_link = bool(attr.st_mode) and stat.S_ISLNK(attr.st_mode)
         owner, group = cls._owner_group(attr)
 
         return cls(
@@ -44,6 +49,7 @@ class RemoteFileInfo:
             mtime=int(attr.st_mtime or 0),
             owner=owner,
             group=group,
+            is_link=is_link,
         )
 
     @staticmethod

@@ -368,8 +368,13 @@ class FileBrowser(Gtk.Box):
         )
         icon = Gtk.Image(pixel_size=16)
         label = Gtk.Label(xalign=0, hexpand=True, ellipsize=Pango.EllipsizeMode.END)
+        link_icon = Gtk.Image(
+            icon_name="edith-link-symbolic", pixel_size=12, visible=False,
+            css_classes=["dim-label"],
+        )
         box.append(icon)
         box.append(label)
+        box.append(link_icon)
 
         item_ref = [None]
         is_dir_ref = [False]
@@ -473,6 +478,8 @@ class FileBrowser(Gtk.Box):
 
         icon = box.get_first_child()
         label = icon.get_next_sibling()
+        link_icon = label.get_next_sibling()
+        link_icon.set_visible(fi.is_link and not fi.is_parent_dir)
 
         if fi.is_parent_dir:
             icon.set_visible(True)
@@ -483,7 +490,9 @@ class FileBrowser(Gtk.Box):
             icon.set_visible(True)
             icon.set_from_icon_name(fi.icon_name)
             label.set_text(fi.name)
-            box.set_tooltip_text(fi.path)
+            box.set_tooltip_text(
+                _("{path} (link)").format(path=fi.path) if fi.is_link else fi.path
+            )
 
     def _unbind_name_cell(self, factory, list_item):
         if hasattr(list_item, "_name_item_ref"):
@@ -1011,7 +1020,7 @@ class FileBrowser(Gtk.Box):
             dlg.present(self.get_root())
             return
         fi = infos[0]
-        kind = "folder" if fi.is_dir else "file"
+        kind = "link" if fi.is_link else ("folder" if fi.is_dir else "file")
         dlg = Adw.AlertDialog(
             heading=_("Delete {kind}?").format(kind=kind),
             body=_("Permanently delete \u201c{name}\u201d?").format(name=fi.name),
@@ -1036,7 +1045,7 @@ class FileBrowser(Gtk.Box):
             if self._window:
                 self._window.show_toast(_("Deleted \u201c{name}\u201d").format(name=name), "success")
 
-        if fi.is_dir:
+        if fi.is_dir and not fi.is_link:
             run_async(lambda: client.rmdir_recursive(fi.path), on_deleted,
                       lambda e: self._show_op_error(str(e)))
         else:
@@ -1590,7 +1599,8 @@ class FileBrowser(Gtk.Box):
             return
         client = self._window.sftp_client
         from edith.services.async_worker import run_async
-        items = [(fi.path, fi.is_dir) for fi in infos]
+        # A link is removed itself, never emptied through.
+        items = [(fi.path, fi.is_dir and not fi.is_link) for fi in infos]
         n = len(items)
 
         def do_delete():

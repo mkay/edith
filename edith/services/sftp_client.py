@@ -119,11 +119,28 @@ class SftpClient:
             return self._sftp.normalize(path)
 
     def listdir_attr(self, path: str) -> list:
-        """List directory contents with attributes."""
+        """List directory contents with attributes.
+
+        The server reports lstat attributes, so a link to a folder would look
+        like a file. Each link entry gets its target's attributes instead and
+        is_link = True; a dangling link keeps its own and stays a file.
+        """
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            return self._sftp.listdir_attr(path)
+            entries = self._sftp.listdir_attr(path)
+            for attr in entries:
+                attr.is_link = bool(attr.st_mode) and stat.S_ISLNK(attr.st_mode)
+                if not attr.is_link:
+                    continue
+                try:
+                    target = self._sftp.stat(f"{path.rstrip('/')}/{attr.filename}")
+                except OSError:
+                    continue  # dangling, or the target is unreadable
+                attr.st_mode = target.st_mode
+                attr.st_size = target.st_size
+                attr.st_mtime = target.st_mtime
+            return entries
 
     _DL_CHUNK = 1 << 20  # 1 MiB — matches MAX_REQUEST_SIZE for aligned prefetch reads
     _DL_WINDOW = 1 << 25  # 32 MiB SSH channel window (vs paramiko's 2 MiB default)
@@ -342,10 +359,17 @@ class SftpClient:
             self._sftp.rmdir(path)
 
     def rmdir_recursive(self, path: str):
-        """Recursively remove a remote directory and all contents."""
+        """Recursively remove a remote directory and all contents.
+
+        A link to a folder is unlinked, never descended into: that would
+        empty the folder it points to.
+        """
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
+            if stat.S_ISLNK(self._sftp.lstat(path).st_mode or 0):
+                self._sftp.remove(path)
+                return
             self._rmdir_recursive_unlocked(path)
 
     def _rmdir_recursive_unlocked(self, path: str):

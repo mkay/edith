@@ -8,6 +8,7 @@ import os
 import socket
 import ssl
 import stat as stat_module
+import tempfile
 import threading
 from ftplib import FTP, FTP_TLS, error_perm, error_reply, error_temp  # nosec B402
 from io import BytesIO
@@ -59,13 +60,41 @@ class _ImplicitFTP_TLS(_FTP_TLS):
         return self.welcome
 
 
+class _DataChannel:
+    """The handle an FTP transfer registers with the transfer queue.
+
+    Cancelling closes what was registered. For FTP that must be the data
+    connection alone: the control connection carries the session, and
+    closing it would cost the whole connection just to stop one file.
+    """
+
+    def __init__(self, conn):
+        self._conn = conn
+
+    def close(self):
+        # socket.socket.shutdown, not SSLSocket's: that one also drops the
+        # SSL object the worker thread may be reading through.
+        #
+        # SHUT_RD, not SHUT_RDWR: it wakes the blocked recv() as a plain end
+        # of file. SHUT_RDWR makes it fail with EPIPE instead, and on a TLS
+        # socket with a timeout that error resurfaces on the next read of
+        # the *control* connection, which then looks dead. Only downloads
+        # register a channel; an upload is cancelled between chunks.
+        try:
+            socket.socket.shutdown(self._conn, socket.SHUT_RD)
+        except OSError:
+            pass  # already closed
+
+
 class FtpFileAttr:
     """Mimics paramiko SFTPAttributes for FTP directory entries."""
 
-    def __init__(self, filename, facts, owner="", group=""):
+    def __init__(self, filename, facts, owner="", group="", is_link=False):
         self.filename = filename
         self.st_size = int(facts.get("size", 0))
         self.st_mode = 0
+        # The caller resolves a link's type and passes it in facts["type"].
+        self.is_link = is_link
 
         entry_type = facts.get("type", "file").lower()
         if entry_type in ("dir", "cdir", "pdir"):
@@ -139,8 +168,8 @@ class FtpClient:
         # 421: the server is closing the control connection (idle timeout).
         if isinstance(error, error_temp) and str(error).startswith("421"):
             return True
-        # ftplib.close() — also what cancelling a transfer does — leaves the
-        # object with no socket; every later command fails on that.
+        # ftplib.close() leaves the object with no socket; every later
+        # command fails on that.
         return self._ftp is not None and self._ftp.sock is None
 
     def connect(
@@ -298,36 +327,80 @@ class FtpClient:
         for name, facts in self._ftp.mlsd(path):
             if name in (".", ".."):
                 continue
-            results.append(FtpFileAttr(name, facts))
+            is_link = _is_link_type(facts)
+            if is_link:
+                facts = self._resolve_link_unlocked(path, name, facts)
+            results.append(FtpFileAttr(name, facts, is_link=is_link))
         return results
 
     def _listdir_list(self, path: str) -> list:
         """Fallback parser for servers without MLSD (Unix-style LIST)."""
+        results = []
+        for name, facts, owner, group in self._list_unlocked(path):
+            is_link = _is_link_type(facts)
+            if is_link:
+                facts = self._resolve_link_unlocked(path, name, facts)
+            results.append(FtpFileAttr(name, facts, owner=owner, group=group,
+                                       is_link=is_link))
+        return results
+
+    def _list_unlocked(self, path: str) -> list:
+        """LIST path, parsed into (name, facts, owner, group) tuples.
+
+        Links come back with facts["type"] == "OS.unix=symlink"; their type
+        is unknown until resolved.
+        """
         lines = []
         self._ftp.retrlines(f"LIST {path}", lines.append)
         results = []
         for line in lines:
-            parts = line.split(None, 8)
-            if len(parts) < 9:
-                continue
-            name = parts[8]
-            if name in (".", ".."):
-                continue
-            perms = parts[0]
-            owner = parts[2]
-            group = parts[3]
-            size = int(parts[4]) if parts[4].isdigit() else 0
-            facts = {"size": str(size)}
-            if perms.startswith("d"):
-                facts["type"] = "dir"
-            else:
-                facts["type"] = "file"
-            # Parse permission bits from rwxrwxrwx string
-            mode = self._parse_permission_string(perms[1:10]) if len(perms) >= 10 else 0
-            if mode:
-                facts["unix.mode"] = oct(mode)[2:]
-            results.append(FtpFileAttr(name, facts, owner=owner, group=group))
+            parsed = self._parse_list_line(line)
+            if parsed and parsed[0] not in (".", ".."):
+                results.append(parsed)
         return results
+
+    @classmethod
+    def _parse_list_line(cls, line: str):
+        parts = line.split(None, 8)
+        if len(parts) < 9:
+            return None
+        perms, owner, group, name = parts[0], parts[2], parts[3], parts[8]
+        facts = {"size": parts[4] if parts[4].isdigit() else "0"}
+        if perms.startswith("l"):
+            # "name -> target". A name containing " -> " is ambiguous; the
+            # first one is the likelier split.
+            name = name.split(" -> ", 1)[0]
+            facts["type"] = "OS.unix=symlink"
+        elif perms.startswith("d"):
+            facts["type"] = "dir"
+        else:
+            facts["type"] = "file"
+        mode = cls._parse_permission_string(perms[1:10]) if len(perms) >= 10 else 0
+        if mode:
+            facts["unix.mode"] = oct(mode)[2:]
+        return name, facts, owner, group
+
+    def _resolve_link_unlocked(self, parent: str, name: str, facts: dict) -> dict:
+        """Return facts with a link's type replaced by its target's.
+
+        FTP can't stat through a link, but CWD follows it: if that works the
+        target is a folder, otherwise a file (or the link dangles). LIST gives
+        the link's own size, so a file's comes from SIZE.
+        """
+        child = f"{parent.rstrip('/')}/{name}"
+        facts = dict(facts)
+        if self._is_dir_unlocked(child):
+            facts["type"] = "dir"
+        else:
+            facts["type"] = "file"
+            try:
+                self._ftp.voidcmd("TYPE I")
+                size = self._ftp.size(child)
+                if size is not None:
+                    facts["size"] = str(size)
+            except (OSError, error_perm):
+                pass  # dangling: keep the link's own
+        return facts
 
     @staticmethod
     def _parse_permission_string(s: str) -> int:
@@ -357,27 +430,23 @@ class FtpClient:
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
-            if set_channel:
-                set_channel(self._ftp)
             self._retr_unlocked(remote_path, local_path,
                                 self._size_unlocked(remote_path),
-                                progress_cb, cancel_event)
+                                progress_cb, cancel_event, set_channel)
 
     def download_recursive(self, remote_path: str, local_path: str, progress_cb=None,
                            cancel_event=None, set_channel=None):
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
-            if set_channel:
-                set_channel(self._ftp)
             if self._is_dir_unlocked(remote_path):
                 self._download_dir_unlocked(remote_path, local_path, progress_cb,
-                                            cancel_event)
+                                            cancel_event, set_channel)
             else:
                 Path(local_path).parent.mkdir(parents=True, exist_ok=True)
                 self._retr_unlocked(remote_path, local_path,
                                     self._size_unlocked(remote_path),
-                                    progress_cb, cancel_event)
+                                    progress_cb, cancel_event, set_channel)
 
     def download_many(self, items, progress_cb=None, cancel_event=None, set_channel=None):
         """Download several remote paths.
@@ -393,7 +462,7 @@ class FtpClient:
                                     cancel_event=cancel_event, set_channel=set_channel)
 
     def _download_dir_unlocked(self, remote_path: str, local_path: str, progress_cb=None,
-                               cancel_event=None):
+                               cancel_event=None, set_channel=None):
         Path(local_path).mkdir(parents=True, exist_ok=True)
         if self._has_mlsd:
             entries = list(self._ftp.mlsd(remote_path))
@@ -408,40 +477,107 @@ class FtpClient:
             entry_type = facts.get("type", "file").lower()
             if entry_type in ("dir", "cdir", "pdir"):
                 self._download_dir_unlocked(child_remote, child_local, progress_cb,
-                                            cancel_event)
+                                            cancel_event, set_channel)
             else:
                 self._retr_unlocked(child_remote, child_local,
                                     int(facts.get("size", 0)),
-                                    progress_cb, cancel_event)
+                                    progress_cb, cancel_event, set_channel)
 
-    def _retr_unlocked(self, remote_path, local_path, file_size, progress_cb, cancel_event):
+    _BLOCKSIZE = 1 << 16
+
+    def _retr_unlocked(self, remote_path, local_path, file_size, progress_cb,
+                       cancel_event, set_channel=None):
         """RETR one file into local_path, which appears only once complete."""
         received = 0
         with atomic_write(local_path) as f:
-            def callback(chunk):
+            def on_data(chunk):
                 nonlocal received
-                if cancel_event is not None and cancel_event.is_set():
-                    raise TransferAborted()
                 f.write(chunk)
                 received += len(chunk)
                 if progress_cb:
                     progress_cb(received, file_size)
-            self._ftp.retrbinary(f"RETR {remote_path}", callback)
+            self._transfer_unlocked(f"RETR {remote_path}", on_data, None,
+                                    cancel_event, set_channel)
+
+    def _transfer_unlocked(self, cmd, on_data, source, cancel_event, set_channel):
+        """Run one RETR (on_data gets each chunk) or STOR (source is read).
+
+        ftplib's retrbinary()/storbinary() let a cancel or a local error
+        escape without reading the server's reply to the transfer, so the
+        next command would get that stale 426 or 226 instead of its own.
+        Doing the data connection here keeps the control connection in step
+        whatever happens, and lets the queue cancel the data connection
+        alone (see _DataChannel).
+        """
+        self._ftp.voidcmd("TYPE I")
+        conn = self._ftp.transfercmd(cmd)
+        if set_channel:
+            set_channel(_DataChannel(conn))
+
+        def cancelled():
+            return cancel_event is not None and cancel_event.is_set()
+
+        complete = False
+        try:
+            try:
+                if source is None:
+                    while True:
+                        if cancelled():
+                            raise TransferAborted()
+                        chunk = conn.recv(self._BLOCKSIZE)
+                        if not chunk:
+                            break
+                        on_data(chunk)
+                else:
+                    while True:
+                        if cancelled():
+                            raise TransferAborted()
+                        chunk = source.read(self._BLOCKSIZE)
+                        if not chunk:
+                            break
+                        conn.sendall(chunk)
+                        if on_data:
+                            on_data(chunk)
+            except OSError:
+                # The queue shut the socket down under a blocked recv/send.
+                if cancelled():
+                    raise TransferAborted()
+                raise
+            # A cancel that only woke recv() reads as a clean end of file.
+            if cancelled():
+                raise TransferAborted()
+            if isinstance(conn, ssl.SSLSocket):
+                conn.unwrap()
+            complete = True
+        finally:
+            conn.close()
+            if set_channel:
+                set_channel(None)
+            if complete:
+                self._ftp.voidresp()
+            else:
+                self._discard_transfer_reply()
+
+    def _discard_transfer_reply(self):
+        """Read the reply to a transfer cut short (426, or a late 226).
+
+        If none comes the connection is no longer in step, so it is marked
+        lost rather than left to answer the next command with this reply.
+        """
+        try:
+            self._ftp.getresp()
+        except (error_perm, error_reply, error_temp):
+            pass  # 426/451: the server saw the abort, which is the point
+        except Exception:
+            self._lost = True
 
     def _listdir_list_raw(self, path: str) -> list:
-        """LIST fallback returning (name, facts) tuples like mlsd."""
-        lines = []
-        self._ftp.retrlines(f"LIST {path}", lines.append)
-        results = []
-        for line in lines:
-            parts = line.split(None, 8)
-            if len(parts) < 9:
-                continue
-            name = parts[8]
-            facts = {"type": "dir" if parts[0].startswith("d") else "file",
-                     "size": parts[4] if parts[4].isdigit() else "0"}
-            results.append((name, facts))
-        return results
+        """LIST fallback returning (name, facts) tuples like mlsd.
+
+        Links keep their unresolved link type, so recursive operations treat
+        them as files: a delete removes the link, not what it points to.
+        """
+        return [(name, facts) for name, facts, _o, _g in self._list_unlocked(path)]
 
     def upload(self, local_path: str, remote_path: str, progress_cb=None, overwrite=False):
         with self._lock:
@@ -452,27 +588,23 @@ class FtpClient:
                 raise FileExistsError(f"'{name}' already exists on the server")
             file_size = os.path.getsize(local_path)
             sent = 0
-            with open(local_path, "rb") as f:
+
+            def on_sent(chunk):
+                nonlocal sent
+                sent += len(chunk)
                 if progress_cb:
-                    def callback(chunk):
-                        nonlocal sent
-                        sent += len(chunk)
-                        progress_cb(sent, file_size)
-                    self._ftp.storbinary(f"STOR {remote_path}", f, callback=callback)
-                else:
-                    self._ftp.storbinary(f"STOR {remote_path}", f)
+                    progress_cb(sent, file_size)
+
+            with open(local_path, "rb") as f:
+                self._transfer_unlocked(f"STOR {remote_path}", on_sent, f,
+                                        None, None)
 
     def stat(self, path: str):
         with self._lock:
             if not self._ftp:
                 raise RuntimeError("Not connected")
             if self._has_mlsd:
-                parent = path.rsplit("/", 1)[0] or "/"
-                name = path.rsplit("/", 1)[-1]
-                for entry_name, facts in self._ftp.mlsd(parent):
-                    if entry_name == name:
-                        return FtpFileAttr(name, facts)
-                raise FileNotFoundError(f"No such file or directory: '{path}'")
+                return self._mlst_unlocked(path)
             # Fallback: try SIZE + MDTM + check if directory
             found = False
             facts = {"size": "0", "type": "file"}
@@ -498,6 +630,42 @@ class FtpClient:
             if not found:
                 raise FileNotFoundError(f"No such file or directory: '{path}'")
             return FtpFileAttr(path.rsplit("/", 1)[-1], facts)
+
+    def _mlst_unlocked(self, path: str):
+        """Stat one path with MLST.
+
+        RFC 3659 ties MLST and MLSD together (the FEAT line is "MLST"), so a
+        server listing with MLSD answers this too, without the full listing
+        of the parent the window would otherwise fetch per open file per
+        poll. Like SFTP's stat(), this follows a link.
+        """
+        name = path.rstrip("/").rsplit("/", 1)[-1] or "/"
+        try:
+            resp = self._ftp.sendcmd(f"MLST {path}")
+        except error_perm as e:
+            if str(e).startswith("550"):
+                raise FileNotFoundError(f"No such file or directory: '{path}'")
+            raise
+        # 250-Start of list
+        #  type=file;size=12;modify=20260101120000; /path/name
+        # 250 End
+        for line in resp.splitlines()[1:]:
+            if not line.startswith(" "):
+                continue
+            facts_text, _sep, _name = line[1:].partition(" ")
+            facts = {}
+            for fact in facts_text.rstrip(";").split(";"):
+                key, eq, value = fact.partition("=")
+                if eq:
+                    facts[key.lower()] = value
+            if _is_link_type(facts):
+                parent = path.rstrip("/").rsplit("/", 1)[0] or "/"
+                return FtpFileAttr(
+                    name, self._resolve_link_unlocked(parent, name, facts),
+                    is_link=True,
+                )
+            return FtpFileAttr(name, facts)
+        raise FileNotFoundError(f"No such file or directory: '{path}'")
 
     def mkdir(self, path: str):
         with self._lock:
@@ -576,11 +744,16 @@ class FtpClient:
             self._copy_recursive_unlocked(src, dst)
 
     def _copy_file_unlocked(self, src: str, dst: str):
-        """Copy by downloading to memory and re-uploading."""
-        buf = BytesIO()
-        self._ftp.retrbinary(f"RETR {src}", buf.write)
-        buf.seek(0)
-        self._ftp.storbinary(f"STOR {dst}", buf)
+        """Copy by downloading and re-uploading.
+
+        One control connection can't RETR and STOR at once, so the file goes
+        through an unnamed temp file on disk rather than memory, which a
+        large file would exhaust.
+        """
+        with tempfile.TemporaryFile(prefix="edith-copy-") as buf:
+            self._ftp.retrbinary(f"RETR {src}", buf.write)
+            buf.seek(0)
+            self._ftp.storbinary(f"STOR {dst}", buf)
 
     def _copy_recursive_unlocked(self, src: str, dst: str):
         if self._is_dir_unlocked(src):
@@ -661,6 +834,13 @@ class FtpClient:
             return size if size is not None else 0
         except Exception:
             return 0
+
+
+def _is_link_type(facts: dict) -> bool:
+    """True for a symlink entry: our LIST parser's "OS.unix=symlink", or the
+    MLSD types ProFTPD sends ("OS.unix=symlink", "OS.unix=slink:/target")."""
+    entry_type = facts.get("type", "").lower()
+    return entry_type.startswith(("os.unix=symlink", "os.unix=slink"))
 
 
 def _marks_lost(method):
