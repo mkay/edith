@@ -18,7 +18,9 @@ def _esc(text) -> str:
 
 
 def _tt(text) -> str:
-    return f"<tt>{_esc(text)}</tt>"
+    # No hyphens: Pango hyphenates a fingerprint it has to wrap, and an
+    # inserted "-" reads as part of it.
+    return f'<span font_family="monospace" insert_hyphens="false">{_esc(text)}</span>'
 
 
 def present_trust_dialog(parent, error, on_trusted, on_declined=None) -> bool:
