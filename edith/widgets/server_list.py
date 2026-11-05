@@ -36,6 +36,7 @@ class ServerList(Gtk.Box):
         sw = Gtk.ScrolledWindow(
             vexpand=True,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
+            css_classes=["sidebar-list"],
         )
 
         self._list_box = Gtk.ListBox(

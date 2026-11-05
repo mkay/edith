@@ -57,6 +57,9 @@ class EdithApplication(Adw.Application):
             # Load application-wide CSS
             css = Gtk.CssProvider()
             css.load_from_string("""
+/* Before .drop-target, which has to win on the file browser's stack */
+.sidebar-list { background-color: mix(shade(@window_bg_color, 0.97), @accent_color, 0.06); }
+
 .drop-target { background-color: alpha(@accent_color, 0.15); }
 
 /* Slightly darker sidebar pane */

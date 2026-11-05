@@ -201,7 +201,7 @@ class FileBrowser(Gtk.Box):
         sw = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
         sw.set_child(self._column_view)
 
-        self._stack = Gtk.Stack(vexpand=True)
+        self._stack = Gtk.Stack(vexpand=True, css_classes=["sidebar-list"])
         self._stack.add_named(sw, "list")
 
         self._status_label = Gtk.Label(
@@ -234,6 +234,9 @@ class FileBrowser(Gtk.Box):
         # ── CSS ──────────────────────────────────────────────────────────
         _css = Gtk.CssProvider()
         _css.load_from_string("""
+            .sidebar-list columnview, .sidebar-list columnview > listview {
+                background: none;
+            }
             columnview.file-list > listview > row:selected {
                 background-color: alpha(@accent_bg_color, 0.25);
             }
