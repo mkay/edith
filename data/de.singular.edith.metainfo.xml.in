@@ -77,6 +77,18 @@
   </supports>
 
   <releases>
+    <release version="0.10.0" date="2026-11-03">
+      <description>
+        <p>
+          Verifies SSH host keys and FTPS certificates before logging in,
+          offers to reconnect after a dropped connection while keeping open
+          tabs, keeps a file's encoding and line endings on save, reads PuTTY
+          keys, and fixes FileZilla import, links to folders and cancelling
+          FTP transfers.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.10.0</url>
+    </release>
     <release version="0.9.0" date="2026-09-15">
       <description>
         <p>

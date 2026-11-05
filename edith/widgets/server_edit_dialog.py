@@ -325,10 +325,21 @@ class ServerEditDialog(Adw.Dialog):
             self._test_client = None
 
         def on_error(err):
-            self._show_test_status(str(err), error=True)
             self._test_btn.set_sensitive(True)
             self._test_btn.set_label(_("Test Connection"))
             self._test_client = None
+
+            from edith.widgets.trust_dialogs import present_trust_dialog
+
+            # An unknown host key or certificate: ask, and test again once
+            # it is trusted.
+            if present_trust_dialog(
+                self, err,
+                lambda: self._on_test(self._test_btn),
+                lambda: self._show_test_status(str(err), error=True),
+            ):
+                return
+            self._show_test_status(str(err), error=True)
 
         run_async(do_test, on_success, on_error)
 

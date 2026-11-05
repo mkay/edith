@@ -12,6 +12,8 @@ from pathlib import Path
 
 import paramiko
 
+from edith.services.local_files import atomic_write
+
 
 class SftpClient:
     """Thread-safe SFTP client wrapping paramiko."""
@@ -35,14 +37,70 @@ class SftpClient:
         """Connect to an SFTP server. Blocks until connected."""
         import socket
 
-        sock = socket.create_connection((host, port), timeout=timeout)
-        transport = paramiko.Transport(sock)
-        transport.start_client()
+        from edith.services import trust_store
 
+        # The key first: a wrong passphrase or an unreadable key file fails
+        # here, without a connection the server would count as a failed
+        # login attempt.
         pkey = None
         if key_file and os.path.isfile(key_file):
-            pkey = paramiko.PKey.from_path(key_file, passphrase=passphrase)
+            from edith.services import ppk
 
+            if ppk.is_ppk(key_file):
+                # PuTTY's format, common with keys made for FileZilla;
+                # paramiko can't read it.
+                pkey = ppk.load(key_file, passphrase)
+            else:
+                # Positional: the keyword is `passphrase` up to paramiko 4
+                # and `password` from 5 on. Bytes: from_path() hands it
+                # straight to cryptography, which rejects a str.
+                secret = passphrase.encode("utf-8") if passphrase else None
+                try:
+                    pkey = paramiko.PKey.from_path(key_file, secret)
+                except TypeError as e:
+                    # cryptography's "Key is password-protected, but
+                    # password was not provided."
+                    raise paramiko.PasswordRequiredException(
+                        "The key file is protected by a passphrase"
+                    ) from e
+                except ValueError as e:
+                    # A wrong passphrase surfaces as an unparseable key
+                    # ("Valid PEM but no BEGIN/END delimiters…").
+                    if secret:
+                        raise paramiko.SSHException(
+                            "Wrong passphrase for the key file"
+                        ) from e
+                    raise
+
+        sock = socket.create_connection((host, port), timeout=timeout)
+        try:
+            transport = paramiko.Transport(sock)
+        except BaseException:
+            sock.close()
+            raise
+        # Any failure from here on must close the transport: left open, its
+        # thread and socket linger until the server's login grace time runs
+        # out, and OpenSSH 9.8+ then penalises the client's address, refusing
+        # every connection from it for a while.
+        try:
+            self._prefer_known_key_types(transport, trust_store.known_key_types(host, port))
+            transport.start_client()
+            # Before any credential goes out: a server that isn't the one we
+            # know must not see the password.
+            trust_store.check_host_key(host, port, transport.get_remote_server_key())
+            self._authenticate(transport, username, password, pkey)
+            transport.set_keepalive(30)
+            sftp = paramiko.SFTPClient.from_transport(transport)
+        except BaseException:
+            transport.close()
+            raise
+
+        with self._lock:
+            self._transport = transport
+            self._sftp = sftp
+
+    @staticmethod
+    def _authenticate(transport, username, password, pkey):
         if pkey:
             transport.auth_publickey(username, pkey)
         elif password:
@@ -50,28 +108,43 @@ class SftpClient:
         else:
             # Try SSH agent
             agent = paramiko.Agent()
-            agent_keys = agent.get_keys()
-            if not agent_keys:
-                agent.close()
-                raise ValueError("No authentication method provided (no password, key file, or SSH agent keys)")
-            authenticated = False
-            for agent_key in agent_keys:
-                try:
-                    transport.auth_publickey(username, agent_key)
-                    authenticated = True
-                    break
-                except paramiko.AuthenticationException:
-                    continue
-            agent.close()
-            if not authenticated:
+            try:
+                agent_keys = agent.get_keys()
+                if not agent_keys:
+                    raise ValueError("No authentication method provided (no password, key file, or SSH agent keys)")
+                for agent_key in agent_keys:
+                    try:
+                        transport.auth_publickey(username, agent_key)
+                        return
+                    except paramiko.AuthenticationException:
+                        continue
                 raise paramiko.AuthenticationException("All SSH agent keys were rejected")
+            finally:
+                agent.close()
 
-        transport.set_keepalive(30)
-        sftp = paramiko.SFTPClient.from_transport(transport)
+    # Host key algorithms each known_hosts key type can be verified with.
+    _HOSTKEY_ALGORITHMS = {
+        "ssh-rsa": ("rsa-sha2-512", "rsa-sha2-256", "ssh-rsa"),
+    }
 
-        with self._lock:
-            self._transport = transport
-            self._sftp = sftp
+    @classmethod
+    def _prefer_known_key_types(cls, transport, known_types):
+        """Negotiate a host key type that is already known, if there is one.
+
+        The server picks the first of our algorithms it supports, so with a
+        known RSA key and paramiko preferring ED25519 the user would be asked
+        to trust a host they already trust. OpenSSH reorders the same way.
+        """
+        if not known_types:
+            return
+        options = transport.get_security_options()
+        current = list(options.key_types)
+        wanted = []
+        for key_type in known_types:
+            for algorithm in cls._HOSTKEY_ALGORITHMS.get(key_type, (key_type,)):
+                if algorithm in current and algorithm not in wanted:
+                    wanted.append(algorithm)
+        options.key_types = wanted + [a for a in current if a not in wanted]
 
     def close(self):
         with self._lock:
@@ -89,6 +162,17 @@ class SftpClient:
                 self._transport = None
 
     @property
+    def connection_lost(self) -> bool:
+        """True once an established connection has dropped.
+
+        No network I/O, so it is safe to poll from the main loop: paramiko's
+        transport thread marks the transport inactive as soon as it reads EOF
+        or a disconnect from the server.
+        """
+        transport = self._transport
+        return transport is not None and not transport.is_active()
+
+    @property
     def is_connected(self) -> bool:
         return (
             self._transport is not None
@@ -104,11 +188,28 @@ class SftpClient:
             return self._sftp.normalize(path)
 
     def listdir_attr(self, path: str) -> list:
-        """List directory contents with attributes."""
+        """List directory contents with attributes.
+
+        The server reports lstat attributes, so a link to a folder would look
+        like a file. Each link entry gets its target's attributes instead and
+        is_link = True; a dangling link keeps its own and stays a file.
+        """
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
-            return self._sftp.listdir_attr(path)
+            entries = self._sftp.listdir_attr(path)
+            for attr in entries:
+                attr.is_link = bool(attr.st_mode) and stat.S_ISLNK(attr.st_mode)
+                if not attr.is_link:
+                    continue
+                try:
+                    target = self._sftp.stat(f"{path.rstrip('/')}/{attr.filename}")
+                except OSError:
+                    continue  # dangling, or the target is unreadable
+                attr.st_mode = target.st_mode
+                attr.st_size = target.st_size
+                attr.st_mtime = target.st_mtime
+            return entries
 
     _DL_CHUNK = 1 << 20  # 1 MiB — matches MAX_REQUEST_SIZE for aligned prefetch reads
     _DL_WINDOW = 1 << 25  # 32 MiB SSH channel window (vs paramiko's 2 MiB default)
@@ -154,7 +255,7 @@ class SftpClient:
         with dl_sftp.open(remote_path, "rb") as fr:
             fr.MAX_REQUEST_SIZE = self._DL_REQ_SIZE
             fr.prefetch(file_size)
-            with open(local_path, "wb", buffering=self._DL_CHUNK) as fl:
+            with atomic_write(local_path, buffering=self._DL_CHUNK) as fl:
                 received = 0
                 while True:
                     chunk = fr.read(self._DL_CHUNK)
@@ -327,10 +428,17 @@ class SftpClient:
             self._sftp.rmdir(path)
 
     def rmdir_recursive(self, path: str):
-        """Recursively remove a remote directory and all contents."""
+        """Recursively remove a remote directory and all contents.
+
+        A link to a folder is unlinked, never descended into: that would
+        empty the folder it points to.
+        """
         with self._lock:
             if not self._sftp:
                 raise RuntimeError("Not connected")
+            if stat.S_ISLNK(self._sftp.lstat(path).st_mode or 0):
+                self._sftp.remove(path)
+                return
             self._rmdir_recursive_unlocked(path)
 
     def _rmdir_recursive_unlocked(self, path: str):
@@ -373,8 +481,13 @@ class SftpClient:
                     fout.write(chunk)
 
     def _copy_recursive_unlocked(self, src: str, dst: str):
-        src_stat = self._sftp.stat(src)
-        if stat.S_ISDIR(src_stat.st_mode):
+        # lstat: a link is copied as a link. Following it would copy the
+        # target instead, and loop forever on a link to a parent folder.
+        src_stat = self._sftp.lstat(src)
+        if stat.S_ISLNK(src_stat.st_mode):
+            # paramiko sends (target, link) in the order OpenSSH expects.
+            self._sftp.symlink(self._sftp.readlink(src), dst)
+        elif stat.S_ISDIR(src_stat.st_mode):
             try:
                 self._sftp.mkdir(dst)
             except OSError:

@@ -50,7 +50,9 @@ class TransferQueue(GObject.Object):
         self._next_id = 0
         self._active_job_id = None
         self._cancel_event = threading.Event()
-        self._active_channel = None  # SFTP channel to force-close on cancel
+        # What cancel() closes to interrupt a blocked transfer: an SFTP
+        # channel, or an FTP data connection (never the control connection).
+        self._active_channel = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -91,7 +93,7 @@ class TransferQueue(GObject.Object):
         with self._lock:
             if self._active_job_id == job_id:
                 self._cancel_event.set()
-                # Force-close the SFTP channel to interrupt blocking reads
+                # Force-close the transfer's channel to interrupt blocking I/O
                 chan = self._active_channel
                 if chan is not None:
                     try:
@@ -155,7 +157,7 @@ class TransferQueue(GObject.Object):
                     self._active_channel = None
 
     def _set_channel(self, channel):
-        """Register the active SFTP client so cancel() can force-close it."""
+        """Register what cancel() should close to interrupt the transfer."""
         with self._lock:
             self._active_channel = channel
 

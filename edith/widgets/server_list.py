@@ -10,6 +10,7 @@ from gi.repository import Adw, Gio, Gtk, GObject, Gdk
 
 from edith.models.server import FolderInfo
 from edith.services.config import ConfigService
+from edith.widgets.config_guard import refuses_damaged_config
 from edith.widgets.folder_row import FolderRow
 from edith.widgets.file_dialogs import NameDialog
 from edith.i18n import _
@@ -149,6 +150,7 @@ class ServerList(Gtk.Box):
         dialog.connect("submitted", self._on_folder_rename_submitted, folder)
         dialog.present(win)
 
+    @refuses_damaged_config("load_servers")
     def _on_folder_rename_submitted(self, dialog, new_name, folder):
         current_key = self._get_selected_key()
         folder.name = new_name
@@ -174,6 +176,7 @@ class ServerList(Gtk.Box):
         dlg.connect("response", self._on_folder_delete_response, folder)
         dlg.present(win)
 
+    @refuses_damaged_config("load_servers")
     def _on_folder_delete_response(self, dialog, response, folder):
         if response == "delete":
             current_key = self._get_selected_key()
@@ -201,6 +204,7 @@ class ServerList(Gtk.Box):
         dialog.connect("submitted", self._on_new_folder_submitted)
         dialog.present(win)
 
+    @refuses_damaged_config("load_servers")
     def _on_new_folder_submitted(self, dialog, name):
         current_key = self._get_selected_key()
         folder = FolderInfo(name=name)
@@ -211,6 +215,23 @@ class ServerList(Gtk.Box):
     # ------------------------------------------------------------------
     # Loading and rebuilding the list
     # ------------------------------------------------------------------
+
+    @refuses_damaged_config("load_servers")
+    def _on_folder_dropped(self, source_id, target_id):
+        if source_id == target_id:
+            return False
+        # Reorder: move source to target's position
+        ordered_ids = [f.id for f in self._folders]
+        if source_id not in ordered_ids:
+            return False
+        ordered_ids.remove(source_id)
+        target_idx = ordered_ids.index(target_id)
+        ordered_ids.insert(target_idx, source_id)
+        current_key = self._get_selected_key()
+        self._folders = ConfigService.reorder_folders(ordered_ids)
+        self._rebuild_list()
+        self.select_group(current_key or "__all__")
+        return True
 
     def load_servers(self):
         self._servers = ConfigService.load_servers()
@@ -300,22 +321,7 @@ class ServerList(Gtk.Box):
 
         def on_drop(d, value, x, y):
             list_box_row.remove_css_class("drop-target")
-            source_id = value
-            target_id = folder.id
-            if source_id == target_id:
-                return False
-            # Reorder: move source to target's position
-            ordered_ids = [f.id for f in self._folders]
-            if source_id not in ordered_ids:
-                return False
-            ordered_ids.remove(source_id)
-            target_idx = ordered_ids.index(target_id)
-            ordered_ids.insert(target_idx, source_id)
-            current_key = self._get_selected_key()
-            self._folders = ConfigService.reorder_folders(ordered_ids)
-            self._rebuild_list()
-            self.select_group(current_key or "__all__")
-            return True
+            return self._on_folder_dropped(value, folder.id)
 
         drop.connect("enter", on_drop_enter)
         drop.connect("leave", on_drop_leave)

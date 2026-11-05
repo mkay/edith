@@ -17,7 +17,9 @@ import sys
 
 destdir = os.environ.get("DESTDIR", "")
 prefix = os.environ.get("MESON_INSTALL_PREFIX", "/usr")
-moduledir = os.path.join(prefix, "share", "edith")
+# Where the modules will live once installed, and where they are now.
+installed_moduledir = os.path.join(prefix, "share", "edith")
+moduledir = installed_moduledir
 
 if destdir:
     moduledir = os.path.join(destdir, os.path.relpath(moduledir, "/"))
@@ -27,4 +29,8 @@ if not os.path.isdir(moduledir):
 
 # quiet=1 keeps the install log readable; a compile failure must not break
 # the install, since the app still runs from source.
-compileall.compile_dir(moduledir, quiet=1, force=True)
+#
+# ddir records the installed path in the bytecode, not the staging one under
+# DESTDIR. Otherwise every traceback names the packager's build directory,
+# and makepkg warns that the package contains a reference to $pkgdir.
+compileall.compile_dir(moduledir, ddir=installed_moduledir, quiet=1, force=True)

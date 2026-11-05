@@ -1,5 +1,6 @@
 widgets_sources = [
   '__init__.py',
+  'config_guard.py',
   'connect_dialog.py',
   'editor_panel.py',
   'file_browser.py',
@@ -19,6 +20,7 @@ widgets_sources = [
   'syntax_associations_dialog.py',
   'theme_chooser_dialog.py',
   'transfer_panel.py',
+  'trust_dialogs.py',
   'welcome_view.py',
   'whats_new_dialog.py',
 ]

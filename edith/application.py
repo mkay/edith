@@ -130,10 +130,36 @@ label.error { color: @error_color; }
 
             # After present(), and on an idle callback: Adw.Dialog needs a
             # realized parent to attach to.
-            from edith.widgets.whats_new_dialog import present_if_updated
-            GLib.idle_add(present_if_updated, win, first_run)
+            if ConfigService.is_damaged():
+                GLib.idle_add(self._warn_config_damaged, win)
+            else:
+                from edith.widgets.whats_new_dialog import present_if_updated
+                GLib.idle_add(present_if_updated, win, first_run)
             return
         win.present()
+
+    def _warn_config_damaged(self, win):
+        """Say why the server list is empty and why changes won't stick.
+
+        ConfigService refuses to write over a file it can't parse, so without
+        this the app would look like it lost every server and then silently
+        ignore whatever the user changed.
+        """
+        from edith.services.config import ConfigService
+
+        path = ConfigService._servers_file()
+        dialog = Adw.AlertDialog(
+            heading=_("Server List Can\u2019t Be Read"),
+            body=_(
+                "{path} is damaged. Edith won\u2019t change it, so servers and "
+                "settings you change now will not be saved.\n\n"
+                "Repair the file, or replace it with a backup from {backups}, "
+                "then restart Edith."
+            ).format(path=path, backups=path.parent / "backups"),
+        )
+        dialog.add_response("ok", _("OK"))
+        dialog.present(win)
+        return GLib.SOURCE_REMOVE
 
     def _migrate_config(self):
         """One-time migration from GtkSourceView config to Monaco."""

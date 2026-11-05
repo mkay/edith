@@ -126,7 +126,14 @@ for _attempt in 1 2 3; do
 done
 echo "==> Building Arch package"
 makepkg -sf --noconfirm
-ARCH_PKG=$(ls -t ./*.pkg.tar.zst 2>/dev/null | grep -v debug | head -1)
+# Ask makepkg what it built rather than guessing the extension: PKGEXT is
+# .pkg.tar.zst on x86_64 Arch but .pkg.tar.xz on Arch Linux ARM, and a glob
+# for the wrong one ends the script (set -e) after the tag is already pushed.
+ARCH_PKG=$(makepkg --packagelist | grep -v -- '-debug-' | head -1)
+if [[ ! -f "$ARCH_PKG" ]]; then
+    echo "ERROR: makepkg reported $ARCH_PKG, which doesn't exist."
+    exit 1
+fi
 
 # Refresh .SRCINFO now that checksums are settled, and push both back to repos
 # so the main repo tree isn't left dirty (the AUR push below only commits into

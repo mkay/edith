@@ -23,18 +23,24 @@ def run_async(task, on_success, on_error):
             result = task()
             GLib.idle_add(_deliver_success, result)
         except Exception as e:
-            traceback.print_exc()
-            # Nothing launched from a .desktop file has a stderr anyone reads,
-            # so the traceback above vanishes in exactly the situation where a
-            # user reports "it crashed". Keep a durable copy.
-            try:
-                from edith.services.freeze_watchdog import record
-                record(
-                    f"background task failed: {type(e).__name__}: {e}\n"
-                    + traceback.format_exc()
-                )
-            except Exception:
-                pass
+            # An exception can opt out with log_as_failure = False when it is
+            # part of the normal flow rather than a failure, such as an
+            # unknown host key the caller turns into a question. Logged, each
+            # would read as a crash in the dump below.
+            if getattr(e, "log_as_failure", True):
+                traceback.print_exc()
+                # Nothing launched from a .desktop file has a stderr anyone
+                # reads, so the traceback above vanishes in exactly the
+                # situation where a user reports "it crashed". Keep a
+                # durable copy.
+                try:
+                    from edith.services.freeze_watchdog import record
+                    record(
+                        f"background task failed: {type(e).__name__}: {e}\n"
+                        + traceback.format_exc()
+                    )
+                except Exception:
+                    pass
             GLib.idle_add(_deliver_error, e)
 
     def _deliver_success(result):

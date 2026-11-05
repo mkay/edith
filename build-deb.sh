@@ -42,21 +42,11 @@ if [[ -z "$PROJECT_NAME" || -z "$VERSION" ]]; then
     exit 1
 fi
 
-# Debian architecture name, which is not what uname reports.
-if command -v dpkg &>/dev/null; then
-    ARCH=$(dpkg --print-architecture)
-else
-    case "$(uname -m)" in
-        x86_64)  ARCH=amd64 ;;
-        aarch64) ARCH=arm64 ;;
-        armv7l)  ARCH=armhf ;;
-        i?86)    ARCH=i386 ;;
-        *)
-            log "ERROR: Unknown architecture '$(uname -m)'. Install dpkg or set ARCH by hand."
-            exit 1
-            ;;
-    esac
-fi
+# Architecture-independent: Python, bytecode (tied to the Python version, not
+# the CPU), icons and Monaco's JavaScript. Labelling it with the build
+# machine's architecture would leave every other architecture without a
+# package, e.g. no amd64 .deb when the release is built on aarch64.
+ARCH=all
 
 DEB_STAGING="$(pwd)/deb-staging"
 CONFIG_FILE=$(mktemp -t "nfpm-$PROJECT_NAME-XXXXXX.yaml")

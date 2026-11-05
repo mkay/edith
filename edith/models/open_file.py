@@ -14,6 +14,9 @@ class OpenFile:
     # Set when polling finds the file gone from the server; the tab still
     # holds the content, so closing it needs a warning like unsaved changes.
     is_deleted: bool = False
+    # What the local copy was decoded as (see services.local_files), so a
+    # save writes the same encoding back instead of converting the file.
+    encoding: str = "utf-8"
 
     @property
     def filename(self) -> str:
