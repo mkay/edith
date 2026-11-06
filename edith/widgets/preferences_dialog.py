@@ -501,7 +501,7 @@ class PreferencesDialog(Adw.PreferencesDialog):
         sidebar_group = Adw.PreferencesGroup(title=_("Sidebar"))
         self._tint_row = Adw.SwitchRow(
             title=_("Tint Sidebar"),
-            subtitle=_("Mix the accent colour into the sidebar list"),
+            subtitle=_("Mix the accent colour of your GTK theme into the sidebar list"),
         )
         self._tint_row.set_active(ConfigService.get_preference("tint_sidebar", True))
         self._tint_row.connect("notify::active", self._on_tint_changed)

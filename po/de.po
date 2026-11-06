@@ -1644,8 +1644,8 @@ msgid "Tint Sidebar"
 msgstr "Seitenleiste einfärben"
 
 #: edith/widgets/preferences_dialog.py
-msgid "Mix the accent colour into the sidebar list"
-msgstr "Akzentfarbe in die Liste der Seitenleiste einmischen"
+msgid "Mix the accent colour of your GTK theme into the sidebar list"
+msgstr "Mischt die Akzentfarbe deines GTK-Themes in die Liste der Seitenleiste"
 
 #: edith/widgets/preferences_dialog.py:492
 msgid "Double Click"

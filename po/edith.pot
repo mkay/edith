@@ -1526,7 +1526,7 @@ msgid "Tint Sidebar"
 msgstr ""
 
 #: edith/widgets/preferences_dialog.py
-msgid "Mix the accent colour into the sidebar list"
+msgid "Mix the accent colour of your GTK theme into the sidebar list"
 msgstr ""
 
 #: edith/widgets/preferences_dialog.py:492
