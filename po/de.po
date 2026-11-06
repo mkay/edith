@@ -1635,6 +1635,18 @@ msgstr "Objekte öffnen mit"
 msgid "How files, folders and servers are opened"
 msgstr "Wie Dateien, Ordner und Server geöffnet werden"
 
+#: edith/widgets/preferences_dialog.py
+msgid "Sidebar"
+msgstr "Seitenleiste"
+
+#: edith/widgets/preferences_dialog.py
+msgid "Tint Sidebar"
+msgstr "Seitenleiste einfärben"
+
+#: edith/widgets/preferences_dialog.py
+msgid "Mix the accent colour into the sidebar list"
+msgstr "Akzentfarbe in die Liste der Seitenleiste einmischen"
+
 #: edith/widgets/preferences_dialog.py:492
 msgid "Double Click"
 msgstr "Doppelklick"

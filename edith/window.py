@@ -2224,6 +2224,11 @@ class EdithWindow(Adw.ApplicationWindow):
         self._file_browser.apply_navigation_settings()
         self._server_panel.apply_navigation_settings()
 
+    def apply_tint_settings(self):
+        """Re-read the Tint Sidebar preference for both sidebar lists."""
+        self._server_list.update_tint()
+        self._file_browser.update_tint()
+
     def apply_editor_settings(self):
         """Re-read global editor settings from config and push to all open tabs."""
         from edith.services.config import ConfigService

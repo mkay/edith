@@ -1517,6 +1517,18 @@ msgstr ""
 msgid "How files, folders and servers are opened"
 msgstr ""
 
+#: edith/widgets/preferences_dialog.py
+msgid "Sidebar"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py
+msgid "Tint Sidebar"
+msgstr ""
+
+#: edith/widgets/preferences_dialog.py
+msgid "Mix the accent colour into the sidebar list"
+msgstr ""
+
 #: edith/widgets/preferences_dialog.py:492
 msgid "Double Click"
 msgstr ""

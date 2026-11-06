@@ -201,7 +201,8 @@ class FileBrowser(Gtk.Box):
         sw = Gtk.ScrolledWindow(vexpand=True, hscrollbar_policy=Gtk.PolicyType.AUTOMATIC)
         sw.set_child(self._column_view)
 
-        self._stack = Gtk.Stack(vexpand=True, css_classes=["sidebar-list"])
+        self._stack = Gtk.Stack(vexpand=True)
+        self.update_tint()
         self._stack.add_named(sw, "list")
 
         self._status_label = Gtk.Label(
@@ -1531,6 +1532,13 @@ class FileBrowser(Gtk.Box):
         """Reload the listing if `path` is the directory currently shown."""
         if path and path == self._current_path:
             self.load_directory(self._current_path, add_to_history=False)
+
+    def update_tint(self):
+        """Apply or drop the accent tint according to the Tint Sidebar preference."""
+        if ConfigService.get_preference("tint_sidebar", True):
+            self._stack.add_css_class("sidebar-list")
+        else:
+            self._stack.remove_css_class("sidebar-list")
 
     def apply_navigation_settings(self):
         """Re-read the single/double click preference and apply it live."""

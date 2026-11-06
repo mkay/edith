@@ -498,6 +498,16 @@ class PreferencesDialog(Adw.PreferencesDialog):
 
         page.add(navigation)
 
+        sidebar_group = Adw.PreferencesGroup(title=_("Sidebar"))
+        self._tint_row = Adw.SwitchRow(
+            title=_("Tint Sidebar"),
+            subtitle=_("Mix the accent colour into the sidebar list"),
+        )
+        self._tint_row.set_active(ConfigService.get_preference("tint_sidebar", True))
+        self._tint_row.connect("notify::active", self._on_tint_changed)
+        sidebar_group.add(self._tint_row)
+        page.add(sidebar_group)
+
         window_group = Adw.PreferencesGroup(
             title=_("Window"),
             description=_("Size used for newly opened windows."),
@@ -680,6 +690,13 @@ class PreferencesDialog(Adw.PreferencesDialog):
         if self._window:
             self._window.apply_navigation_settings()
         self.emit("navigation-changed")
+
+    def _on_tint_changed(self, row, pspec):
+        if self._building:
+            return
+        ConfigService.set_preference("tint_sidebar", row.get_active())
+        if self._window:
+            self._window.apply_tint_settings()
 
     def _on_window_size_changed(self, row, pspec):
         if self._building:

@@ -37,8 +37,9 @@ class ServerList(Gtk.Box):
         sw = Gtk.ScrolledWindow(
             vexpand=True,
             hscrollbar_policy=Gtk.PolicyType.NEVER,
-            css_classes=["sidebar-list"],
         )
+        self._scroller = sw
+        self.update_tint()
 
         self._list_box = Gtk.ListBox(
             selection_mode=Gtk.SelectionMode.SINGLE,
@@ -53,6 +54,13 @@ class ServerList(Gtk.Box):
         self._setup_context_menus()
 
         self.load_servers()
+
+    def update_tint(self):
+        """Apply or drop the accent tint according to the Tint Sidebar preference."""
+        if ConfigService.get_preference("tint_sidebar", True):
+            self._scroller.add_css_class("sidebar-list")
+        else:
+            self._scroller.remove_css_class("sidebar-list")
 
     # ------------------------------------------------------------------
     # Context menus
