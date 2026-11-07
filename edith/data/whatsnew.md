@@ -20,8 +20,5 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- Servers are checked before logging in: a new SFTP server asks once to confirm its key, a changed key is refused, and FTPS certificates are verified.
-- A dropped connection is noticed and offers to reconnect, keeping open tabs and unsaved edits.
-- Saving keeps a file's encoding and line endings, a failed upload no longer looks saved, and failed downloads leave no partial files.
-- PuTTY .ppk keys work, and FileZilla import keeps start folders, FTP encryption, key files and saved passwords.
-- Links to folders open as folders, and cancelling an FTP transfer no longer drops the connection.
+- The server list and file browser are tinted with your GTK theme's accent colour. Turn it off with Tint Sidebar in Preferences.
+- A new app icon: the Edith mark without the tile behind it.
