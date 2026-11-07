@@ -1,13 +1,12 @@
 # Edith
 
-A GTK4/libadwaita SFTP/FTP client for live remote file editing.
-(a poor man's Nova ©)
-
-Connect to remote servers over SFTP or FTP, browse files, and edit them in a tabbed editor with syntax highlighting — changes are uploaded back on save.
+A Linux app for editing files live on your servers. Connect over SFTP, FTP or FTPS, open a file in a tab, change it, and it is uploaded as you save. (A poor man's Nova ©)
 
 > Early-stage release — expect rough edges. Feedback and bug reports welcome via Issues.
 
-![Edith Icon](data/de.singular.edith.svg)
+<img src="data/de.singular.edith.svg" alt="Edith icon" width="128">
+
+![Editing a remote file with syntax highlighting](data/screenshots/editor.png)
 
 ## Features
 
@@ -149,8 +148,6 @@ Edith uses [Phosphor Icons](https://phosphoricons.com/) (MIT) and bundles the
 [Monaco Editor](https://microsoft.github.io/monaco-editor/) (MIT).
 
 ## Screenshots
-
-![Editing a remote file with syntax highlighting](data/screenshots/editor.png)
 
 ![Saved connections, grouped](data/screenshots/servers.png)
 
