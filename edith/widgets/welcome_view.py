@@ -43,6 +43,7 @@ class WelcomeView(Adw.Bin):
         self._hint_label = Gtk.Label(
             use_markup=True,
             halign=Gtk.Align.CENTER,
+            justify=Gtk.Justification.CENTER,
         )
         self._hint_label.set_markup(
             # Translators: keep the <a href="create"> markup intact; only the
