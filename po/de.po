@@ -2183,10 +2183,11 @@ msgstr "Ersten Server hinzufügen"
 #. visible text between the tags should be translated.
 #: edith/widgets/welcome_view.py:50
 msgid ""
-"Connect to a server from the sidebar or <a href=\"create\">click here to "
-"create one</a>."
+"Connect to a server from the sidebar\n"
+"or <a href=\"create\">click here to create one</a>."
 msgstr ""
-"Server aus der Seitenleiste wählen oder <a href=\"create\">neu anlegen</a>."
+"Server aus der Seitenleiste wählen\n"
+"oder <a href=\"create\">neu anlegen</a>."
 
 #: edith/widgets/welcome_view.py:70 edith/widgets/welcome_view.py:78
 #, python-brace-format

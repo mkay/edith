@@ -47,8 +47,8 @@ class WelcomeView(Adw.Bin):
         self._hint_label.set_markup(
             # Translators: keep the <a href="create"> markup intact; only the
             # visible text between the tags should be translated.
-            _('Connect to a server from the sidebar or '
-              '<a href="create">click here to create one</a>.')
+            _('Connect to a server from the sidebar\n'
+              'or <a href="create">click here to create one</a>.')
         )
         self._hint_label.connect("activate-link", self._on_link_activated)
         child_box.append(self._hint_label)
