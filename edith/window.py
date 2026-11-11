@@ -1256,6 +1256,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_connected(self, server_info, initial_dir=None):
         """Called after successful connection."""
+        self.set_title(_("{server} — Edith").format(server=server_info.display_name))
         self._set_status("connected", _("Connected to {server}").format(
             server=f"{server_info.username}@{server_info.host}"))
         self.lookup_action("disconnect").set_enabled(True)
@@ -1649,6 +1650,7 @@ class EdithWindow(Adw.ApplicationWindow):
 
     def _on_disconnected(self):
         """Called after disconnection."""
+        self.set_title(_("Edith"))
         self._stop_connection_watch()
         self._connection_lost = False
         if self._poll_timer_id:
