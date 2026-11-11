@@ -59,9 +59,9 @@ modules:
           - pkg
           - src
           - assets
-          - edith-0.11.0.tar.gz
-          - edith_0.11.0_all.deb
-          - edith-0.11.0-1-any.pkg.tar.zst
+          - edith-0.11.1.tar.gz
+          - edith_0.11.1_all.deb
+          - edith-0.11.1-1-any.pkg.tar.zst
           - edith/data/monaco/vs
           - edith/data/monaco/emmet.js
           - edith/data/monaco/terser.js
