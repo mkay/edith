@@ -20,5 +20,4 @@ Links may be written as [label](https://…) or as a bare URL. Prefer the labell
 form: a full URL wraps mid-scheme in a dialog this narrow.
 -->
 
-- The server list and file browser are tinted with your GTK theme's accent colour. Turn it off with Tint Sidebar in Preferences.
-- A new app icon: the Edith mark without the tile behind it.
+- Fixed a spurious "Connection Lost" on FTP servers that refuse the keep-alive NOOP, such as HostEurope.

@@ -77,6 +77,15 @@
   </supports>
 
   <releases>
+    <release version="0.11.1" date="2026-11-11">
+      <description>
+        <p>
+          Fixes a spurious "Connection Lost" on FTP servers that refuse the
+          keep-alive NOOP, such as HostEurope.
+        </p>
+      </description>
+      <url>https://github.com/mkay/edith/releases/tag/v0.11.1</url>
+    </release>
     <release version="0.11.0" date="2026-11-07">
       <description>
         <p>
