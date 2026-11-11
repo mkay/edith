@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-11 22:13+0100\n"
+"POT-Creation-Date: 2026-11-11 22:20+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -112,11 +112,17 @@ msgstr ""
 
 #: data/de.singular.edith.metainfo.xml.in:82
 msgid ""
+"Fixes a spurious \"Connection Lost\" on FTP servers that refuse the keep-"
+"alive NOOP, such as HostEurope."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:91
+msgid ""
 "Tints the server list and file browser with the accent colour of the GTK "
 "theme, switchable in Preferences, and brings a new app icon."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:91
+#: data/de.singular.edith.metainfo.xml.in:100
 msgid ""
 "Verifies SSH host keys and FTPS certificates before logging in, offers to "
 "reconnect after a dropped connection while keeping open tabs, keeps a file's "
@@ -124,34 +130,34 @@ msgid ""
 "import, links to folders and cancelling FTP transfers."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:103
+#: data/de.singular.edith.metainfo.xml.in:112
 msgid ""
 "Adds a Minify action for JavaScript and CSS files, marks open tabs whose "
 "file was deleted on the server and offers to restore them, and gives recent "
 "files a Show in Sidebar entry."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:113
+#: data/de.singular.edith.metainfo.xml.in:122
 msgid ""
 "Fixes a rare crash caused by file type icons, which could bring Edith down "
 "while opening a folder."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:122
+#: data/de.singular.edith.metainfo.xml.in:131
 msgid ""
 "Completes the German translation, fixes a set of crashes while connecting, "
 "browsing and saving, and downloads a dragged-out file only once. See the "
 "project release notes for the full list."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:132
+#: data/de.singular.edith.metainfo.xml.in:141
 msgid ""
 "Adds server list import and export, a Support Edith dialog, and a syntax "
 "theme that can follow the system light/dark setting. See the project release "
 "notes for the full list."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:142
+#: data/de.singular.edith.metainfo.xml.in:151
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."

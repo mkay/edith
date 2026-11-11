@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: edith 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-11 22:13+0100\n"
+"POT-Creation-Date: 2026-11-11 22:20+0100\n"
 "PO-Revision-Date: 2026-07-21 18:00+0300\n"
 "Last-Translator: unreviewed machine draft\n"
 "Language-Team: German\n"
@@ -139,11 +139,17 @@ msgstr "Durchsuchen eines entfernten Servers"
 
 #: data/de.singular.edith.metainfo.xml.in:82
 msgid ""
+"Fixes a spurious \"Connection Lost\" on FTP servers that refuse the keep-"
+"alive NOOP, such as HostEurope."
+msgstr ""
+
+#: data/de.singular.edith.metainfo.xml.in:91
+msgid ""
 "Tints the server list and file browser with the accent colour of the GTK "
 "theme, switchable in Preferences, and brings a new app icon."
 msgstr ""
 
-#: data/de.singular.edith.metainfo.xml.in:91
+#: data/de.singular.edith.metainfo.xml.in:100
 msgid ""
 "Verifies SSH host keys and FTPS certificates before logging in, offers to "
 "reconnect after a dropped connection while keeping open tabs, keeps a file's "
@@ -156,7 +162,7 @@ msgstr ""
 "einer Datei, liest PuTTY-Schlüssel und behebt Fehler beim FileZilla-Import, "
 "bei Verknüpfungen zu Ordnern und beim Abbrechen von FTP-Übertragungen."
 
-#: data/de.singular.edith.metainfo.xml.in:103
+#: data/de.singular.edith.metainfo.xml.in:112
 msgid ""
 "Adds a Minify action for JavaScript and CSS files, marks open tabs whose "
 "file was deleted on the server and offers to restore them, and gives recent "
@@ -167,7 +173,7 @@ msgstr ""
 "an, sie wiederherzustellen. Zuletzt geöffnete Dateien haben einen Eintrag "
 "„In Seitenleiste anzeigen“."
 
-#: data/de.singular.edith.metainfo.xml.in:113
+#: data/de.singular.edith.metainfo.xml.in:122
 msgid ""
 "Fixes a rare crash caused by file type icons, which could bring Edith down "
 "while opening a folder."
@@ -175,7 +181,7 @@ msgstr ""
 "Behebt einen seltenen Absturz durch Dateityp-Symbole, der Edith beim Öffnen "
 "eines Ordners beenden konnte."
 
-#: data/de.singular.edith.metainfo.xml.in:122
+#: data/de.singular.edith.metainfo.xml.in:131
 msgid ""
 "Completes the German translation, fixes a set of crashes while connecting, "
 "browsing and saving, and downloads a dragged-out file only once. See the "
@@ -186,7 +192,7 @@ msgstr ""
 "nur noch einmal herunter. Die vollständige Liste steht in den "
 "Versionshinweisen des Projekts."
 
-#: data/de.singular.edith.metainfo.xml.in:132
+#: data/de.singular.edith.metainfo.xml.in:141
 msgid ""
 "Adds server list import and export, a Support Edith dialog, and a syntax "
 "theme that can follow the system light/dark setting. See the project release "
@@ -197,7 +203,7 @@ msgstr ""
 "folgen kann. Die vollständige Liste steht in den Veröffentlichungshinweisen "
 "des Projekts."
 
-#: data/de.singular.edith.metainfo.xml.in:142
+#: data/de.singular.edith.metainfo.xml.in:151
 msgid ""
 "Adds a What's New dialog, a German translation, and an invitation for "
 "translators. See the project release notes for the full list."
