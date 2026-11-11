@@ -38,6 +38,44 @@ def atomic_write(path, buffering=-1):
         raise
 
 
+@contextlib.contextmanager
+def resumable_write(path, identity, keep_on=()):
+    """Like atomic_write, but a download that dies can be picked up again.
+
+    Yields (f, offset): f appends to a hidden sibling named after `identity`
+    (the remote file's size and mtime, so a file that changed on the server
+    never resumes onto stale bytes), and offset is how much of it an earlier
+    attempt already wrote. The sibling replaces `path` when the block exits
+    cleanly. It is kept when the block fails with an exception in `keep_on`
+    (a dropped connection) and deleted on any other failure, a cancel
+    included. Siblings left by a different identity are removed on entry.
+    """
+    path = os.fspath(path)
+    directory, name = os.path.split(path)
+    directory = directory or "."
+    prefix = f".{name}.r"
+    tmp = os.path.join(directory, f"{prefix}{identity}.part")
+    with contextlib.suppress(OSError):
+        for entry in os.scandir(directory):
+            if (entry.name.startswith(prefix) and entry.name.endswith(".part")
+                    and entry.path != tmp):
+                with contextlib.suppress(OSError):
+                    os.unlink(entry.path)
+    fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o666)
+    keep = False
+    try:
+        with os.fdopen(fd, "ab") as f:
+            yield f, os.fstat(f.fileno()).st_size
+        os.replace(tmp, path)
+    except BaseException as e:
+        keep = bool(keep_on) and isinstance(e, tuple(keep_on))
+        raise
+    finally:
+        if not keep and os.path.exists(tmp):
+            with contextlib.suppress(OSError):
+                os.unlink(tmp)
+
+
 def atomic_write_bytes(path, data: bytes):
     with atomic_write(path) as f:
         f.write(data)

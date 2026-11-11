@@ -14,7 +14,7 @@ from ftplib import FTP, FTP_TLS, error_perm, error_reply, error_temp  # nosec B4
 from io import BytesIO
 from pathlib import Path
 
-from edith.services.local_files import atomic_write
+from edith.services.local_files import atomic_write, resumable_write
 from edith.services.transfer_queue import TransferAborted
 
 
@@ -546,21 +546,65 @@ class FtpClient:
 
     _BLOCKSIZE = 1 << 16
 
+    # Downloads at least this big keep their partial file after a dropped
+    # connection and resume it with REST; smaller ones just start over.
+    _RESUME_MIN = 8 << 20
+    _DROPPED = (EOFError, ConnectionError, TimeoutError, ssl.SSLError)
+
     def _retr_unlocked(self, remote_path, local_path, file_size, progress_cb,
                        cancel_event, set_channel=None):
         """RETR one file into local_path, which appears only once complete."""
-        received = 0
-        with atomic_write(local_path) as f:
-            def on_data(chunk):
-                nonlocal received
-                f.write(chunk)
-                received += len(chunk)
-                if progress_cb:
-                    progress_cb(received, file_size)
-            self._transfer_unlocked(f"RETR {remote_path}", on_data, None,
-                                    cancel_event, set_channel)
+        if file_size < self._RESUME_MIN:
+            with atomic_write(local_path) as f:
+                self._retr_into(f, 0, remote_path, file_size, progress_cb,
+                                cancel_event, set_channel)
+            return
+        identity = f"{file_size}-{self._mdtm_unlocked(remote_path)}"
+        with resumable_write(local_path, identity, self._DROPPED) as (f, offset):
+            if offset > file_size:
+                f.truncate(0)
+                offset = 0
+            # offset == file_size: an earlier attempt got every byte and only
+            # lost the connection before it could say so.
+            if offset < file_size:
+                self._retr_into(f, offset, remote_path, file_size, progress_cb,
+                                cancel_event, set_channel)
 
-    def _transfer_unlocked(self, cmd, on_data, source, cancel_event, set_channel):
+    def _mdtm_unlocked(self, path: str) -> str:
+        try:
+            return self._ftp.voidcmd(f"MDTM {path}").split()[-1]
+        except Exception:
+            return "0"
+
+    def _retr_into(self, f, offset, remote_path, file_size, progress_cb,
+                   cancel_event, set_channel):
+        received = offset
+
+        def on_data(chunk):
+            nonlocal received
+            f.write(chunk)
+            received += len(chunk)
+            if progress_cb:
+                progress_cb(received, file_size)
+
+        def settled():
+            return file_size > 0 and received >= file_size
+
+        cmd = f"RETR {remote_path}"
+        try:
+            self._transfer_unlocked(cmd, on_data, None, cancel_event, set_channel,
+                                    rest=offset or None, settled=settled)
+        except (error_perm, error_reply):
+            if not offset or received != offset:
+                raise
+            # The server refused REST: start the file over.
+            f.truncate(0)
+            received = 0
+            self._transfer_unlocked(cmd, on_data, None, cancel_event, set_channel,
+                                    settled=settled)
+
+    def _transfer_unlocked(self, cmd, on_data, source, cancel_event, set_channel,
+                           rest=None, settled=None):
         """Run one RETR (on_data gets each chunk) or STOR (source is read).
 
         ftplib's retrbinary()/storbinary() let a cancel or a local error
@@ -569,9 +613,14 @@ class FtpClient:
         Doing the data connection here keeps the control connection in step
         whatever happens, and lets the queue cancel the data connection
         alone (see _DataChannel).
+
+        `settled` says whether every expected byte has arrived. A long
+        transfer leaves the control connection silent, and NATs and servers
+        drop it, so the closing 226 may never come. With all the bytes in,
+        that is not a failed download.
         """
         self._ftp.voidcmd("TYPE I")
-        conn = self._ftp.transfercmd(cmd)
+        conn = self._ftp.transfercmd(cmd, rest)
         if set_channel:
             set_channel(_DataChannel(conn))
 
@@ -615,9 +664,22 @@ class FtpClient:
             if set_channel:
                 set_channel(None)
             if complete:
-                self._ftp.voidresp()
+                self._finish_transfer(settled)
             else:
                 self._discard_transfer_reply()
+
+    def _finish_transfer(self, settled):
+        """Read the 226 that closes a transfer whose data all arrived."""
+        try:
+            self._ftp.voidresp()
+        except Exception as e:
+            if not (settled and settled()
+                    and (isinstance(e, (EOFError, OSError))
+                         or self._is_connection_error(e))):
+                raise
+            # Every byte is here; only the control connection is gone.
+            # Keep the file and let the window offer a reconnect.
+            self._lost = True
 
     def _discard_transfer_reply(self):
         """Read the reply to a transfer cut short (426, or a late 226).
