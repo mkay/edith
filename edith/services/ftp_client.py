@@ -268,14 +268,27 @@ class FtpClient:
             try:
                 if self._ftp is None:
                     return
-                try:
-                    self._ftp.voidcmd("NOOP")
-                except Exception:
+                if not self._ping():
                     # Connection is gone or unhealthy; stop pinging it.
                     self._lost = True
                     return
             finally:
                 self._lock.release()
+
+    def _ping(self) -> bool:
+        """NOOP the control connection; True if the server answered at all.
+
+        Some servers (HostEurope) refuse NOOP with "550 Operation not
+        permitted". That is still a reply, so the connection is alive: only
+        a transport failure or a 421 means it is gone. Caller holds the lock.
+        """
+        try:
+            self._ftp.voidcmd("NOOP")
+            return True
+        except (error_perm, error_temp) as e:
+            return not self._is_connection_error(e)
+        except Exception:
+            return False
 
     def _stop_keepalive(self):
         if self._keepalive_stop:
@@ -345,11 +358,7 @@ class FtpClient:
         with self._lock:
             if not self._ftp:
                 return False
-            try:
-                self._ftp.voidcmd("NOOP")
-                return True
-            except Exception:
-                return False
+            return self._ping()
 
     def normalize(self, path: str) -> str:
         with self._lock:
